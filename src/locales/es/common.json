@@ -1,0 +1,182 @@
+{
+  "app": {
+    "initializing": "Iniciando…"
+  },
+  "settings": {
+    "dbSectionTitle": "Estado de la base de datos",
+    "dbChecking": "Comprobando conexión…",
+    "dbError": "Error de conexión"
+  },
+  "clients": {
+    "title": "Clientes",
+    "subtitleCount": "{{count}} clientes activos",
+    "newClient": "Nuevo cliente",
+    "editClient": "Editar cliente",
+    "loading": "Cargando…",
+    "empty": "No hay clientes todavía.",
+    "columns": {
+      "client": "Cliente",
+      "nifCif": "NIF/CIF",
+      "prefix": "Serie",
+      "vat": "Tratamiento IVA",
+      "language": "Idioma"
+    },
+    "fields": {
+      "name": "Nombre",
+      "nifCif": "NIF/CIF",
+      "vatNumber": "Número IVA",
+      "address": "Dirección",
+      "email": "Email",
+      "phone": "Teléfono",
+      "notes": "Notas",
+      "invoicePrefix": "Serie de factura",
+      "vatTreatment": "Tratamiento IVA",
+      "invoiceLanguage": "Idioma de factura",
+      "country": "País",
+      "countryUnset": "— Sin especificar —"
+    },
+    "vatTreatment": {
+      "standard": "Estándar",
+      "reverse_charge_eu": "Inversión sujeto pasivo (UE)",
+      "export_outside_eu": "Exportación (fuera UE)",
+      "exempt_other": "Exenta (otro)"
+    },
+    "invoiceLanguage": {
+      "es": "Español",
+      "en": "English",
+      "ca": "Català"
+    },
+    "actions": {
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "edit": "Editar",
+      "confirmDelete": "¿Eliminar a {{name}}? Esta acción no se puede deshacer."
+    },
+    "errors": {
+      "nameRequired": "El nombre es obligatorio.",
+      "nifCifInvalid": "El NIF/CIF no tiene un formato válido.",
+      "vatNumberInvalid": "El número de IVA debe empezar con el código de país de 2 letras (ej. BG123456789).",
+      "invoicePrefixFormat": "La serie debe tener exactamente 3 letras (ej. IMO).",
+      "invoicePrefixTaken": "Esta serie ya está en uso por otro cliente.",
+      "deleteRestricted": "No se puede eliminar: este cliente tiene facturas asociadas.",
+      "saveFailed": "No se pudo guardar el cliente. Inténtalo de nuevo.",
+      "loadFailed": "No se pudo cargar el cliente."
+    },
+    "detail": {
+      "dataTitle": "Datos del cliente",
+      "contractsTitle": "Contratos",
+      "invoicesTitle": "Facturas"
+    }
+  },
+  "contracts": {
+    "title": "Contratos",
+    "subtitleCount": "{{count}} contratos",
+    "newContract": "Nuevo contrato",
+    "editContract": "Editar contrato",
+    "loading": "Cargando…",
+    "empty": "No hay contratos todavía.",
+    "columns": {
+      "title": "Título",
+      "client": "Cliente",
+      "startDate": "Inicio",
+      "endDate": "Fin",
+      "status": "Estado"
+    },
+    "fields": {
+      "client": "Cliente",
+      "clientUnset": "— Selecciona un cliente —",
+      "title": "Título",
+      "startDate": "Fecha de inicio",
+      "endDate": "Fecha de fin",
+      "status": "Estado",
+      "notes": "Notas",
+      "file": "Archivo",
+      "noFile": "Sin archivo adjunto."
+    },
+    "filters": {
+      "allClients": "Todos los clientes",
+      "allStatuses": "Todos los estados"
+    },
+    "status": {
+      "active": "Activo",
+      "expired": "Vencido",
+      "terminated": "Terminado"
+    },
+    "actions": {
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "edit": "Editar",
+      "attachFile": "Adjuntar archivo",
+      "attaching": "Adjuntando…",
+      "openFile": "Abrir archivo",
+      "confirmDelete": "¿Eliminar \"{{title}}\"? Esta acción no se puede deshacer."
+    },
+    "errors": {
+      "clientRequired": "Selecciona un cliente.",
+      "titleRequired": "El título es obligatorio.",
+      "attachFailed": "No se pudo adjuntar el archivo. Inténtalo de nuevo.",
+      "saveFailed": "No se pudo guardar el contrato. Inténtalo de nuevo.",
+      "loadFailed": "No se pudo cargar el contrato."
+    },
+    "detail": {
+      "dataTitle": "Datos del contrato"
+    }
+  },
+  "expenses": {
+    "title": "Gastos",
+    "subtitleCount": "{{count}} gastos",
+    "newExpense": "Nuevo gasto",
+    "editExpense": "Editar gasto",
+    "loading": "Cargando…",
+    "empty": "No hay gastos en este período.",
+    "columns": {
+      "date": "Fecha",
+      "category": "Categoría",
+      "description": "Descripción",
+      "amount": "Importe",
+      "iva": "IVA",
+      "deductible": "Deducible"
+    },
+    "fields": {
+      "date": "Fecha",
+      "category": "Categoría",
+      "description": "Descripción",
+      "amount": "Importe",
+      "ivaAmount": "Importe IVA",
+      "deductiblePct": "% deducible",
+      "file": "Recibo",
+      "noFile": "Sin recibo adjunto."
+    },
+    "summary": {
+      "total": "Total gastos",
+      "deductibleIva": "IVA deducible"
+    },
+    "period": {
+      "month": "Mes",
+      "quarter": "Trimestre",
+      "year": "Año"
+    },
+    "actions": {
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "edit": "Editar",
+      "attachFile": "Adjuntar recibo",
+      "attaching": "Adjuntando…",
+      "openFile": "Abrir recibo",
+      "confirmDelete": "¿Eliminar este gasto? Esta acción no se puede deshacer."
+    },
+    "errors": {
+      "dateRequired": "La fecha es obligatoria.",
+      "amountRequired": "Se requiere un importe válido.",
+      "attachFailed": "No se pudo adjuntar el archivo. Inténtalo de nuevo.",
+      "saveFailed": "No se pudo guardar el gasto. Inténtalo de nuevo.",
+      "loadFailed": "No se pudo cargar el gasto."
+    },
+    "detail": {
+      "dataTitle": "Datos del gasto"
+    }
+  }
+}

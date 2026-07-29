@@ -1,0 +1,95 @@
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-bg: #f7f5f1;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f2efe9;
+  --color-border: #e6e1d6;
+  --color-ink: #1c2430;
+  --color-ink-soft: #5b6472;
+  --color-accent: #c2632c;
+  --color-sidebar-bg: #1c2430;
+  --color-sidebar-bg-alt: #242e3c;
+  --color-sidebar-border: #2c3644;
+  --color-sidebar-text: #9aa5b3;
+  --color-success-soft: #e3f2e8;
+  --color-success: #2f7a4f;
+  --color-warn-soft: #f3ead0;
+  --color-warn: #8a6612;
+  --color-info-soft: #dde8f7;
+  --color-info: #2c568f;
+  --color-danger-soft: #f7e2dc;
+  --color-danger: #b3402c;
+}
+
+.dark {
+  --color-bg: #14181f;
+  --color-surface: #1c222b;
+  --color-surface-alt: #232a35;
+  --color-border: #2c333f;
+  --color-ink: #eef1f5;
+  --color-ink-soft: #93a0af;
+  --color-accent: #e08a4f;
+  --color-sidebar-bg: #10131a;
+  --color-sidebar-bg-alt: #1a1f28;
+  --color-sidebar-border: #232a35;
+  --color-sidebar-text: #93a0af;
+  --color-success-soft: #1e3327;
+  --color-success: #5ec98d;
+  --color-warn-soft: #3a2f14;
+  --color-warn: #e0b45c;
+  --color-info-soft: #1c2a3d;
+  --color-info: #6ea6e0;
+  --color-danger-soft: #3a201a;
+  --color-danger: #e0836a;
+}
+
+@theme {
+  --font-sans: "Public Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-alt: var(--color-surface-alt);
+  --color-border: var(--color-border);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-accent: var(--color-accent);
+  --color-sidebar-bg: var(--color-sidebar-bg);
+  --color-sidebar-bg-alt: var(--color-sidebar-bg-alt);
+  --color-sidebar-border: var(--color-sidebar-border);
+  --color-sidebar-text: var(--color-sidebar-text);
+  --color-success-soft: var(--color-success-soft);
+  --color-success: var(--color-success);
+  --color-warn-soft: var(--color-warn-soft);
+  --color-warn: var(--color-warn);
+  --color-info-soft: var(--color-info-soft);
+  --color-info: var(--color-info);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-danger: var(--color-danger);
+}
+
+body {
+  margin: 0;
+  font-family: "Public Sans", sans-serif;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-accent) !important;
+}
+
+::selection {
+  background: #f3e3d6;
+}

@@ -1,0 +1,27 @@
+export type VatTreatment = "standard" | "reverse_charge_eu" | "export_outside_eu" | "exempt_other";
+
+export type InvoiceLanguage = "es" | "en" | "ca";
+export type InvoiceStatus = "draft" | "issued" | "paid";
+export type ContractStatus = "active" | "expired" | "terminated";
+export type RectificationType = "full" | "partial";
+
+export type Screen =
+  | "dashboard"
+  | "clientes"
+  | "cliente-detalle"
+  | "cliente-nuevo"
+  | "cliente-editar"
+  | "facturas"
+  | "factura-detalle"
+  | "factura-nueva"
+  | "factura-rectificar"
+  | "contratos"
+  | "contrato-nuevo"
+  | "contrato-editar"
+  | "contrato-detalle"
+  | "gastos"
+  | "gasto-nuevo"
+  | "gasto-editar"
+  | "gasto-detalle"
+  | "resumen-trimestral"
+  | "ajustes";

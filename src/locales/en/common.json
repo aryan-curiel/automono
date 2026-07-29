@@ -1,0 +1,182 @@
+{
+  "app": {
+    "initializing": "Starting…"
+  },
+  "settings": {
+    "dbSectionTitle": "Database status",
+    "dbChecking": "Checking connection…",
+    "dbError": "Connection error"
+  },
+  "clients": {
+    "title": "Clients",
+    "subtitleCount": "{{count}} active clients",
+    "newClient": "New client",
+    "editClient": "Edit client",
+    "loading": "Loading…",
+    "empty": "No clients yet.",
+    "columns": {
+      "client": "Client",
+      "nifCif": "NIF/CIF",
+      "prefix": "Series",
+      "vat": "VAT treatment",
+      "language": "Language"
+    },
+    "fields": {
+      "name": "Name",
+      "nifCif": "NIF/CIF",
+      "vatNumber": "VAT/IVA number",
+      "address": "Address",
+      "email": "Email",
+      "phone": "Phone",
+      "notes": "Notes",
+      "invoicePrefix": "Invoice series",
+      "vatTreatment": "VAT treatment",
+      "invoiceLanguage": "Invoice language",
+      "country": "Country",
+      "countryUnset": "— Unspecified —"
+    },
+    "vatTreatment": {
+      "standard": "Standard",
+      "reverse_charge_eu": "Reverse charge (EU)",
+      "export_outside_eu": "Export (outside EU)",
+      "exempt_other": "Exempt (other)"
+    },
+    "invoiceLanguage": {
+      "es": "Español",
+      "en": "English",
+      "ca": "Català"
+    },
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "confirmDelete": "Delete {{name}}? This action cannot be undone."
+    },
+    "errors": {
+      "nameRequired": "Name is required.",
+      "nifCifInvalid": "NIF/CIF is not a valid format.",
+      "vatNumberInvalid": "VAT number must start with a 2-letter country code (e.g. BG123456789).",
+      "invoicePrefixFormat": "Series must be exactly 3 letters (e.g. IMO).",
+      "invoicePrefixTaken": "This series is already used by another client.",
+      "deleteRestricted": "Can't delete: this client has invoices associated with it.",
+      "saveFailed": "Failed to save the client. Please try again.",
+      "loadFailed": "Failed to load the client."
+    },
+    "detail": {
+      "dataTitle": "Client details",
+      "contractsTitle": "Contracts",
+      "invoicesTitle": "Invoices"
+    }
+  },
+  "contracts": {
+    "title": "Contracts",
+    "subtitleCount": "{{count}} contracts",
+    "newContract": "New contract",
+    "editContract": "Edit contract",
+    "loading": "Loading…",
+    "empty": "No contracts yet.",
+    "columns": {
+      "title": "Title",
+      "client": "Client",
+      "startDate": "Start",
+      "endDate": "End",
+      "status": "Status"
+    },
+    "fields": {
+      "client": "Client",
+      "clientUnset": "— Select a client —",
+      "title": "Title",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "status": "Status",
+      "notes": "Notes",
+      "file": "File",
+      "noFile": "No file attached."
+    },
+    "filters": {
+      "allClients": "All clients",
+      "allStatuses": "All statuses"
+    },
+    "status": {
+      "active": "Active",
+      "expired": "Expired",
+      "terminated": "Terminated"
+    },
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "attachFile": "Attach file",
+      "attaching": "Attaching…",
+      "openFile": "Open file",
+      "confirmDelete": "Delete \"{{title}}\"? This action cannot be undone."
+    },
+    "errors": {
+      "clientRequired": "Please select a client.",
+      "titleRequired": "Title is required.",
+      "attachFailed": "Failed to attach the file. Please try again.",
+      "saveFailed": "Failed to save the contract. Please try again.",
+      "loadFailed": "Failed to load the contract."
+    },
+    "detail": {
+      "dataTitle": "Contract details"
+    }
+  },
+  "expenses": {
+    "title": "Expenses",
+    "subtitleCount": "{{count}} expenses",
+    "newExpense": "New expense",
+    "editExpense": "Edit expense",
+    "loading": "Loading…",
+    "empty": "No expenses in this period.",
+    "columns": {
+      "date": "Date",
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount",
+      "iva": "VAT",
+      "deductible": "Deductible"
+    },
+    "fields": {
+      "date": "Date",
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount",
+      "ivaAmount": "VAT amount",
+      "deductiblePct": "Deductible %",
+      "file": "Receipt",
+      "noFile": "No receipt attached."
+    },
+    "summary": {
+      "total": "Total expenses",
+      "deductibleIva": "Deductible VAT"
+    },
+    "period": {
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year"
+    },
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "attachFile": "Attach receipt",
+      "attaching": "Attaching…",
+      "openFile": "Open receipt",
+      "confirmDelete": "Delete this expense? This action cannot be undone."
+    },
+    "errors": {
+      "dateRequired": "Date is required.",
+      "amountRequired": "A valid amount is required.",
+      "attachFailed": "Failed to attach the file. Please try again.",
+      "saveFailed": "Failed to save the expense. Please try again.",
+      "loadFailed": "Failed to load the expense."
+    },
+    "detail": {
+      "dataTitle": "Expense details"
+    }
+  }
+}
