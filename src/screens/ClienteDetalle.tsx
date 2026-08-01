@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DotsThreeVertical } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
-import { Label, TextInput } from "../components/ui/Field";
-import { BackLink } from "../components/PageHeader";
+import { InfoRow } from "../components/ui/InfoRow";
+import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { BackLink, PageHeader } from "../components/PageHeader";
 import { deleteClient, getClient } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
 import { listContracts } from "../db/contracts";
@@ -69,7 +71,7 @@ export function ClienteDetalle({
 
   if (loading) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-ink-soft">{t("clients.loading")}</div>
       </div>
     );
@@ -77,7 +79,7 @@ export function ClienteDetalle({
 
   if (loadError) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-danger">{t("clients.errors.loadFailed")}</div>
       </div>
     );
@@ -86,61 +88,53 @@ export function ClienteDetalle({
   if (!client) return null;
 
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <BackLink label={t("clients.title")} onClick={onBack} />
 
-      <div className="flex items-start justify-between mb-5.5">
-        <div>
-          <h1 className="font-extrabold text-2xl tracking-tight m-0 mb-1.5">{client.name}</h1>
-          <div className="text-sm text-ink-soft">
-            {t(`clients.vatTreatment.${client.vatTreatment}`)} ·{" "}
-            {t(`clients.invoiceLanguage.${client.invoiceLanguage}`)}
-          </div>
-        </div>
-        <div className="flex gap-2.5 shrink-0">
-          <Button variant="secondary" onClick={() => onEditClient(client.id)}>
-            {t("clients.actions.edit")}
-          </Button>
-          <Button variant="ghost-danger" onClick={handleDelete}>
-            {t("clients.actions.delete")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={client.name}
+        subtitle={`${client.nifCif} · ${client.email || "—"}`}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => onEditClient(client.id)}>
+              {t("clients.actions.edit")}
+            </Button>
+            <Menu>
+              <MenuTrigger className="p-2 rounded-control hover:bg-surface-alt cursor-pointer">
+                <DotsThreeVertical size={16} weight="bold" />
+              </MenuTrigger>
+              <MenuContent>
+                <MenuItem danger onSelect={handleDelete}>
+                  {t("clients.actions.delete")}
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          </>
+        }
+      />
 
-      <Card className="p-5.5 max-w-[640px]">
-        <div className="font-bold text-sm mb-4">{t("clients.detail.dataTitle")}</div>
-        <div className="grid grid-cols-3 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("clients.fields.nifCif")}</Label>
-            <TextInput mono readOnly value={client.nifCif} />
-          </div>
-          <div>
-            <Label>{t("clients.fields.vatNumber")}</Label>
-            <TextInput mono readOnly value={client.vatNumber ?? ""} />
-          </div>
-          <div>
-            <Label>{t("clients.fields.invoicePrefix")}</Label>
-            <TextInput mono readOnly value={client.invoicePrefix} />
-          </div>
+      <Card className="px-5 py-1 max-w-[640px]">
+        <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide pt-4 pb-2">
+          {t("clients.detail.dataTitle")}
         </div>
-        <div className="mb-3.5">
-          <Label>{t("clients.fields.address")}</Label>
-          <TextInput readOnly value={client.address ?? ""} />
-        </div>
-        <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("clients.fields.email")}</Label>
-            <TextInput readOnly value={client.email ?? ""} />
-          </div>
-          <div>
-            <Label>{t("clients.fields.phone")}</Label>
-            <TextInput readOnly value={client.phone ?? ""} />
-          </div>
-        </div>
-        <div>
-          <Label>{t("clients.fields.notes")}</Label>
-          <TextInput readOnly value={client.notes ?? ""} />
-        </div>
+        <InfoRow label={t("clients.fields.nifCif")} value={client.nifCif} mono />
+        <InfoRow label={t("clients.fields.vatNumber")} value={client.vatNumber || "—"} mono />
+        <InfoRow label={t("clients.fields.invoicePrefix")} value={client.invoicePrefix} mono />
+        <InfoRow label={t("clients.fields.address")} value={client.address || "—"} />
+        <InfoRow label={t("clients.fields.email")} value={client.email || "—"} />
+        <InfoRow label={t("clients.fields.phone")} value={client.phone || "—"} />
+        <InfoRow
+          label={t("clients.fields.notes")}
+          value={<span className="whitespace-pre-wrap">{client.notes || "—"}</span>}
+        />
+        <InfoRow
+          label={t("clients.fields.vatTreatment")}
+          value={t(`clients.vatTreatment.${client.vatTreatment}`)}
+        />
+        <InfoRow
+          label={t("clients.fields.invoiceLanguage")}
+          value={t(`clients.invoiceLanguage.${client.invoiceLanguage}`)}
+        />
       </Card>
 
       <Card className="p-5.5 max-w-[640px] mt-4.5">
@@ -159,7 +153,9 @@ export function ClienteDetalle({
               <div
                 key={contract.id}
                 onClick={() => onOpenContract(contract.id)}
-                className="flex items-center justify-between py-3 border-t border-border first:border-t-0 cursor-pointer"
+                className="group flex items-center justify-between py-2.5 px-2 -mx-2 rounded-control
+                           border-t border-border first:border-t-0 cursor-pointer
+                           transition-colors hover:bg-surface-alt"
               >
                 <div>
                   <div className="font-semibold text-sm">{contract.title}</div>
