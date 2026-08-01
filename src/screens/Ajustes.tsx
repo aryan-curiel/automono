@@ -104,7 +104,8 @@ export function Ajustes() {
     if (!form.name.trim()) next.name = "El nombre es obligatorio";
     if (!isValidNifCif(form.nifCif)) next.nifCif = "NIF/CIF con formato inválido";
     if (!isValidVatNumber(form.vatNumber)) next.vatNumber = "Número de IVA con formato inválido";
-    if (form.iban.trim() && !isValidIban(form.iban)) next.iban = "IBAN con formato o dígitos de control inválidos";
+    if (form.iban.trim() && !isValidIban(form.iban))
+      next.iban = "IBAN con formato o dígitos de control inválidos";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -295,8 +296,8 @@ export function Ajustes() {
           <Card className="py-5.5 px-6 max-w-[640px]">
             <div className="font-bold text-sm mb-1.5">Copia de seguridad</div>
             <div className="text-[13px] text-ink-soft mb-4">
-              Se guarda una copia de la base de datos, facturas y contratos en una carpeta local que tú
-              sincronizas con Drive/S3.
+              Se guarda una copia de la base de datos, facturas y contratos en una carpeta local que
+              tú sincronizas con Drive/S3.
             </div>
 
             <div className="mb-3.5">
@@ -378,7 +379,9 @@ export function Ajustes() {
 
             {restoreCandidates && (
               <div className="mt-4.5 border-t border-border pt-4.5">
-                <div className="text-[13px] font-semibold mb-2.5">Elige una copia para restaurar</div>
+                <div className="text-[13px] font-semibold mb-2.5">
+                  Elige una copia para restaurar
+                </div>
                 <div className="flex flex-col gap-2 mb-3">
                   {restoreCandidates.map((entry) => (
                     <button
