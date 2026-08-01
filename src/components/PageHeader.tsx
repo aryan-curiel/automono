@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { CaretLeft } from "@phosphor-icons/react";
 
 interface PageHeaderProps {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   actions?: ReactNode;
 }

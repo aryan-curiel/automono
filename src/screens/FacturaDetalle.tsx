@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { CaretDown, Warning, Info } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
-import { BackLink } from "../components/PageHeader";
+import { Sheet } from "../components/ui/Sheet";
+import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { BackLink, PageHeader } from "../components/PageHeader";
 import type { BusinessProfileRecord } from "../db/businessProfile";
 import { formatDate, formatEUR } from "../lib/format";
 import { amountsFromLines, invoiceNumberLabel, lineTotal } from "../lib/invoice";
@@ -113,109 +115,94 @@ export function FacturaDetalle({
     invoice.status !== "draft" && !invoice.isRectification && !invoice.rectifiedByInvoiceId;
   const canMarkPaid = invoice.status !== "paid" && invoice.status !== "draft";
 
-  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
-  const downloadMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!downloadMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (!downloadMenuRef.current?.contains(e.target as Node)) {
-        setDownloadMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [downloadMenuOpen]);
-
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <BackLink label="Facturas" onClick={onBack} />
 
-      <div className="flex items-start justify-between mb-5.5">
-        <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <h1 className="font-extrabold text-2xl tracking-tight m-0">
-              {invoiceNumberLabel(invoice)}
-            </h1>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            {invoiceNumberLabel(invoice)}
             <Badge tone={meta.tone}>{meta.label}</Badge>
-          </div>
-          <div className="text-sm text-ink-soft">
-            {invoice.clientName} · emitida {formatDate(invoice.issueDate)}
-          </div>
-        </div>
-        <div className="flex gap-2.5 shrink-0">
-          {canRectify && (
-            <Button variant="secondary" onClick={onStartRectification}>
-              Crear rectificativa
-            </Button>
-          )}
-          {canMarkPaid && (
-            <Button variant="secondary" onClick={onOpenMarkPaid}>
-              Marcar como pagada
-            </Button>
-          )}
-          {invoice.status !== "draft" && (
-            <div className="relative flex" ref={downloadMenuRef}>
-              <Button
-                onClick={() => onDownloadPdf(false)}
-                disabled={generatingPdf}
-                className="rounded-r-none"
-              >
-                {generatingPdf ? "Generando…" : "Descargar PDF"}
+          </span>
+        }
+        subtitle={`${invoice.clientName} · emitida ${formatDate(invoice.issueDate)}`}
+        actions={
+          <>
+            {canRectify && (
+              <Button variant="secondary" onClick={onStartRectification}>
+                Crear rectificativa
               </Button>
-              <Button
-                onClick={() => setDownloadMenuOpen((o) => !o)}
-                disabled={generatingPdf}
-                className="rounded-l-none border-l border-l-white/25 !px-2.5"
-                aria-label="Más opciones de descarga"
-              >
-                ▾
+            )}
+            {canMarkPaid && (
+              <Button variant="secondary" onClick={onOpenMarkPaid}>
+                Marcar como pagada
               </Button>
-              {downloadMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-56 bg-surface border border-border rounded-lg shadow-lg py-1 z-10">
-                  <button
-                    onClick={() => {
-                      setDownloadMenuOpen(false);
-                      onDownloadPdf(true);
-                    }}
+            )}
+            {invoice.status !== "draft" && (
+              <Menu>
+                <div className="flex">
+                  <Button
+                    onClick={() => onDownloadPdf(false)}
                     disabled={generatingPdf}
-                    className="w-full text-left px-3.5 py-2.5 text-[13px] font-medium text-ink hover:bg-surface-alt cursor-pointer disabled:opacity-50"
+                    className="rounded-r-none"
                   >
-                    Generar y descargar
-                  </button>
+                    {generatingPdf ? "Generando…" : "Descargar PDF"}
+                  </Button>
+                  <MenuTrigger asChild>
+                    <Button
+                      disabled={generatingPdf}
+                      className="rounded-l-none border-l border-l-white/25 !px-2.5"
+                      aria-label="Más opciones de descarga"
+                    >
+                      <CaretDown size={12} weight="bold" />
+                    </Button>
+                  </MenuTrigger>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                <MenuContent>
+                  <MenuItem onSelect={() => onDownloadPdf(true)} disabled={generatingPdf}>
+                    Generar y descargar
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
+            )}
+          </>
+        }
+      />
 
-      {markingPaid && (
-        <Card className="p-5.5 mb-5 max-w-[520px]">
-          <div className="font-bold text-sm mb-1.5">Marcar factura como pagada</div>
-          <div className="text-[13px] text-ink-soft mb-3.5">
-            ¿Confirmas que esta factura ha sido pagada?
-          </div>
-          <div className="flex gap-2.5">
-            <Button onClick={onConfirmMarkPaid}>Confirmar pago</Button>
-            <Button variant="secondary" onClick={onCancelMarkPaid}>
-              Cancelar
-            </Button>
-          </div>
-        </Card>
-      )}
+      <Sheet
+        open={markingPaid}
+        onOpenChange={(open) => !open && onCancelMarkPaid()}
+        title="Marcar factura como pagada"
+      >
+        <p className="text-[13px] text-ink-soft mb-4">
+          ¿Confirmas que esta factura ha sido pagada?
+        </p>
+        <div className="flex gap-2.5 justify-end">
+          <Button variant="secondary" onClick={onCancelMarkPaid}>
+            Cancelar
+          </Button>
+          <Button onClick={onConfirmMarkPaid}>Confirmar pago</Button>
+        </div>
+      </Sheet>
 
       {invoice.isRectification && (
-        <div className="bg-danger-soft text-danger rounded-lg py-3 px-4 font-medium text-[13px] mb-5">
-          Rectifica a <b>{rectifies ? invoiceNumberLabel(rectifies) : ""}</b> —{" "}
-          {invoice.rectificationType === "full" ? "anulación completa" : "corrección parcial"}.
-          Motivo: {invoice.rectificationReason}
+        <div className="flex items-start gap-2.5 bg-danger-soft text-danger rounded-card py-3 px-4 font-medium text-[13px] mb-5">
+          <Warning size={16} weight="fill" className="shrink-0 mt-0.5" />
+          <span>
+            Rectifica a <b>{rectifies ? invoiceNumberLabel(rectifies) : ""}</b> —{" "}
+            {invoice.rectificationType === "full" ? "anulación completa" : "corrección parcial"}.
+            Motivo: {invoice.rectificationReason}
+          </span>
         </div>
       )}
 
       {rectifiedBy && (
-        <div className="bg-surface-alt text-ink-soft rounded-lg py-3 px-4 font-medium text-[13px] mb-5">
-          Esta factura ha sido rectificada por <b>{invoiceNumberLabel(rectifiedBy)}</b>.
+        <div className="flex items-start gap-2.5 bg-surface-alt text-ink-soft rounded-card py-3 px-4 font-medium text-[13px] mb-5">
+          <Info size={16} weight="fill" className="shrink-0 mt-0.5" />
+          <span>
+            Esta factura ha sido rectificada por <b>{invoiceNumberLabel(rectifiedBy)}</b>.
+          </span>
         </div>
       )}
 
@@ -225,7 +212,7 @@ export function FacturaDetalle({
           {lines.map((l) => (
             <div
               key={l.id}
-              className="flex justify-between py-2 border-b border-border font-normal text-[13.5px]"
+              className="flex justify-between py-1.5 border-b border-border font-normal text-[13.5px]"
             >
               <span>{l.description}</span>
               <span className="font-medium font-mono text-[13.5px]">{formatEUR(lineTotal(l))}</span>
@@ -256,13 +243,15 @@ export function FacturaDetalle({
             <span className="font-bold text-base font-mono">{formatEUR(amounts.total)}</span>
           </div>
           {invoice.vatNoteText && (
-            <div className="mt-4 py-3 px-3.5 bg-surface-alt rounded-lg text-xs text-ink-soft leading-relaxed">
+            <div className="mt-4 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
               {invoice.vatNoteText}
             </div>
           )}
         </Card>
 
-        <div className="bg-[#fdfdfc] text-[#1c2430] rounded shadow-[0_4px_24px_rgba(0,0,0,.18)] py-9 px-8.5 font-sans">
+        {/* Client-facing PDF preview — must visually match pdf.rs's actual output.
+            No glass/blur/macOS styling here; only the frame shadow was bumped to shadow-sheet. */}
+        <div className="bg-[#fdfdfc] text-[#1c2430] rounded shadow-sheet py-9 px-8.5 font-sans">
           <div className="flex justify-between items-start pb-4">
             <div />
             <div className="font-extrabold text-lg">{business.name}</div>
