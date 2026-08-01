@@ -113,6 +113,7 @@
   --radius-control: var(--radius-control);
   --radius-card: var(--radius-card);
   --radius-sheet: var(--radius-sheet);
+  --radius-pill: var(--radius-pill);
 
   --shadow-float: var(--shadow-float);
   --shadow-sheet: var(--shadow-sheet);
