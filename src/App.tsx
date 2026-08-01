@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/ui/Toast";
+import { TooltipProvider } from "./components/ui/Tooltip";
 import { getDb } from "./db/client";
 import { Dashboard } from "./screens/Dashboard";
 import { Clientes } from "./screens/Clientes";
@@ -133,224 +134,228 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-bg text-ink transition-colors overflow-hidden">
-      <Sidebar
-        screen={screen}
-        onNavigate={setScreen}
-        theme={theme}
-        onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-      />
+    <TooltipProvider>
+      <div className="flex h-screen bg-bg text-ink transition-colors overflow-hidden">
+        <Sidebar
+          screen={screen}
+          onNavigate={setScreen}
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        />
 
-      <div className="flex-1 overflow-y-auto min-w-0">
-        {screen === "dashboard" && (
-          <Dashboard invoices={invoices} onNavigate={setScreen} onOpenInvoice={openInvoice} />
+        <div className="flex-1 overflow-y-auto min-w-0">
+          {screen === "dashboard" && (
+            <Dashboard invoices={invoices} onNavigate={setScreen} onOpenInvoice={openInvoice} />
+          )}
+
+          {screen === "clientes" && (
+            <Clientes
+              onOpenClient={(id) => {
+                setSelectedClientId(id);
+                setScreen("cliente-detalle");
+              }}
+              onNewClient={() => setScreen("cliente-nuevo")}
+            />
+          )}
+
+          {screen === "cliente-detalle" && selectedClientId !== null && (
+            <ClienteDetalle
+              clientId={selectedClientId}
+              onBack={() => setScreen("clientes")}
+              onEditClient={(id) => {
+                setSelectedClientId(id);
+                setScreen("cliente-editar");
+              }}
+              onDeleted={() => setScreen("clientes")}
+              onOpenContract={(id) => {
+                setSelectedContractId(id);
+                setScreen("contrato-detalle");
+              }}
+              onNewContract={(clientId) => {
+                setNewContractClientId(clientId);
+                setScreen("contrato-nuevo");
+              }}
+            />
+          )}
+
+          {screen === "cliente-nuevo" && (
+            <ClienteForm
+              mode="create"
+              onSaved={(client) => {
+                setSelectedClientId(client.id);
+                setScreen("cliente-detalle");
+              }}
+              onCancel={() => setScreen("clientes")}
+            />
+          )}
+
+          {screen === "cliente-editar" && selectedClientId !== null && (
+            <ClienteForm
+              mode="edit"
+              clientId={selectedClientId}
+              onSaved={(client) => {
+                setSelectedClientId(client.id);
+                setScreen("cliente-detalle");
+              }}
+              onCancel={() => setScreen("cliente-detalle")}
+            />
+          )}
+
+          {screen === "facturas" && (
+            <Facturas
+              invoices={invoices}
+              onOpenInvoice={openInvoice}
+              onNewInvoice={() => setScreen("factura-nueva")}
+            />
+          )}
+
+          {screen === "factura-detalle" && invoiceDetail && businessProfile && (
+            <FacturaDetalle
+              invoice={invoiceDetail.invoice}
+              lines={invoiceDetail.lines}
+              invoices={invoices}
+              businessProfile={businessProfile}
+              markingPaid={markingPaid}
+              generatingPdf={generatingPdf}
+              onBack={() => setScreen("facturas")}
+              onOpenMarkPaid={() => setMarkingPaid(true)}
+              onCancelMarkPaid={() => setMarkingPaid(false)}
+              onConfirmMarkPaid={confirmMarkPaid}
+              onStartRectification={() => {
+                setRectifyingId(invoiceDetail.invoice.id);
+                setRectType("partial");
+                setRectReason("");
+                setScreen("factura-rectificar");
+              }}
+              onDownloadPdf={handleDownloadPdf}
+            />
+          )}
+
+          {screen === "factura-nueva" && <FacturaNueva onBack={() => setScreen("facturas")} />}
+
+          {screen === "factura-rectificar" && rectifyingInvoice && (
+            <FacturaRectificar
+              original={rectifyingInvoice}
+              rectType={rectType}
+              onSetFull={() => setRectType("full")}
+              onSetPartial={() => setRectType("partial")}
+              reason={rectReason}
+              onReasonChange={setRectReason}
+              onCancel={() => setScreen("factura-detalle")}
+              onEmit={async (created) => {
+                const list = await listInvoices();
+                setInvoices(list);
+                setSelectedInvoiceId(created.id);
+                setScreen("factura-detalle");
+              }}
+            />
+          )}
+
+          {screen === "contratos" && (
+            <Contratos
+              onOpenContract={(id) => {
+                setSelectedContractId(id);
+                setScreen("contrato-detalle");
+              }}
+              onNewContract={() => {
+                setNewContractClientId(undefined);
+                setScreen("contrato-nuevo");
+              }}
+            />
+          )}
+
+          {screen === "contrato-nuevo" && (
+            <ContratoForm
+              mode="create"
+              presetClientId={newContractClientId}
+              onSaved={(contract) => {
+                setSelectedContractId(contract.id);
+                setScreen("contrato-detalle");
+              }}
+              onCancel={() =>
+                setScreen(newContractClientId !== undefined ? "cliente-detalle" : "contratos")
+              }
+            />
+          )}
+
+          {screen === "contrato-editar" && selectedContractId !== null && (
+            <ContratoForm
+              mode="edit"
+              contractId={selectedContractId}
+              onSaved={(contract) => {
+                setSelectedContractId(contract.id);
+                setScreen("contrato-detalle");
+              }}
+              onCancel={() => setScreen("contrato-detalle")}
+            />
+          )}
+
+          {screen === "contrato-detalle" && selectedContractId !== null && (
+            <ContratoDetalle
+              contractId={selectedContractId}
+              onBack={() => setScreen("contratos")}
+              onEditContract={(id) => {
+                setSelectedContractId(id);
+                setScreen("contrato-editar");
+              }}
+              onDeleted={() => setScreen("contratos")}
+            />
+          )}
+
+          {screen === "gastos" && (
+            <Gastos
+              onOpenExpense={(id) => {
+                setSelectedExpenseId(id);
+                setScreen("gasto-detalle");
+              }}
+              onNewExpense={() => setScreen("gasto-nuevo")}
+            />
+          )}
+
+          {screen === "gasto-nuevo" && (
+            <GastoForm
+              mode="create"
+              onSaved={(expense) => {
+                setSelectedExpenseId(expense.id);
+                setScreen("gasto-detalle");
+              }}
+              onCancel={() => setScreen("gastos")}
+            />
+          )}
+
+          {screen === "gasto-editar" && selectedExpenseId !== null && (
+            <GastoForm
+              mode="edit"
+              expenseId={selectedExpenseId}
+              onSaved={(expense) => {
+                setSelectedExpenseId(expense.id);
+                setScreen("gasto-detalle");
+              }}
+              onCancel={() => setScreen("gasto-detalle")}
+            />
+          )}
+
+          {screen === "gasto-detalle" && selectedExpenseId !== null && (
+            <GastoDetalle
+              expenseId={selectedExpenseId}
+              onBack={() => setScreen("gastos")}
+              onEditExpense={(id) => {
+                setSelectedExpenseId(id);
+                setScreen("gasto-editar");
+              }}
+              onDeleted={() => setScreen("gastos")}
+            />
+          )}
+
+          {screen === "resumen-trimestral" && <ResumenTrimestral invoices={invoices} />}
+          {screen === "ajustes" && <Ajustes />}
+        </div>
+
+        {dbErrorToast && <Toast message={dbErrorToast} onDismiss={() => setDbErrorToast(null)} />}
+        {pdfErrorToast && (
+          <Toast message={pdfErrorToast} onDismiss={() => setPdfErrorToast(null)} />
         )}
-
-        {screen === "clientes" && (
-          <Clientes
-            onOpenClient={(id) => {
-              setSelectedClientId(id);
-              setScreen("cliente-detalle");
-            }}
-            onNewClient={() => setScreen("cliente-nuevo")}
-          />
-        )}
-
-        {screen === "cliente-detalle" && selectedClientId !== null && (
-          <ClienteDetalle
-            clientId={selectedClientId}
-            onBack={() => setScreen("clientes")}
-            onEditClient={(id) => {
-              setSelectedClientId(id);
-              setScreen("cliente-editar");
-            }}
-            onDeleted={() => setScreen("clientes")}
-            onOpenContract={(id) => {
-              setSelectedContractId(id);
-              setScreen("contrato-detalle");
-            }}
-            onNewContract={(clientId) => {
-              setNewContractClientId(clientId);
-              setScreen("contrato-nuevo");
-            }}
-          />
-        )}
-
-        {screen === "cliente-nuevo" && (
-          <ClienteForm
-            mode="create"
-            onSaved={(client) => {
-              setSelectedClientId(client.id);
-              setScreen("cliente-detalle");
-            }}
-            onCancel={() => setScreen("clientes")}
-          />
-        )}
-
-        {screen === "cliente-editar" && selectedClientId !== null && (
-          <ClienteForm
-            mode="edit"
-            clientId={selectedClientId}
-            onSaved={(client) => {
-              setSelectedClientId(client.id);
-              setScreen("cliente-detalle");
-            }}
-            onCancel={() => setScreen("cliente-detalle")}
-          />
-        )}
-
-        {screen === "facturas" && (
-          <Facturas
-            invoices={invoices}
-            onOpenInvoice={openInvoice}
-            onNewInvoice={() => setScreen("factura-nueva")}
-          />
-        )}
-
-        {screen === "factura-detalle" && invoiceDetail && businessProfile && (
-          <FacturaDetalle
-            invoice={invoiceDetail.invoice}
-            lines={invoiceDetail.lines}
-            invoices={invoices}
-            businessProfile={businessProfile}
-            markingPaid={markingPaid}
-            generatingPdf={generatingPdf}
-            onBack={() => setScreen("facturas")}
-            onOpenMarkPaid={() => setMarkingPaid(true)}
-            onCancelMarkPaid={() => setMarkingPaid(false)}
-            onConfirmMarkPaid={confirmMarkPaid}
-            onStartRectification={() => {
-              setRectifyingId(invoiceDetail.invoice.id);
-              setRectType("partial");
-              setRectReason("");
-              setScreen("factura-rectificar");
-            }}
-            onDownloadPdf={handleDownloadPdf}
-          />
-        )}
-
-        {screen === "factura-nueva" && <FacturaNueva onBack={() => setScreen("facturas")} />}
-
-        {screen === "factura-rectificar" && rectifyingInvoice && (
-          <FacturaRectificar
-            original={rectifyingInvoice}
-            rectType={rectType}
-            onSetFull={() => setRectType("full")}
-            onSetPartial={() => setRectType("partial")}
-            reason={rectReason}
-            onReasonChange={setRectReason}
-            onCancel={() => setScreen("factura-detalle")}
-            onEmit={async (created) => {
-              const list = await listInvoices();
-              setInvoices(list);
-              setSelectedInvoiceId(created.id);
-              setScreen("factura-detalle");
-            }}
-          />
-        )}
-
-        {screen === "contratos" && (
-          <Contratos
-            onOpenContract={(id) => {
-              setSelectedContractId(id);
-              setScreen("contrato-detalle");
-            }}
-            onNewContract={() => {
-              setNewContractClientId(undefined);
-              setScreen("contrato-nuevo");
-            }}
-          />
-        )}
-
-        {screen === "contrato-nuevo" && (
-          <ContratoForm
-            mode="create"
-            presetClientId={newContractClientId}
-            onSaved={(contract) => {
-              setSelectedContractId(contract.id);
-              setScreen("contrato-detalle");
-            }}
-            onCancel={() =>
-              setScreen(newContractClientId !== undefined ? "cliente-detalle" : "contratos")
-            }
-          />
-        )}
-
-        {screen === "contrato-editar" && selectedContractId !== null && (
-          <ContratoForm
-            mode="edit"
-            contractId={selectedContractId}
-            onSaved={(contract) => {
-              setSelectedContractId(contract.id);
-              setScreen("contrato-detalle");
-            }}
-            onCancel={() => setScreen("contrato-detalle")}
-          />
-        )}
-
-        {screen === "contrato-detalle" && selectedContractId !== null && (
-          <ContratoDetalle
-            contractId={selectedContractId}
-            onBack={() => setScreen("contratos")}
-            onEditContract={(id) => {
-              setSelectedContractId(id);
-              setScreen("contrato-editar");
-            }}
-            onDeleted={() => setScreen("contratos")}
-          />
-        )}
-
-        {screen === "gastos" && (
-          <Gastos
-            onOpenExpense={(id) => {
-              setSelectedExpenseId(id);
-              setScreen("gasto-detalle");
-            }}
-            onNewExpense={() => setScreen("gasto-nuevo")}
-          />
-        )}
-
-        {screen === "gasto-nuevo" && (
-          <GastoForm
-            mode="create"
-            onSaved={(expense) => {
-              setSelectedExpenseId(expense.id);
-              setScreen("gasto-detalle");
-            }}
-            onCancel={() => setScreen("gastos")}
-          />
-        )}
-
-        {screen === "gasto-editar" && selectedExpenseId !== null && (
-          <GastoForm
-            mode="edit"
-            expenseId={selectedExpenseId}
-            onSaved={(expense) => {
-              setSelectedExpenseId(expense.id);
-              setScreen("gasto-detalle");
-            }}
-            onCancel={() => setScreen("gasto-detalle")}
-          />
-        )}
-
-        {screen === "gasto-detalle" && selectedExpenseId !== null && (
-          <GastoDetalle
-            expenseId={selectedExpenseId}
-            onBack={() => setScreen("gastos")}
-            onEditExpense={(id) => {
-              setSelectedExpenseId(id);
-              setScreen("gasto-editar");
-            }}
-            onDeleted={() => setScreen("gastos")}
-          />
-        )}
-
-        {screen === "resumen-trimestral" && <ResumenTrimestral invoices={invoices} />}
-        {screen === "ajustes" && <Ajustes />}
       </div>
-
-      {dbErrorToast && <Toast message={dbErrorToast} onDismiss={() => setDbErrorToast(null)} />}
-      {pdfErrorToast && <Toast message={pdfErrorToast} onDismiss={() => setPdfErrorToast(null)} />}
-    </div>
+    </TooltipProvider>
   );
 }

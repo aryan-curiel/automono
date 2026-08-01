@@ -44,7 +44,7 @@
   --radius-pill: 9999px;
 
   /* shadows (float above content only, never on flat in-flow cards) */
-  --shadow-float: 0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.10);
+  --shadow-float: 0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.1);
   --shadow-sheet: 0 4px 8px rgb(28 36 48 / 0.08), 0 24px 48px rgb(28 36 48 / 0.18);
 }
 
@@ -129,12 +129,6 @@ select,
 textarea {
   font-family: inherit;
   outline: none;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--color-accent) !important;
 }
 
 ::selection {

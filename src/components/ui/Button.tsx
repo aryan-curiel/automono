@@ -2,13 +2,18 @@ import type { ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "secondary" | "ghost-danger" | "dashed";
 
-const base = "font-semibold text-sm rounded-lg cursor-pointer whitespace-nowrap transition-colors";
+const base =
+  "font-semibold text-[13px] rounded-control cursor-pointer whitespace-nowrap " +
+  "transition-[transform,background-color,box-shadow] duration-150 " +
+  "active:scale-[0.97] disabled:opacity-50 disabled:cursor-default disabled:active:scale-100 " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white px-5 py-2.5",
-  secondary: "bg-surface text-ink border border-border px-5 py-2.5",
-  "ghost-danger": "bg-transparent text-danger px-1 py-2.5",
-  dashed: "bg-transparent text-accent border border-dashed border-border px-3.5 py-2.5",
+  primary: "bg-accent text-white px-4 py-2 shadow-[0_1px_2px_rgb(0,0,0,0.12)] hover:brightness-105",
+  secondary: "bg-surface text-ink border border-border px-4 py-2 hover:bg-surface-alt",
+  "ghost-danger": "bg-transparent text-danger px-1 py-2 hover:bg-danger-soft rounded-control",
+  dashed:
+    "bg-transparent text-accent border border-dashed border-border px-3.5 py-2 hover:bg-surface-alt",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

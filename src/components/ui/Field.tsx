@@ -6,13 +6,17 @@ import type {
 } from "react";
 
 export function Label({ children }: { children: ReactNode }) {
-  return <label className="block text-xs font-semibold text-ink-soft mb-1.5">{children}</label>;
+  return <label className="block text-xs font-medium text-ink-soft mb-1.5">{children}</label>;
 }
 
-const fieldBase = "w-full box-border text-sm px-3 py-2.5 border rounded-lg bg-surface text-ink";
+const fieldBase =
+  "w-full box-border text-[13px] px-3 py-2 rounded-control bg-surface text-ink " +
+  "border shadow-[inset_0_1px_1px_rgb(0,0,0,0.03)] " +
+  "transition-[box-shadow,border-color] duration-150 " +
+  "focus:shadow-[0_0_0_3px_var(--color-focus-ring)] focus:outline-none";
 
 function borderClass(error?: boolean) {
-  return error ? "border-danger" : "border-border";
+  return error ? "border-danger focus:border-danger" : "border-border focus:border-accent";
 }
 
 interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
