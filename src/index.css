@@ -23,6 +23,29 @@
   --color-info: #2c568f;
   --color-danger-soft: #f7e2dc;
   --color-danger: #b3402c;
+
+  /* materials */
+  --color-toolbar-glass: rgb(247 245 241 / 0.72);
+  --color-sheet-glass: rgb(255 255 255 / 0.82);
+  --color-glass-border: rgb(255 255 255 / 0.5);
+  --color-glass-border-soft: rgb(28 36 48 / 0.06);
+  --color-overlay-scrim: rgb(28 36 48 / 0.25);
+
+  /* sidebar material (opaque, not glass) */
+  --color-sidebar-selection: rgb(194 99 44 / 0.16);
+
+  /* focus ring, matches accent */
+  --color-focus-ring: rgb(194 99 44 / 0.35);
+
+  /* radius scale */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-sheet: 16px;
+  --radius-pill: 9999px;
+
+  /* shadows (float above content only, never on flat in-flow cards) */
+  --shadow-float: 0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.10);
+  --shadow-sheet: 0 4px 8px rgb(28 36 48 / 0.08), 0 24px 48px rgb(28 36 48 / 0.18);
 }
 
 .dark {
@@ -45,6 +68,14 @@
   --color-info: #6ea6e0;
   --color-danger-soft: #3a201a;
   --color-danger: #e0836a;
+
+  --color-toolbar-glass: rgb(20 24 31 / 0.72);
+  --color-sheet-glass: rgb(28 34 43 / 0.82);
+  --color-glass-border: rgb(255 255 255 / 0.08);
+  --color-glass-border-soft: rgb(0 0 0 / 0.35);
+  --color-overlay-scrim: rgb(0 0 0 / 0.5);
+  --color-sidebar-selection: rgb(224 138 79 / 0.22);
+  --color-focus-ring: rgb(224 138 79 / 0.4);
 }
 
 @theme {
@@ -70,6 +101,21 @@
   --color-info: var(--color-info);
   --color-danger-soft: var(--color-danger-soft);
   --color-danger: var(--color-danger);
+
+  --color-toolbar-glass: var(--color-toolbar-glass);
+  --color-sheet-glass: var(--color-sheet-glass);
+  --color-glass-border: var(--color-glass-border);
+  --color-glass-border-soft: var(--color-glass-border-soft);
+  --color-overlay-scrim: var(--color-overlay-scrim);
+  --color-sidebar-selection: var(--color-sidebar-selection);
+  --color-focus-ring: var(--color-focus-ring);
+
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-sheet: var(--radius-sheet);
+
+  --shadow-float: var(--shadow-float);
+  --shadow-sheet: var(--shadow-sheet);
 }
 
 body {
