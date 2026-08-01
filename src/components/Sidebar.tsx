@@ -58,7 +58,8 @@ export function Sidebar({ screen, onNavigate, theme, onToggleTheme }: SidebarPro
 
   return (
     <div className="w-[230px] shrink-0 bg-sidebar-bg flex flex-col p-3.5 box-border">
-      <div className="flex items-center gap-2.5 px-2.5 pt-1.5 pb-5.5">
+      <div data-tauri-drag-region className="h-13 shrink-0" />
+      <div className="flex items-center gap-2.5 px-2.5 pb-5.5">
         <img src="/logo.svg" alt="" className="w-6.5 h-6.5 rounded-md shrink-0" />
         <div className="font-bold text-sm text-white tracking-tight">AutoMono</div>
       </div>
