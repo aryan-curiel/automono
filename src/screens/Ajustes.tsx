@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../components/ui/Card";
+import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/ui/Button";
 import { ErrorText, Label, TextInput } from "../components/ui/Field";
 import { getBusinessProfile, updateBusinessProfile } from "../db/businessProfile";
@@ -202,7 +203,7 @@ export function Ajustes() {
 
   return (
     <div className="px-10 pt-8 pb-15">
-      <h1 className="font-extrabold text-2xl tracking-tight m-0 mb-6">Ajustes</h1>
+      <PageHeader title="Ajustes" />
 
       {loading ? (
         <div className="text-sm text-ink-soft mb-5">Cargando…</div>
