@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import * as Switch from "@radix-ui/react-switch";
 import {
   House,
@@ -55,6 +55,7 @@ interface SidebarProps {
 export function Sidebar({ screen, onNavigate, theme, onToggleTheme }: SidebarProps) {
   const activeGroup = GROUPED_SCREENS[screen] ?? screen;
   const [profile, setProfile] = useState<BusinessProfileRecord | null>(null);
+  const reduceMotion = useReducedMotion();
 
   // ponytail: re-fetches on every screen change (cheap local query) instead of a
   // shared store, so the footer picks up Ajustes saves as soon as you navigate.
@@ -90,12 +91,16 @@ export function Sidebar({ screen, onNavigate, theme, onToggleTheme }: SidebarPro
                 <motion.div
                   layoutId="sidebar-selection"
                   className="absolute inset-0 rounded-control bg-sidebar-selection"
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  transition={
+                    reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }
+                  }
                 />
               )}
               <div
                 className={`relative z-10 flex items-center gap-2.5 ${
-                  active ? "font-semibold text-white" : "font-medium text-sidebar-text hover:text-white"
+                  active
+                    ? "font-semibold text-white"
+                    : "font-medium text-sidebar-text hover:text-white"
                 }`}
               >
                 <Icon size={18} weight="regular" />

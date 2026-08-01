@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "@phosphor-icons/react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
 export function Sheet({
@@ -14,6 +14,7 @@ export function Sheet({
   title: string;
   children: ReactNode;
 }) {
+  const reduceMotion = useReducedMotion();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -29,7 +30,9 @@ export function Sheet({
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 380, damping: 32 }}
+            transition={
+              reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }
+            }
             className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                        w-full max-w-md rounded-sheet bg-sheet-glass backdrop-blur-xl backdrop-saturate-150
                        border border-glass-border shadow-sheet p-6
