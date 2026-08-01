@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { X } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { ErrorText, Label, TextArea, TextInput } from "../components/ui/Field";
-import { BackLink } from "../components/PageHeader";
+import { ErrorText, TextArea, TextInput } from "../components/ui/Field";
+import { FormRow } from "../components/ui/FormRow";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
+import { BackLink, PageHeader } from "../components/PageHeader";
 import { invoiceNumberLabel } from "../lib/invoice";
 import { formatEUR } from "../lib/format";
 import { getClient } from "../db/clients";
@@ -143,47 +146,33 @@ export function FacturaRectificar({
   }
 
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <BackLink label={origNumber} onClick={onCancel} />
-      <div className="flex items-start justify-between mb-5.5">
-        <h1 className="font-extrabold text-2xl tracking-tight m-0">
-          Rectificativa de {origNumber}
-        </h1>
-        <Button onClick={handleEmit} disabled={submitting}>
-          {submitting ? "Emitiendo…" : "Emitir rectificativa"}
-        </Button>
-      </div>
+      <PageHeader
+        title={`Rectificativa de ${origNumber}`}
+        actions={
+          <Button onClick={handleEmit} disabled={submitting}>
+            {submitting ? "Emitiendo…" : "Emitir rectificativa"}
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-[2fr_1fr] gap-5 items-start">
-        <Card className="py-5.5 px-6">
-          <div className="grid grid-cols-2 gap-4 mb-5">
-            <div>
-              <Label>Nº de rectificativa (previsualización)</Label>
-              <TextInput mono readOnly value={numberPreview} />
-            </div>
-            <div>
-              <Label>Tipo</Label>
-              <div className="flex gap-2.5">
-                <Button
-                  variant={rectType === "full" ? "primary" : "secondary"}
-                  onClick={onSetFull}
-                  disabled={submitting}
-                >
-                  Anulación completa
-                </Button>
-                <Button
-                  variant={rectType === "partial" ? "primary" : "secondary"}
-                  onClick={onSetPartial}
-                  disabled={submitting}
-                >
-                  Corrección parcial
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-4.5">
-            <Label>Motivo (obligatorio)</Label>
+        <Card className="px-5 py-1">
+          <FormRow label="Nº de rectificativa">
+            <TextInput mono readOnly value={numberPreview} />
+          </FormRow>
+          <FormRow label="Tipo">
+            <SegmentedControl
+              options={[
+                { value: "full" as RectificationType, label: "Anulación completa" },
+                { value: "partial" as RectificationType, label: "Corrección parcial" },
+              ]}
+              value={rectType}
+              onChange={(v) => (v === "full" ? onSetFull() : onSetPartial())}
+            />
+          </FormRow>
+          <FormRow label="Motivo (obligatorio)">
             <TextArea
               value={reason}
               onChange={(e) => onReasonChange(e.target.value)}
@@ -191,61 +180,7 @@ export function FacturaRectificar({
               className="h-18 font-sans"
               disabled={submitting}
             />
-          </div>
-          <div className="mb-5 py-3 px-3.5 bg-surface-alt rounded-lg text-xs text-ink-soft leading-relaxed">
-            {helpText}
-          </div>
-
-          <div className="font-bold text-[13px] mb-2.5">Líneas</div>
-          <div className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 font-semibold text-xs uppercase text-ink-soft pb-1.5">
-            <div>Descripción</div>
-            <div>Cant.</div>
-            <div>Precio</div>
-            <div>Total</div>
-            <div />
-          </div>
-          {lines.map((l, idx) => (
-            <div
-              key={l.key}
-              className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 mb-2 items-center"
-            >
-              <TextInput
-                value={l.description}
-                onChange={(e) => updateLine(idx, "description", e.target.value)}
-                disabled={submitting}
-              />
-              <TextInput
-                mono
-                value={l.quantity}
-                onChange={(e) => updateLine(idx, "quantity", Number(e.target.value) || 0)}
-                disabled={submitting}
-              />
-              <TextInput
-                mono
-                value={l.unitPrice}
-                onChange={(e) => updateLine(idx, "unitPrice", Number(e.target.value) || 0)}
-                disabled={submitting}
-              />
-              <div className="font-semibold text-[13px] font-mono py-2.5">
-                {formatEUR(l.quantity * l.unitPrice)}
-              </div>
-              <div
-                onClick={() => !submitting && removeLine(idx)}
-                className="cursor-pointer text-ink-soft font-semibold text-base text-center"
-              >
-                &times;
-              </div>
-            </div>
-          ))}
-          <button
-            onClick={() => setLines((ls) => [...ls, mkLine("", 1, 0)])}
-            disabled={submitting}
-            className="font-semibold text-[13px] bg-transparent border border-dashed border-border text-accent rounded-lg px-3.5 py-2.5 mt-1 cursor-pointer disabled:opacity-50"
-          >
-            + Añadir línea
-          </button>
-
-          {submitError && <ErrorText>{submitError}</ErrorText>}
+          </FormRow>
         </Card>
 
         <Card className="py-5.5 px-6 sticky top-5">
@@ -272,12 +207,69 @@ export function FacturaRectificar({
             <span>Total</span>
             <span className="font-bold text-[17px] font-mono">{formatEUR(total)}</span>
           </div>
-          <div className="mt-4.5 py-3 px-3.5 bg-surface-alt rounded-lg text-xs text-ink-soft leading-relaxed">
+          <div className="mt-4.5 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
             El IVA/IRPF se hereda de la factura original y no es editable. La numeración se asigna
             de forma atómica al emitir. Una vez emitida, la rectificativa queda bloqueada.
           </div>
         </Card>
       </div>
+
+      <Card className="py-5 px-6 mt-5">
+        <div className="mb-3.5 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
+          {helpText}
+        </div>
+        <div className="font-bold text-[13px] mb-2.5">Líneas</div>
+        <div className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 font-semibold text-xs uppercase text-ink-soft pb-1.5">
+          <div>Descripción</div>
+          <div>Cant.</div>
+          <div>Precio</div>
+          <div>Total</div>
+          <div />
+        </div>
+        {lines.map((l, idx) => (
+          <div
+            key={l.key}
+            className="group grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 items-center rounded-control -mx-2 px-2 py-1 transition-colors hover:bg-surface-alt"
+          >
+            <TextInput
+              value={l.description}
+              onChange={(e) => updateLine(idx, "description", e.target.value)}
+              disabled={submitting}
+            />
+            <TextInput
+              mono
+              value={l.quantity}
+              onChange={(e) => updateLine(idx, "quantity", Number(e.target.value) || 0)}
+              disabled={submitting}
+            />
+            <TextInput
+              mono
+              value={l.unitPrice}
+              onChange={(e) => updateLine(idx, "unitPrice", Number(e.target.value) || 0)}
+              disabled={submitting}
+            />
+            <div className="font-semibold text-[13px] font-mono py-2">
+              {formatEUR(l.quantity * l.unitPrice)}
+            </div>
+            <button
+              onClick={() => !submitting && removeLine(idx)}
+              className="p-1 rounded-control text-ink-soft hover:bg-border cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Eliminar línea"
+            >
+              <X size={14} weight="bold" />
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setLines((ls) => [...ls, mkLine("", 1, 0)])}
+          disabled={submitting}
+          className="font-semibold text-[13px] bg-transparent border border-dashed border-border text-accent rounded-control px-3.5 py-2 mt-1.5 cursor-pointer disabled:opacity-50"
+        >
+          + Añadir línea
+        </button>
+
+        {submitError && <ErrorText>{submitError}</ErrorText>}
+      </Card>
     </div>
   );
 }

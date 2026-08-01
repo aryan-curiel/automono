@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { ErrorText, Label, TextArea, TextInput } from "../components/ui/Field";
-import { BackLink } from "../components/PageHeader";
+import { ErrorText, TextArea, TextInput } from "../components/ui/Field";
+import { FormRow } from "../components/ui/FormRow";
+import { BackLink, PageHeader } from "../components/PageHeader";
 import {
   attachExpenseFile,
   createExpense,
@@ -160,7 +161,7 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
 
   if (loading) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-ink-soft">{t("expenses.loading")}</div>
       </div>
     );
@@ -168,94 +169,84 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
 
   if (loadError) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-danger">{t("expenses.errors.loadFailed")}</div>
       </div>
     );
   }
 
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <BackLink label={t("expenses.title")} onClick={onCancel} />
-      <h1 className="font-extrabold text-2xl tracking-tight m-0 mb-5.5">
-        {mode === "create" ? t("expenses.newExpense") : t("expenses.editExpense")}
-      </h1>
+      <PageHeader
+        title={mode === "create" ? t("expenses.newExpense") : t("expenses.editExpense")}
+      />
 
-      <Card className="p-5.5 max-w-[640px]">
-        <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("expenses.fields.date")}</Label>
-            <TextInput
-              type="date"
-              value={form.date}
-              error={!!errors.date}
-              onChange={(e) => set("date", e.target.value)}
-            />
-            {errors.date && <ErrorText>{errors.date}</ErrorText>}
-          </div>
-          <div>
-            <Label>{t("expenses.fields.category")}</Label>
-            <TextInput
-              list="expense-categories"
-              value={form.category}
-              onChange={(e) => set("category", e.target.value)}
-            />
-            <datalist id="expense-categories">
-              {CATEGORY_SUGGESTIONS.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
-          </div>
-        </div>
+      <Card className="px-5 max-w-[640px]">
+        <FormRow label={t("expenses.fields.date")} error={errors.date}>
+          <TextInput
+            type="date"
+            value={form.date}
+            error={!!errors.date}
+            onChange={(e) => set("date", e.target.value)}
+          />
+        </FormRow>
 
-        <div className="mb-3.5">
-          <Label>{t("expenses.fields.description")}</Label>
+        <FormRow label={t("expenses.fields.category")}>
+          <TextInput
+            list="expense-categories"
+            value={form.category}
+            onChange={(e) => set("category", e.target.value)}
+          />
+          <datalist id="expense-categories">
+            {CATEGORY_SUGGESTIONS.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </FormRow>
+
+        <FormRow label={t("expenses.fields.description")}>
           <TextArea
             rows={2}
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
           />
-        </div>
+        </FormRow>
 
-        <div className="grid grid-cols-3 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("expenses.fields.amount")}</Label>
-            <TextInput
-              type="number"
-              step="0.01"
-              mono
-              value={form.amount}
-              error={!!errors.amount}
-              onChange={(e) => set("amount", e.target.value)}
-            />
-            {errors.amount && <ErrorText>{errors.amount}</ErrorText>}
-          </div>
-          <div>
-            <Label>{t("expenses.fields.ivaAmount")}</Label>
-            <TextInput
-              type="number"
-              step="0.01"
-              mono
-              value={form.ivaAmount}
-              onChange={(e) => set("ivaAmount", e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>{t("expenses.fields.deductiblePct")}</Label>
-            <TextInput
-              type="number"
-              step="1"
-              min="0"
-              max="100"
-              mono
-              value={form.deductiblePct}
-              onChange={(e) => set("deductiblePct", e.target.value)}
-            />
-          </div>
-        </div>
+        <FormRow label={t("expenses.fields.amount")} error={errors.amount}>
+          <TextInput
+            type="number"
+            step="0.01"
+            mono
+            value={form.amount}
+            error={!!errors.amount}
+            onChange={(e) => set("amount", e.target.value)}
+          />
+        </FormRow>
 
-        <div className="mb-4.5">
-          <Label>{t("expenses.fields.file")}</Label>
+        <FormRow label={t("expenses.fields.ivaAmount")}>
+          <TextInput
+            type="number"
+            step="0.01"
+            mono
+            value={form.ivaAmount}
+            onChange={(e) => set("ivaAmount", e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label={t("expenses.fields.deductiblePct")}>
+          <TextInput
+            type="number"
+            step="1"
+            min="0"
+            max="100"
+            mono
+            value={form.deductiblePct}
+            onChange={(e) => set("deductiblePct", e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label={t("expenses.fields.file")}>
           <div className="flex items-center gap-2.5">
             <Button variant="secondary" onClick={handleAttachFile} disabled={attaching}>
               {attaching ? t("expenses.actions.attaching") : t("expenses.actions.attachFile")}
@@ -266,19 +257,18 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
               </span>
             )}
           </div>
-        </div>
-
-        {saveError && <ErrorText>{saveError}</ErrorText>}
-
-        <div className="flex gap-2.5 mt-4.5">
-          <Button onClick={handleSubmit} disabled={saving}>
-            {t("expenses.actions.save")}
-          </Button>
-          <Button variant="secondary" onClick={onCancel} disabled={saving}>
-            {t("expenses.actions.cancel")}
-          </Button>
-        </div>
+        </FormRow>
       </Card>
+
+      {saveError && <ErrorText>{saveError}</ErrorText>}
+      <div className="flex gap-2.5 justify-end mt-5">
+        <Button variant="secondary" onClick={onCancel} disabled={saving}>
+          {t("expenses.actions.cancel")}
+        </Button>
+        <Button onClick={handleSubmit} disabled={saving}>
+          {t("expenses.actions.save")}
+        </Button>
+      </div>
     </div>
   );
 }

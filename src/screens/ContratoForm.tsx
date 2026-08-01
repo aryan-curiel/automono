@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { ErrorText, Label, Select, TextArea, TextInput } from "../components/ui/Field";
-import { BackLink } from "../components/PageHeader";
+import { ErrorText, Select, TextArea, TextInput } from "../components/ui/Field";
+import { FormRow } from "../components/ui/FormRow";
+import { BackLink, PageHeader } from "../components/PageHeader";
 import {
   attachContractFile,
   createContract,
@@ -169,7 +170,7 @@ export function ContratoForm({
 
   if (loading) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-ink-soft">{t("contracts.loading")}</div>
       </div>
     );
@@ -177,79 +178,72 @@ export function ContratoForm({
 
   if (loadError) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-danger">{t("contracts.errors.loadFailed")}</div>
       </div>
     );
   }
 
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <BackLink label={t("contracts.title")} onClick={onCancel} />
-      <h1 className="font-extrabold text-2xl tracking-tight m-0 mb-5.5">
-        {mode === "create" ? t("contracts.newContract") : t("contracts.editContract")}
-      </h1>
+      <PageHeader
+        title={mode === "create" ? t("contracts.newContract") : t("contracts.editContract")}
+      />
 
-      <Card className="p-5.5 max-w-[640px]">
-        <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("contracts.fields.client")}</Label>
-            <Select
-              value={form.clientId}
-              error={!!errors.clientId}
-              disabled={presetClientId !== undefined}
-              onChange={(e) => set("clientId", e.target.value)}
-            >
-              <option value="">{t("contracts.fields.clientUnset")}</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-            {errors.clientId && <ErrorText>{errors.clientId}</ErrorText>}
-          </div>
-          <div>
-            <Label>{t("contracts.fields.status")}</Label>
-            <Select value={form.status} onChange={(e) => set("status", e.target.value as ContractStatus)}>
-              <option value="active">{t("contracts.status.active")}</option>
-              <option value="expired">{t("contracts.status.expired")}</option>
-              <option value="terminated">{t("contracts.status.terminated")}</option>
-            </Select>
-          </div>
-        </div>
+      <Card className="px-5 max-w-[640px]">
+        <FormRow label={t("contracts.fields.client")} error={errors.clientId}>
+          <Select
+            value={form.clientId}
+            error={!!errors.clientId}
+            disabled={presetClientId !== undefined}
+            onChange={(e) => set("clientId", e.target.value)}
+          >
+            <option value="">{t("contracts.fields.clientUnset")}</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </FormRow>
 
-        <div className="mb-3.5">
-          <Label>{t("contracts.fields.title")}</Label>
+        <FormRow label={t("contracts.fields.status")}>
+          <Select
+            value={form.status}
+            onChange={(e) => set("status", e.target.value as ContractStatus)}
+          >
+            <option value="active">{t("contracts.status.active")}</option>
+            <option value="expired">{t("contracts.status.expired")}</option>
+            <option value="terminated">{t("contracts.status.terminated")}</option>
+          </Select>
+        </FormRow>
+
+        <FormRow label={t("contracts.fields.title")} error={errors.title}>
           <TextInput
             value={form.title}
             error={!!errors.title}
             onChange={(e) => set("title", e.target.value)}
           />
-          {errors.title && <ErrorText>{errors.title}</ErrorText>}
-        </div>
+        </FormRow>
 
-        <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("contracts.fields.startDate")}</Label>
-            <TextInput
-              type="date"
-              value={form.startDate}
-              onChange={(e) => set("startDate", e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>{t("contracts.fields.endDate")}</Label>
-            <TextInput
-              type="date"
-              value={form.endDate}
-              onChange={(e) => set("endDate", e.target.value)}
-            />
-          </div>
-        </div>
+        <FormRow label={t("contracts.fields.startDate")}>
+          <TextInput
+            type="date"
+            value={form.startDate}
+            onChange={(e) => set("startDate", e.target.value)}
+          />
+        </FormRow>
 
-        <div className="mb-4.5">
-          <Label>{t("contracts.fields.file")}</Label>
+        <FormRow label={t("contracts.fields.endDate")}>
+          <TextInput
+            type="date"
+            value={form.endDate}
+            onChange={(e) => set("endDate", e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label={t("contracts.fields.file")}>
           <div className="flex items-center gap-2.5">
             <Button variant="secondary" onClick={handleAttachFile} disabled={attaching}>
               {attaching ? t("contracts.actions.attaching") : t("contracts.actions.attachFile")}
@@ -260,24 +254,22 @@ export function ContratoForm({
               </span>
             )}
           </div>
-        </div>
+        </FormRow>
 
-        <div className="mb-4.5">
-          <Label>{t("contracts.fields.notes")}</Label>
+        <FormRow label={t("contracts.fields.notes")}>
           <TextArea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-        </div>
-
-        {saveError && <ErrorText>{saveError}</ErrorText>}
-
-        <div className="flex gap-2.5 mt-4.5">
-          <Button onClick={handleSubmit} disabled={saving}>
-            {t("contracts.actions.save")}
-          </Button>
-          <Button variant="secondary" onClick={onCancel} disabled={saving}>
-            {t("contracts.actions.cancel")}
-          </Button>
-        </div>
+        </FormRow>
       </Card>
+
+      {saveError && <ErrorText>{saveError}</ErrorText>}
+      <div className="flex gap-2.5 justify-end mt-5">
+        <Button variant="secondary" onClick={onCancel} disabled={saving}>
+          {t("contracts.actions.cancel")}
+        </Button>
+        <Button onClick={handleSubmit} disabled={saving}>
+          {t("contracts.actions.save")}
+        </Button>
+      </div>
     </div>
   );
 }

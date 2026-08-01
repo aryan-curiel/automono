@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { X } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { ErrorText, Label, Select, TextInput } from "../components/ui/Field";
-import { BackLink } from "../components/PageHeader";
+import { ErrorText, Select, TextInput } from "../components/ui/Field";
+import { FormRow } from "../components/ui/FormRow";
+import { BackLink, PageHeader } from "../components/PageHeader";
 import { listClients } from "../db/clients";
 import type { ClientRecord, InvoiceLanguage } from "../db/clients";
 import { createDraftInvoice, issueInvoice, saveDraft } from "../db/invoices";
@@ -149,7 +151,7 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
 
   if (loadError) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-danger">No se pudieron cargar los clientes.</div>
       </div>
     );
@@ -157,7 +159,7 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
 
   if (!clients) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-ink-soft">Cargando…</div>
       </div>
     );
@@ -165,9 +167,11 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
 
   if (clients.length === 0) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <BackLink label="Facturas" onClick={onBack} />
-        <div className="text-sm text-ink-soft">Da de alta un cliente antes de crear una factura.</div>
+        <div className="text-sm text-ink-soft">
+          Da de alta un cliente antes de crear una factura.
+        </div>
       </div>
     );
   }
@@ -175,134 +179,72 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
   const busy = saving || issuing;
 
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <BackLink label="Facturas" onClick={onBack} />
-      <div className="flex items-start justify-between mb-5.5">
-        <h1 className="font-extrabold text-2xl tracking-tight m-0">Nueva factura</h1>
-        <div className="flex gap-2.5">
-          <Button variant="secondary" onClick={handleSaveDraft} disabled={busy}>
-            Guardar borrador
-          </Button>
-          <Button onClick={handleIssue} disabled={busy}>
-            Emitir factura
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Nueva factura"
+        actions={
+          <>
+            <Button variant="secondary" onClick={handleSaveDraft} disabled={busy}>
+              Guardar borrador
+            </Button>
+            <Button onClick={handleIssue} disabled={busy}>
+              Emitir factura
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-[2fr_1fr] gap-5 items-start">
-        <Card className="py-5.5 px-6">
-          <div className="grid grid-cols-2 gap-4 mb-5">
-            <div>
-              <Label>Cliente</Label>
-              <Select
-                value={clientId ?? ""}
-                onChange={(e) => setClientId(Number(e.target.value))}
-                disabled={busy}
-              >
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label>Nº de factura (previsualización)</Label>
-              <TextInput mono readOnly value={numberPreview} />
-            </div>
-          </div>
-
-          <div className="font-bold text-[13px] mb-2.5">Líneas</div>
-          <div className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 font-semibold text-xs uppercase text-ink-soft pb-1.5">
-            <div>Descripción</div>
-            <div>Cant.</div>
-            <div>Precio</div>
-            <div>Total</div>
-            <div />
-          </div>
-          {lines.map((l, idx) => (
-            <div
-              key={l.key}
-              className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 mb-2 items-center"
-            >
-              <TextInput
-                value={l.description}
-                onChange={(e) => updateLine(idx, "description", e.target.value)}
-                disabled={busy}
-              />
-              <TextInput
-                mono
-                value={l.quantity}
-                onChange={(e) => updateLine(idx, "quantity", Number(e.target.value) || 0)}
-                disabled={busy}
-              />
-              <TextInput
-                mono
-                value={l.unitPrice}
-                onChange={(e) => updateLine(idx, "unitPrice", Number(e.target.value) || 0)}
-                disabled={busy}
-              />
-              <div className="font-semibold text-[13px] font-mono py-2.5">
-                {formatEUR(l.quantity * l.unitPrice)}
-              </div>
-              <div
-                onClick={() => !busy && removeLine(idx)}
-                className="cursor-pointer text-ink-soft font-semibold text-base text-center"
-              >
-                &times;
-              </div>
-            </div>
-          ))}
-          <button
-            onClick={() => setLines((ls) => [...ls, mkLine("", 1, 0)])}
-            disabled={busy}
-            className="font-semibold text-[13px] bg-transparent border border-dashed border-border text-accent rounded-lg px-3.5 py-2.5 mt-1 cursor-pointer disabled:opacity-50"
-          >
-            + Añadir línea
-          </button>
-
-          <div className="mt-5.5">
-            <div className="font-bold text-[13px] mb-2.5">Impuestos</div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Tipo de IVA</Label>
-                {ivaSelectable ? (
-                  <Select
-                    value={ivaRate}
-                    onChange={(e) => setIvaRate(Number(e.target.value))}
-                    disabled={busy}
-                  >
-                    <option value={21}>21% — general</option>
-                    <option value={10}>10% — reducido</option>
-                    <option value={4}>4% — superreducido</option>
-                  </Select>
-                ) : (
-                  <div className="w-full box-border text-sm px-3 py-2.5 border border-border rounded-lg bg-surface font-mono flex items-center text-ink-soft">
-                    0% — tratamiento especial (se detallará en la factura emitida)
-                  </div>
-                )}
-              </div>
-              {irpfShown && (
-                <div>
-                  <Label>Retención IRPF</Label>
-                  <Select
-                    value={irpfRate ?? IRPF_DEFAULT_RATE}
-                    onChange={(e) => setIrpfRate(Number(e.target.value))}
-                    disabled={busy}
-                  >
-                    <option value={15}>15% — estándar</option>
-                    <option value={7}>7% — reducida (inicio actividad)</option>
-                    <option value={0}>0% — no aplica</option>
-                  </Select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <Label>Idioma de la factura</Label>
+        <Card className="px-5 py-1">
+          <FormRow label="Cliente">
             <Select
-              className="max-w-[200px]"
+              value={clientId ?? ""}
+              onChange={(e) => setClientId(Number(e.target.value))}
+              disabled={busy}
+            >
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </FormRow>
+          <FormRow label="Nº de factura">
+            <TextInput mono readOnly value={numberPreview} />
+          </FormRow>
+          <FormRow label="Tipo de IVA">
+            {ivaSelectable ? (
+              <Select
+                value={ivaRate}
+                onChange={(e) => setIvaRate(Number(e.target.value))}
+                disabled={busy}
+              >
+                <option value={21}>21% — general</option>
+                <option value={10}>10% — reducido</option>
+                <option value={4}>4% — superreducido</option>
+              </Select>
+            ) : (
+              <div className="w-full box-border text-[13px] px-3 py-2 border border-border rounded-control bg-surface font-mono flex items-center text-ink-soft">
+                0% — tratamiento especial
+              </div>
+            )}
+          </FormRow>
+          {irpfShown && (
+            <FormRow label="Retención IRPF">
+              <Select
+                value={irpfRate ?? IRPF_DEFAULT_RATE}
+                onChange={(e) => setIrpfRate(Number(e.target.value))}
+                disabled={busy}
+              >
+                <option value={15}>15% — estándar</option>
+                <option value={7}>7% — reducida (inicio actividad)</option>
+                <option value={0}>0% — no aplica</option>
+              </Select>
+            </FormRow>
+          )}
+          <FormRow label="Idioma de la factura">
+            <Select
               value={language}
               onChange={(e) => setLanguage(e.target.value as InvoiceLanguage)}
               disabled={busy}
@@ -311,16 +253,16 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
               <option value="en">English</option>
               <option value="ca">Català</option>
             </Select>
-          </div>
-
-          {saveError && <ErrorText>{saveError}</ErrorText>}
+          </FormRow>
         </Card>
 
         <Card className="py-5.5 px-6 sticky top-5">
           <div className="font-bold text-sm mb-4">Totales</div>
           <div className="flex justify-between py-1.5 text-[13.5px] text-ink-soft">
             <span>Base imponible</span>
-            <span className="font-medium font-mono text-[13.5px] text-ink">{formatEUR(subtotal)}</span>
+            <span className="font-medium font-mono text-[13.5px] text-ink">
+              {formatEUR(subtotal)}
+            </span>
           </div>
           <div className="flex justify-between py-1.5 text-[13.5px] text-ink-soft">
             <span>IVA</span>
@@ -329,18 +271,75 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
           {irpfShown && (
             <div className="flex justify-between pt-1.5 pb-3.5 text-[13.5px] text-ink-soft">
               <span>Retención IRPF</span>
-              <span className="font-medium font-mono text-[13.5px] text-ink">{formatEUR(irpf)}</span>
+              <span className="font-medium font-mono text-[13.5px] text-ink">
+                {formatEUR(irpf)}
+              </span>
             </div>
           )}
           <div className="flex justify-between pt-3.5 border-t border-border font-bold text-[15px]">
             <span>Total</span>
             <span className="font-bold text-[17px] font-mono">{formatEUR(total)}</span>
           </div>
-          <div className="mt-4.5 py-3 px-3.5 bg-surface-alt rounded-lg text-xs text-ink-soft leading-relaxed">
-            La numeración se asigna de forma atómica al emitir. Una vez emitida, la factura queda bloqueada.
+          <div className="mt-4.5 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
+            La numeración se asigna de forma atómica al emitir. Una vez emitida, la factura queda
+            bloqueada.
           </div>
         </Card>
       </div>
+
+      <Card className="py-5 px-6 mt-5">
+        <div className="font-bold text-[13px] mb-2.5">Líneas</div>
+        <div className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 font-semibold text-xs uppercase text-ink-soft pb-1.5">
+          <div>Descripción</div>
+          <div>Cant.</div>
+          <div>Precio</div>
+          <div>Total</div>
+          <div />
+        </div>
+        {lines.map((l, idx) => (
+          <div
+            key={l.key}
+            className="group grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 items-center rounded-control -mx-2 px-2 py-1 transition-colors hover:bg-surface-alt"
+          >
+            <TextInput
+              value={l.description}
+              onChange={(e) => updateLine(idx, "description", e.target.value)}
+              disabled={busy}
+            />
+            <TextInput
+              mono
+              value={l.quantity}
+              onChange={(e) => updateLine(idx, "quantity", Number(e.target.value) || 0)}
+              disabled={busy}
+            />
+            <TextInput
+              mono
+              value={l.unitPrice}
+              onChange={(e) => updateLine(idx, "unitPrice", Number(e.target.value) || 0)}
+              disabled={busy}
+            />
+            <div className="font-semibold text-[13px] font-mono py-2">
+              {formatEUR(l.quantity * l.unitPrice)}
+            </div>
+            <button
+              onClick={() => !busy && removeLine(idx)}
+              className="p-1 rounded-control text-ink-soft hover:bg-border cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Eliminar línea"
+            >
+              <X size={14} weight="bold" />
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setLines((ls) => [...ls, mkLine("", 1, 0)])}
+          disabled={busy}
+          className="font-semibold text-[13px] bg-transparent border border-dashed border-border text-accent rounded-control px-3.5 py-2 mt-1.5 cursor-pointer disabled:opacity-50"
+        >
+          + Añadir línea
+        </button>
+      </Card>
+
+      {saveError && <ErrorText>{saveError}</ErrorText>}
     </div>
   );
 }
