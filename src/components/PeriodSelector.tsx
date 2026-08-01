@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Select, TextInput } from "./ui/Field";
+import { SegmentedControl } from "./ui/SegmentedControl";
 import { monthRange, quarterRange, yearRange, type Period } from "../lib/dateRange";
 
 type Kind = "month" | "quarter" | "year";
@@ -29,18 +30,18 @@ export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelect
 
   return (
     <div className="flex items-center gap-2.5">
-      <Select
+      <SegmentedControl
         value={kind}
-        onChange={(e) => {
-          const next = e.target.value as Kind;
+        onChange={(next: Kind) => {
           setKind(next);
           onChange(computePeriod(next, year, month, quarter));
         }}
-      >
-        <option value="month">Mes</option>
-        <option value="quarter">Trimestre</option>
-        <option value="year">Año</option>
-      </Select>
+        options={[
+          { value: "month", label: "Mes" },
+          { value: "quarter", label: "Trimestre" },
+          { value: "year", label: "Año" },
+        ]}
+      />
 
       {kind === "month" && (
         <TextInput

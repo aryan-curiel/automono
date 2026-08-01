@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { save } from "@tauri-apps/plugin-dialog";
+import { TrendUp, Percent, ChartLineUp, DownloadSimple } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { PageHeader } from "../components/PageHeader";
@@ -21,17 +22,7 @@ function buildExportCsv(invoices: InvoiceListItem[], expenses: ExpenseRecord[]):
 
   lines.push(csvRow(["Facturas"]));
   lines.push(
-    csvRow([
-      "Fecha",
-      "Nº factura",
-      "Cliente",
-      "Base",
-      "% IVA",
-      "IVA",
-      "% IRPF",
-      "IRPF",
-      "Total",
-    ]),
+    csvRow(["Fecha", "Nº factura", "Cliente", "Base", "% IVA", "IVA", "% IRPF", "IRPF", "Total"]),
   );
   for (const inv of invoices) {
     lines.push(
@@ -55,7 +46,14 @@ function buildExportCsv(invoices: InvoiceListItem[], expenses: ExpenseRecord[]):
   lines.push(csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible"]));
   for (const e of expenses) {
     lines.push(
-      csvRow([formatDate(e.date), e.category ?? "", e.description ?? "", e.amount, e.ivaAmount ?? 0, e.deductiblePct]),
+      csvRow([
+        formatDate(e.date),
+        e.category ?? "",
+        e.description ?? "",
+        e.amount,
+        e.ivaAmount ?? 0,
+        e.deductiblePct,
+      ]),
     );
   }
 
@@ -118,7 +116,7 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
   }
 
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <PageHeader
         title="Resumen trimestral"
         subtitle="ayuda informativa para Modelo 130/303"
@@ -126,6 +124,7 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
           <>
             <PeriodSelector defaultKind="quarter" onChange={setPeriod} />
             <Button variant="secondary" onClick={handleExport} disabled={exporting}>
+              <DownloadSimple size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
               {exporting ? "Exportando…" : "Exportar CSV"}
             </Button>
           </>
@@ -134,18 +133,25 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
 
       {exportError && <div className="text-sm text-danger mb-4">{exportError}</div>}
 
-      <div className="grid grid-cols-3 gap-4 mb-5">
-        <Card className="py-4.5 px-5">
-          <div className="font-semibold text-xs text-ink-soft mb-2">Total facturado (base)</div>
-          <div className="font-bold text-[22px] font-mono">{formatEUR(invoicedBase)}</div>
+      <div className="grid grid-cols-3 gap-3.5 mb-5">
+        <Card className="py-4 px-4.5 relative overflow-hidden">
+          <TrendUp size={16} weight="bold" className="text-ink-soft mb-2.5" />
+          <div className="font-medium text-xs text-ink-soft mb-1">Total facturado (base)</div>
+          <div className="font-bold text-[22px] font-mono tracking-tight">
+            {formatEUR(invoicedBase)}
+          </div>
         </Card>
-        <Card className="py-4.5 px-5">
-          <div className="font-semibold text-xs text-ink-soft mb-2">IRPF retenido</div>
-          <div className="font-bold text-[22px] font-mono">{formatEUR(irpfWithheld)}</div>
+        <Card className="py-4 px-4.5 relative overflow-hidden">
+          <Percent size={16} weight="bold" className="text-ink-soft mb-2.5" />
+          <div className="font-medium text-xs text-ink-soft mb-1">IRPF retenido</div>
+          <div className="font-bold text-[22px] font-mono tracking-tight">
+            {formatEUR(irpfWithheld)}
+          </div>
         </Card>
-        <Card className="py-4.5 px-5">
-          <div className="font-semibold text-xs text-ink-soft mb-2">Ingreso neto estimado</div>
-          <div className="font-bold text-[22px] font-mono text-accent">
+        <Card className="py-4 px-4.5 relative overflow-hidden">
+          <ChartLineUp size={16} weight="bold" className="text-accent mb-2.5" />
+          <div className="font-medium text-xs text-ink-soft mb-1">Ingreso neto estimado</div>
+          <div className="font-bold text-[22px] font-mono tracking-tight text-accent">
             {formatEUR(netIrpfIncome)}
           </div>
         </Card>
