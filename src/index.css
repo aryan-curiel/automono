@@ -25,14 +25,14 @@
   --color-danger: #b3402c;
 
   /* materials */
-  --color-toolbar-glass: rgb(247 245 241 / 0.72);
+  --color-toolbar-glass: rgb(255 255 255 / 0.55);
   --color-sheet-glass: rgb(255 255 255 / 0.82);
-  --color-glass-border: rgb(255 255 255 / 0.5);
+  --color-glass-border: rgb(255 255 255 / 0.7);
   --color-glass-border-soft: rgb(28 36 48 / 0.06);
   --color-overlay-scrim: rgb(28 36 48 / 0.25);
 
   /* sidebar material (opaque, not glass) */
-  --color-sidebar-selection: rgb(194 99 44 / 0.16);
+  --color-sidebar-selection: rgb(224 138 79 / 0.32);
 
   /* focus ring, matches accent */
   --color-focus-ring: rgb(194 99 44 / 0.35);
@@ -69,12 +69,12 @@
   --color-danger-soft: #3a201a;
   --color-danger: #e0836a;
 
-  --color-toolbar-glass: rgb(20 24 31 / 0.72);
-  --color-sheet-glass: rgb(28 34 43 / 0.82);
-  --color-glass-border: rgb(255 255 255 / 0.08);
+  --color-toolbar-glass: rgb(44 51 63 / 0.6);
+  --color-sheet-glass: rgb(44 51 63 / 0.82);
+  --color-glass-border: rgb(255 255 255 / 0.1);
   --color-glass-border-soft: rgb(0 0 0 / 0.35);
   --color-overlay-scrim: rgb(0 0 0 / 0.5);
-  --color-sidebar-selection: rgb(224 138 79 / 0.22);
+  --color-sidebar-selection: rgb(224 138 79 / 0.38);
   --color-focus-ring: rgb(224 138 79 / 0.4);
 }
 

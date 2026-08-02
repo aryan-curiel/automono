@@ -13,7 +13,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
       data-tauri-drag-region
       className="sticky top-0 z-20 flex items-center justify-between gap-4 h-16 px-8 -mx-8 mb-6
                  bg-toolbar-glass backdrop-blur-xl backdrop-saturate-150
-                 border-b border-glass-border-soft
+                 border-b border-glass-border-soft shadow-float
                  supports-[not(backdrop-filter)]:bg-bg"
     >
       <div className="min-w-0">
