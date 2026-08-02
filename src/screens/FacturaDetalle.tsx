@@ -1,4 +1,4 @@
-import { CaretDown, Warning, Info } from "@phosphor-icons/react";
+import { CaretDown, DotsThreeVertical, Warning, Info } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -76,6 +76,8 @@ interface FacturaDetalleProps {
   onConfirmMarkPaid: () => void;
   onStartRectification: () => void;
   onDownloadPdf: (force: boolean) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
 }
 
 export function FacturaDetalle({
@@ -91,6 +93,8 @@ export function FacturaDetalle({
   onConfirmMarkPaid,
   onStartRectification,
   onDownloadPdf,
+  onDelete,
+  onDuplicate,
 }: FacturaDetalleProps) {
   const amounts =
     invoice.total != null
@@ -115,6 +119,11 @@ export function FacturaDetalle({
     invoice.status !== "draft" && !invoice.isRectification && !invoice.rectifiedByInvoiceId;
   const canMarkPaid = invoice.status !== "paid" && invoice.status !== "draft";
 
+  function handleDelete() {
+    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
+    onDelete();
+  }
+
   return (
     <div className="px-8 pb-15">
       <BackLink label="Facturas" onClick={onBack} />
@@ -122,7 +131,7 @@ export function FacturaDetalle({
       <PageHeader
         title={
           <span className="flex items-center gap-3">
-            {invoiceNumberLabel(invoice)}
+            <span className="font-mono">{invoiceNumberLabel(invoice)}</span>
             <Badge tone={meta.tone}>{meta.label}</Badge>
           </span>
         }
@@ -139,6 +148,22 @@ export function FacturaDetalle({
                 Marcar como pagada
               </Button>
             )}
+            <Menu>
+              <MenuTrigger
+                className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
+                aria-label="Más acciones"
+              >
+                <DotsThreeVertical size={16} weight="bold" />
+              </MenuTrigger>
+              <MenuContent>
+                <MenuItem onSelect={onDuplicate}>Duplicar factura</MenuItem>
+                {invoice.status === "draft" && (
+                  <MenuItem danger onSelect={handleDelete}>
+                    Eliminar borrador
+                  </MenuItem>
+                )}
+              </MenuContent>
+            </Menu>
             {invoice.status !== "draft" && (
               <Menu>
                 <div className="flex">
@@ -187,10 +212,11 @@ export function FacturaDetalle({
       </Sheet>
 
       {invoice.isRectification && (
-        <div className="flex items-start gap-2.5 bg-danger-soft text-danger rounded-card py-3 px-4 font-medium text-[13px] mb-5">
+        <div className="flex items-start gap-2.5 bg-danger-soft text-danger rounded-card py-3 px-4 font-medium text-[13px] mb-6">
           <Warning size={16} weight="fill" className="shrink-0 mt-0.5" />
           <span>
-            Rectifica a <b>{rectifies ? invoiceNumberLabel(rectifies) : ""}</b> —{" "}
+            Rectifica a <b className="font-mono">{rectifies ? invoiceNumberLabel(rectifies) : ""}</b>{" "}
+            —{" "}
             {invoice.rectificationType === "full" ? "anulación completa" : "corrección parcial"}.
             Motivo: {invoice.rectificationReason}
           </span>
@@ -198,17 +224,20 @@ export function FacturaDetalle({
       )}
 
       {rectifiedBy && (
-        <div className="flex items-start gap-2.5 bg-surface-alt text-ink-soft rounded-card py-3 px-4 font-medium text-[13px] mb-5">
+        <div className="flex items-start gap-2.5 bg-surface-alt text-ink-soft rounded-card py-3 px-4 font-medium text-[13px] mb-6">
           <Info size={16} weight="fill" className="shrink-0 mt-0.5" />
           <span>
-            Esta factura ha sido rectificada por <b>{invoiceNumberLabel(rectifiedBy)}</b>.
+            Esta factura ha sido rectificada por{" "}
+            <b className="font-mono">{invoiceNumberLabel(rectifiedBy)}</b>.
           </span>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-5 items-start">
+      <div className="grid grid-cols-2 gap-6 items-start">
         <Card className="py-5 px-6">
-          <div className="font-bold text-sm mb-3.5">Desglose</div>
+          <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-3.5">
+            Desglose
+          </div>
           {lines.map((l) => (
             <div
               key={l.id}
@@ -251,7 +280,7 @@ export function FacturaDetalle({
 
         {/* Client-facing PDF preview — must visually match pdf.rs's actual output.
             No glass/blur/macOS styling here; only the frame shadow was bumped to shadow-sheet. */}
-        <div className="bg-[#fdfdfc] text-[#1c2430] rounded shadow-sheet py-9 px-8.5 font-sans">
+        <div className="bg-[#fdfdfc] text-[#1c2430] rounded-card shadow-sheet py-9 px-8.5 font-sans">
           <div className="flex justify-between items-start pb-4">
             <div />
             <div className="font-extrabold text-lg">{business.name}</div>
@@ -363,7 +392,7 @@ export function FacturaDetalle({
             </div>
           )}
 
-          <div className="mt-6 bg-[#f1f2f4] rounded-lg p-5">
+          <div className="mt-6 bg-[#f1f2f4] rounded-control p-5">
             <div className="font-bold text-base mb-3">{t.payByBankTransfer}</div>
             <div className="text-[11.5px] text-[#5b6472] leading-relaxed grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 w-fit">
               <span>{t.reference}</span>

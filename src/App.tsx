@@ -12,7 +12,6 @@ import { Facturas } from "./screens/Facturas";
 import { FacturaDetalle } from "./screens/FacturaDetalle";
 import { FacturaNueva } from "./screens/FacturaNueva";
 import { FacturaRectificar } from "./screens/FacturaRectificar";
-import { Contratos } from "./screens/Contratos";
 import { ContratoDetalle } from "./screens/ContratoDetalle";
 import { ContratoForm } from "./screens/ContratoForm";
 import { Gastos } from "./screens/Gastos";
@@ -21,6 +20,8 @@ import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
 import { Ajustes } from "./screens/Ajustes";
 import {
+  deleteInvoice,
+  duplicateInvoice,
   getInvoiceWithLines,
   listInvoices,
   markInvoicePaid,
@@ -45,13 +46,16 @@ export default function App() {
   const [newContractClientId, setNewContractClientId] = useState<number | undefined>(undefined);
   const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
   const [invoiceDetail, setInvoiceDetail] = useState<{
     invoice: InvoiceRecord;
     lines: InvoiceLineRecord[];
   } | null>(null);
+  const [invoiceDetailError, setInvoiceDetailError] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [editInvoiceId, setEditInvoiceId] = useState<number | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfileRecord | null>(null);
   const [pdfErrorToast, setPdfErrorToast] = useState<string | null>(null);
 
@@ -71,7 +75,9 @@ export default function App() {
 
   useEffect(() => {
     if (!dbReady) return;
-    listInvoices().then(setInvoices);
+    listInvoices()
+      .then(setInvoices)
+      .finally(() => setInvoicesLoading(false));
   }, [dbReady, screen]);
 
   useEffect(() => {
@@ -89,8 +95,17 @@ export default function App() {
       setInvoiceDetail(null);
       return;
     }
-    getInvoiceWithLines(selectedInvoiceId).then(setInvoiceDetail);
+    setInvoiceDetailError(false);
+    getInvoiceWithLines(selectedInvoiceId)
+      .then(setInvoiceDetail)
+      .catch(() => setInvoiceDetailError(true));
   }, [selectedInvoiceId]);
+
+  // Clears the duplicate-target once the user leaves the new-invoice screen, so a later plain
+  // "+ Nueva factura" click (which doesn't go through handleDuplicateInvoice) starts blank.
+  useEffect(() => {
+    if (screen !== "factura-nueva") setEditInvoiceId(null);
+  }, [screen]);
 
   const rectifyingInvoice = invoices.find((i) => i.id === rectifyingId) ?? null;
 
@@ -109,6 +124,23 @@ export default function App() {
     ]);
     setInvoices(list);
     setInvoiceDetail(detail);
+  }
+
+  async function handleDuplicateInvoice(id: number) {
+    const duplicate = await duplicateInvoice(id);
+    setInvoices(await listInvoices());
+    setEditInvoiceId(duplicate.id);
+    setScreen("factura-nueva");
+  }
+
+  async function handleDeleteInvoice(id: number) {
+    await deleteInvoice(id);
+    if (id === selectedInvoiceId) {
+      setSelectedInvoiceId(null);
+      setInvoiceDetail(null);
+      setScreen("facturas");
+    }
+    setInvoices(await listInvoices());
   }
 
   async function handleDownloadPdf(force = false) {
@@ -136,12 +168,7 @@ export default function App() {
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-bg text-ink transition-colors overflow-hidden">
-        <Sidebar
-          screen={screen}
-          onNavigate={setScreen}
-          theme={theme}
-          onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-        />
+        <Sidebar screen={screen} onNavigate={setScreen} />
 
         <div className="flex-1 overflow-y-auto min-w-0">
           {screen === "dashboard" && (
@@ -204,9 +231,24 @@ export default function App() {
           {screen === "facturas" && (
             <Facturas
               invoices={invoices}
+              loading={invoicesLoading}
               onOpenInvoice={openInvoice}
               onNewInvoice={() => setScreen("factura-nueva")}
+              onDeleteInvoice={handleDeleteInvoice}
+              onDuplicateInvoice={handleDuplicateInvoice}
             />
+          )}
+
+          {screen === "factura-detalle" && invoiceDetailError && (
+            <div className="px-8">
+              <div className="text-sm text-danger">{t("invoices.errors.loadFailed")}</div>
+            </div>
+          )}
+
+          {screen === "factura-detalle" && !invoiceDetail && !invoiceDetailError && (
+            <div className="px-8">
+              <div className="text-sm text-ink-soft">{t("invoices.loading")}</div>
+            </div>
           )}
 
           {screen === "factura-detalle" && invoiceDetail && businessProfile && (
@@ -228,10 +270,14 @@ export default function App() {
                 setScreen("factura-rectificar");
               }}
               onDownloadPdf={handleDownloadPdf}
+              onDelete={() => handleDeleteInvoice(invoiceDetail.invoice.id)}
+              onDuplicate={() => handleDuplicateInvoice(invoiceDetail.invoice.id)}
             />
           )}
 
-          {screen === "factura-nueva" && <FacturaNueva onBack={() => setScreen("facturas")} />}
+          {screen === "factura-nueva" && (
+            <FacturaNueva editInvoiceId={editInvoiceId ?? undefined} onBack={() => setScreen("facturas")} />
+          )}
 
           {screen === "factura-rectificar" && rectifyingInvoice && (
             <FacturaRectificar
@@ -251,19 +297,6 @@ export default function App() {
             />
           )}
 
-          {screen === "contratos" && (
-            <Contratos
-              onOpenContract={(id) => {
-                setSelectedContractId(id);
-                setScreen("contrato-detalle");
-              }}
-              onNewContract={() => {
-                setNewContractClientId(undefined);
-                setScreen("contrato-nuevo");
-              }}
-            />
-          )}
-
           {screen === "contrato-nuevo" && (
             <ContratoForm
               mode="create"
@@ -272,9 +305,7 @@ export default function App() {
                 setSelectedContractId(contract.id);
                 setScreen("contrato-detalle");
               }}
-              onCancel={() =>
-                setScreen(newContractClientId !== undefined ? "cliente-detalle" : "contratos")
-              }
+              onCancel={() => setScreen("cliente-detalle")}
             />
           )}
 
@@ -293,12 +324,12 @@ export default function App() {
           {screen === "contrato-detalle" && selectedContractId !== null && (
             <ContratoDetalle
               contractId={selectedContractId}
-              onBack={() => setScreen("contratos")}
+              onBack={() => setScreen("cliente-detalle")}
               onEditContract={(id) => {
                 setSelectedContractId(id);
                 setScreen("contrato-editar");
               }}
-              onDeleted={() => setScreen("contratos")}
+              onDeleted={() => setScreen("cliente-detalle")}
             />
           )}
 
@@ -348,7 +379,12 @@ export default function App() {
           )}
 
           {screen === "resumen-trimestral" && <ResumenTrimestral invoices={invoices} />}
-          {screen === "ajustes" && <Ajustes />}
+          {screen === "ajustes" && (
+            <Ajustes
+              theme={theme}
+              onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            />
+          )}
         </div>
 
         {dbErrorToast && <Toast message={dbErrorToast} onDismiss={() => setDbErrorToast(null)} />}

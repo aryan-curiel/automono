@@ -247,6 +247,28 @@ export async function createRectification(
   return invoice;
 }
 
+// Copies client, tax rates, language, and lines into a fresh draft. Series/number/dates/status
+// are never copied — those are only assigned when the new draft is issued.
+export async function duplicateInvoice(id: number): Promise<InvoiceRecord> {
+  const detail = await getInvoiceWithLines(id);
+  if (!detail) throw new Error("Invoice not found");
+  const { invoice, lines } = detail;
+  const draft = await createDraftInvoice(invoice.clientId);
+  await saveDraft(draft.id, {
+    ivaRate: invoice.ivaRate ?? 0,
+    irpfRate: invoice.irpfRate,
+    language: invoice.language ?? "es",
+    lines: lines.map((l) => ({
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+    })),
+  });
+  const created = await getInvoice(draft.id);
+  if (!created) throw new Error("Failed to load duplicated invoice");
+  return created;
+}
+
 export async function openOrGeneratePdf(id: number, force = false): Promise<string> {
   return invoke<string>("get_or_generate_invoice_pdf_cmd", { invoiceId: id, force });
 }
@@ -254,6 +276,11 @@ export async function openOrGeneratePdf(id: number, force = false): Promise<stri
 export async function markInvoicePaid(id: number): Promise<void> {
   const db = await getDb();
   await db.execute("UPDATE invoices SET status = 'paid' WHERE id = $1 AND status = 'issued'", [id]);
+}
+
+export async function deleteInvoice(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM invoices WHERE id = $1 AND status = 'draft'", [id]);
 }
 
 // List-view row: unlike InvoiceRecord, amounts are never null here — for

@@ -4,9 +4,11 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ErrorText, Select, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
-import { BackLink, PageHeader } from "../components/PageHeader";
+import { PageHeader } from "../components/PageHeader";
 import { createClient, getClient, updateClient } from "../db/clients";
 import type { ClientRecord, InvoiceLanguage, NewClient, VatTreatment } from "../db/clients";
+import { listSeries } from "../db/series";
+import type { SeriesRecord } from "../db/series";
 import {
   isValidInvoicePrefix,
   isValidNifCif,
@@ -14,6 +16,8 @@ import {
   suggestVatTreatment,
 } from "../features/clients";
 import { COUNTRY_CODES, countryName } from "../lib/countries";
+
+const NEW_SERIES = "__new__";
 
 interface ClienteFormProps {
   mode: "create" | "edit";
@@ -30,7 +34,8 @@ interface FormState {
   email: string;
   phone: string;
   notes: string;
-  invoicePrefix: string;
+  seriesChoice: string;
+  newSeriesPrefix: string;
   vatTreatment: VatTreatment;
   invoiceLanguage: InvoiceLanguage;
   country: string;
@@ -44,7 +49,8 @@ const EMPTY_FORM: FormState = {
   email: "",
   phone: "",
   notes: "",
-  invoicePrefix: "",
+  seriesChoice: NEW_SERIES,
+  newSeriesPrefix: "",
   vatTreatment: "standard",
   invoiceLanguage: "es",
   country: "",
@@ -59,7 +65,8 @@ function toFormState(client: ClientRecord): FormState {
     email: client.email ?? "",
     phone: client.phone ?? "",
     notes: client.notes ?? "",
-    invoicePrefix: client.invoicePrefix,
+    seriesChoice: String(client.seriesId),
+    newSeriesPrefix: "",
     vatTreatment: client.vatTreatment,
     invoiceLanguage: client.invoiceLanguage,
     country: client.country ?? "",
@@ -77,6 +84,13 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [vatNumberEdited, setVatNumberEdited] = useState(false);
+  const [seriesList, setSeriesList] = useState<SeriesRecord[]>([]);
+
+  useEffect(() => {
+    listSeries()
+      .then(setSeriesList)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (mode !== "edit" || clientId === undefined) return;
@@ -131,7 +145,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
     if (!form.name.trim()) next.name = t("clients.errors.nameRequired");
     if (!isValidNifCif(form.nifCif)) next.nifCif = t("clients.errors.nifCifInvalid");
     if (!isValidVatNumber(form.vatNumber)) next.vatNumber = t("clients.errors.vatNumberInvalid");
-    if (!isValidInvoicePrefix(form.invoicePrefix))
+    if (form.seriesChoice === NEW_SERIES && !isValidInvoicePrefix(form.newSeriesPrefix))
       next.invoicePrefix = t("clients.errors.invoicePrefixFormat");
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -149,7 +163,10 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       notes: form.notes.trim() || null,
-      invoicePrefix: form.invoicePrefix.trim().toUpperCase(),
+      series:
+        form.seriesChoice === NEW_SERIES
+          ? { newPrefix: form.newSeriesPrefix.trim().toUpperCase() }
+          : { id: Number(form.seriesChoice) },
       vatTreatment: form.vatTreatment,
       invoiceLanguage: form.invoiceLanguage,
       country: form.country || null,
@@ -166,7 +183,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
         if (updated) onSaved(updated);
       }
     } catch (err) {
-      if (String(err).includes("UNIQUE") && String(err).includes("invoice_prefix")) {
+      if (String(err).includes("UNIQUE") && String(err).includes("invoice_series")) {
         setErrors((e) => ({ ...e, invoicePrefix: t("clients.errors.invoicePrefixTaken") }));
       } else {
         setSaveError(t("clients.errors.saveFailed"));
@@ -194,8 +211,11 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label={t("clients.title")} onClick={onCancel} />
-      <PageHeader title={mode === "create" ? t("clients.newClient") : t("clients.editClient")} />
+      <PageHeader
+        title={mode === "create" ? t("clients.newClient") : t("clients.editClient")}
+        backLabel={t("clients.title")}
+        onBack={onCancel}
+      />
 
       <Card className="px-5 max-w-[640px]">
         <FormRow label={t("clients.fields.name")} error={errors.name}>
@@ -224,14 +244,27 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
           />
         </FormRow>
 
-        <FormRow label={t("clients.fields.invoicePrefix")} error={errors.invoicePrefix}>
-          <TextInput
-            mono
-            value={form.invoicePrefix}
-            error={!!errors.invoicePrefix}
-            onChange={(e) => set("invoicePrefix", e.target.value)}
-          />
+        <FormRow label={t("clients.fields.invoicePrefix")}>
+          <Select value={form.seriesChoice} onChange={(e) => set("seriesChoice", e.target.value)}>
+            <option value={NEW_SERIES}>{t("clients.fields.newSeriesOption")}</option>
+            {seriesList.map((series) => (
+              <option key={series.id} value={String(series.id)}>
+                {series.prefix}
+              </option>
+            ))}
+          </Select>
         </FormRow>
+
+        {form.seriesChoice === NEW_SERIES && (
+          <FormRow label={t("clients.fields.newSeriesPrefix")} error={errors.invoicePrefix}>
+            <TextInput
+              mono
+              value={form.newSeriesPrefix}
+              error={!!errors.invoicePrefix}
+              onChange={(e) => set("newSeriesPrefix", e.target.value)}
+            />
+          </FormRow>
+        )}
 
         <FormRow label={t("clients.fields.address")}>
           <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />

@@ -33,6 +33,7 @@
 
   /* sidebar material (opaque, not glass) */
   --color-sidebar-selection: rgb(224 138 79 / 0.32);
+  --color-sidebar-track: #3a4454;
 
   /* focus ring, matches accent */
   --color-focus-ring: rgb(194 99 44 / 0.35);
@@ -46,6 +47,9 @@
   /* shadows (float above content only, never on flat in-flow cards) */
   --shadow-float: 0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.1);
   --shadow-sheet: 0 4px 8px rgb(28 36 48 / 0.08), 0 24px 48px rgb(28 36 48 / 0.18);
+
+  /* motion */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .dark {
@@ -75,6 +79,7 @@
   --color-glass-border-soft: rgb(0 0 0 / 0.35);
   --color-overlay-scrim: rgb(0 0 0 / 0.5);
   --color-sidebar-selection: rgb(224 138 79 / 0.38);
+  --color-sidebar-track: #3a4454;
   --color-focus-ring: rgb(224 138 79 / 0.4);
 }
 
@@ -108,6 +113,7 @@
   --color-glass-border-soft: var(--color-glass-border-soft);
   --color-overlay-scrim: var(--color-overlay-scrim);
   --color-sidebar-selection: var(--color-sidebar-selection);
+  --color-sidebar-track: var(--color-sidebar-track);
   --color-focus-ring: var(--color-focus-ring);
 
   --radius-control: var(--radius-control);
@@ -133,6 +139,19 @@ textarea {
 
 ::selection {
   background: #f3e3d6;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes popover-out {
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

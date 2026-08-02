@@ -40,7 +40,7 @@ export function Sheet({
           >
             <div className="flex items-center justify-between mb-4">
               <Dialog.Title className="font-bold text-[15px]">{title}</Dialog.Title>
-              <Dialog.Close className="text-ink-soft hover:text-ink cursor-pointer">
+              <Dialog.Close className="text-ink-soft hover:text-ink cursor-pointer rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
                 <X size={16} />
               </Dialog.Close>
             </div>

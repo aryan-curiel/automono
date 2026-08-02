@@ -93,7 +93,7 @@ export function ContratoDetalle({
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label={t("contracts.title")} onClick={onBack} />
+      <BackLink label={clientName} onClick={onBack} />
 
       <PageHeader
         title={contract.title}

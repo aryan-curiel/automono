@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import * as Switch from "@radix-ui/react-switch";
 import {
   House,
   UsersThree,
   Receipt,
-  FileText,
   Wallet,
   ChartPieSlice,
   GearSix,
@@ -21,13 +19,11 @@ function initials(name: string): string {
 }
 
 const NAV_ITEMS: { id: Screen; label: string; icon: PhosphorIcon }[] = [
-  { id: "dashboard", label: "Resumen", icon: House },
+  { id: "dashboard", label: "Inicio", icon: House },
   { id: "clientes", label: "Clientes", icon: UsersThree },
   { id: "facturas", label: "Facturas", icon: Receipt },
-  { id: "contratos", label: "Contratos", icon: FileText },
   { id: "gastos", label: "Gastos", icon: Wallet },
   { id: "resumen-trimestral", label: "Resumen trimestral", icon: ChartPieSlice },
-  { id: "ajustes", label: "Ajustes", icon: GearSix },
 ];
 
 const GROUPED_SCREENS: Partial<Record<Screen, Screen>> = {
@@ -35,10 +31,6 @@ const GROUPED_SCREENS: Partial<Record<Screen, Screen>> = {
   "factura-nueva": "facturas",
   "factura-detalle": "facturas",
   "factura-rectificar": "facturas",
-  contratos: "contratos",
-  "contrato-nuevo": "contratos",
-  "contrato-editar": "contratos",
-  "contrato-detalle": "contratos",
   gastos: "gastos",
   "gasto-nuevo": "gastos",
   "gasto-editar": "gastos",
@@ -48,11 +40,9 @@ const GROUPED_SCREENS: Partial<Record<Screen, Screen>> = {
 interface SidebarProps {
   screen: Screen;
   onNavigate: (screen: Screen) => void;
-  theme: "light" | "dark";
-  onToggleTheme: () => void;
 }
 
-export function Sidebar({ screen, onNavigate, theme, onToggleTheme }: SidebarProps) {
+export function Sidebar({ screen, onNavigate }: SidebarProps) {
   const activeGroup = GROUPED_SCREENS[screen] ?? screen;
   const [profile, setProfile] = useState<BusinessProfileRecord | null>(null);
   const reduceMotion = useReducedMotion();
@@ -82,10 +72,13 @@ export function Sidebar({ screen, onNavigate, theme, onToggleTheme }: SidebarPro
           const active = activeGroup === item.id;
           const Icon = item.icon;
           return (
-            <div
+            <button
               key={item.id}
+              type="button"
               onClick={() => onNavigate(item.id)}
-              className="relative text-[13px] px-3 py-2 cursor-pointer"
+              aria-current={active ? "page" : undefined}
+              className="relative w-full text-left text-[13px] px-3 py-2 bg-transparent border-none cursor-pointer
+                         rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {active && (
                 <motion.div
@@ -106,29 +99,18 @@ export function Sidebar({ screen, onNavigate, theme, onToggleTheme }: SidebarPro
                 <Icon size={18} weight="regular" />
                 {item.label}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
 
       <div className="flex-1" />
 
-      <div className="flex items-center justify-between px-2.5 py-2 border-t border-sidebar-border mt-2 mb-2">
-        <span className="font-medium text-xs text-sidebar-text">Modo oscuro</span>
-        <Switch.Root
-          checked={theme === "dark"}
-          onCheckedChange={onToggleTheme}
-          className="w-9 h-5 rounded-pill relative bg-[#3a4454] data-[state=checked]:bg-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
-        </Switch.Root>
-      </div>
-
-      <div className="flex items-center gap-2.5 p-2.5 bg-sidebar-bg-alt rounded-control">
+      <div className="flex items-center gap-2.5 p-2.5 bg-sidebar-bg-alt rounded-control mt-2">
         <div className="w-[30px] h-[30px] rounded-full bg-accent text-white font-bold text-xs flex items-center justify-center shrink-0">
           {initials(profile?.name ?? "")}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="font-semibold text-[12.5px] text-white whitespace-nowrap overflow-hidden text-ellipsis">
             {profile?.name || "Sin datos"}
           </div>
@@ -136,6 +118,20 @@ export function Sidebar({ screen, onNavigate, theme, onToggleTheme }: SidebarPro
             {profile?.nifCif || ""}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => onNavigate("ajustes")}
+          aria-current={activeGroup === "ajustes" ? "page" : undefined}
+          aria-label="Ajustes"
+          className={`p-1.5 rounded-control shrink-0 cursor-pointer border-none
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                       activeGroup === "ajustes"
+                         ? "bg-sidebar-selection text-white"
+                         : "bg-transparent text-sidebar-text hover:bg-white/10 hover:text-white"
+                     }`}
+        >
+          <GearSix size={16} weight="regular" />
+        </button>
       </div>
     </div>
   );

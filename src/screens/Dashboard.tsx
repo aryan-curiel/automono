@@ -3,6 +3,7 @@ import { TrendUp, Clock, UsersThree, Wallet } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
+import { KpiTile } from "../components/ui/KpiTile";
 import { PageHeader } from "../components/PageHeader";
 import { listClients } from "../db/clients";
 import { listExpenses } from "../db/expenses";
@@ -75,13 +76,10 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice }: DashboardProp
   return (
     <div className="px-8 pb-15">
       <PageHeader
-        title="Resumen"
+        title="Inicio"
         actions={
           <>
-            <Button variant="secondary" onClick={() => onNavigate("clientes")}>
-              + Cliente
-            </Button>
-            <Button variant="secondary" onClick={() => onNavigate("gastos")}>
+            <Button variant="secondary" onClick={() => onNavigate("gasto-nuevo")}>
               + Gasto
             </Button>
             <Button onClick={() => onNavigate("factura-nueva")}>+ Nueva factura</Button>
@@ -91,15 +89,7 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice }: DashboardProp
 
       <div className="grid grid-cols-4 gap-3.5 mb-6">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="py-4 px-4.5 relative overflow-hidden">
-            <kpi.icon
-              size={16}
-              weight="bold"
-              className={kpi.tone === "warn" ? "text-warn mb-2.5" : "text-ink-soft mb-2.5"}
-            />
-            <div className="font-medium text-xs text-ink-soft mb-1">{kpi.label}</div>
-            <div className="font-bold text-[22px] font-mono tracking-tight">{kpi.value}</div>
-          </Card>
+          <KpiTile key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} tone={kpi.tone} />
         ))}
       </div>
 

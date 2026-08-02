@@ -9,7 +9,7 @@ const base =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-white px-4 py-2 shadow-[0_1px_2px_rgb(0,0,0,0.12)] hover:brightness-105",
+  primary: "bg-accent text-white px-4 py-2 hover:brightness-105",
   secondary: "bg-surface text-ink border border-border px-4 py-2 hover:bg-surface-alt",
   "ghost-danger": "bg-transparent text-danger px-1 py-2 hover:bg-danger-soft rounded-control",
   dashed:

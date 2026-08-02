@@ -13,10 +13,10 @@ export function SegmentedControl<T extends string>({
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`px-3 py-1 text-[12.5px] font-medium rounded-[6px] transition-colors cursor-pointer
+          className={`px-3 py-1 text-[12.5px] font-medium rounded-control transition-colors cursor-pointer
             ${
               value === opt.value
-                ? "bg-surface shadow-[0_1px_2px_rgb(0,0,0,0.08)] text-ink"
+                ? "bg-surface text-ink"
                 : "text-ink-soft hover:text-ink"
             }`}
         >

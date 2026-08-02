@@ -93,7 +93,11 @@ export function ClienteDetalle({
 
       <PageHeader
         title={client.name}
-        subtitle={`${client.nifCif} · ${client.email || "—"}`}
+        subtitle={
+          <>
+            <span className="font-mono">{client.nifCif}</span> · {client.email || "—"}
+          </>
+        }
         actions={
           <>
             <Button variant="secondary" onClick={() => onEditClient(client.id)}>
@@ -119,7 +123,7 @@ export function ClienteDetalle({
         </div>
         <InfoRow label={t("clients.fields.nifCif")} value={client.nifCif} mono />
         <InfoRow label={t("clients.fields.vatNumber")} value={client.vatNumber || "—"} mono />
-        <InfoRow label={t("clients.fields.invoicePrefix")} value={client.invoicePrefix} mono />
+        <InfoRow label={t("clients.fields.invoicePrefix")} value={client.seriesPrefix} mono />
         <InfoRow label={t("clients.fields.address")} value={client.address || "—"} />
         <InfoRow label={t("clients.fields.email")} value={client.email || "—"} />
         <InfoRow label={t("clients.fields.phone")} value={client.phone || "—"} />
@@ -137,9 +141,11 @@ export function ClienteDetalle({
         />
       </Card>
 
-      <Card className="p-5.5 max-w-[640px] mt-4.5">
+      <Card className="p-5.5 max-w-[640px] mt-6">
         <div className="flex items-center justify-between mb-4">
-          <div className="font-bold text-sm">{t("clients.detail.contractsTitle")}</div>
+          <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide">
+            {t("clients.detail.contractsTitle")}
+          </div>
           <Button variant="secondary" onClick={() => onNewContract(client.id)}>
             + {t("contracts.newContract")}
           </Button>

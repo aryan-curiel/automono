@@ -4,7 +4,7 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ErrorText, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
-import { BackLink, PageHeader } from "../components/PageHeader";
+import { PageHeader } from "../components/PageHeader";
 import {
   attachExpenseFile,
   createExpense,
@@ -177,9 +177,10 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label={t("expenses.title")} onClick={onCancel} />
       <PageHeader
         title={mode === "create" ? t("expenses.newExpense") : t("expenses.editExpense")}
+        backLabel={t("expenses.title")}
+        onBack={onCancel}
       />
 
       <Card className="px-5 max-w-[640px]">

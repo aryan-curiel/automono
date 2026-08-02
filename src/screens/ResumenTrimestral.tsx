@@ -3,6 +3,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { TrendUp, Percent, ChartLineUp, DownloadSimple } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { KpiTile } from "../components/ui/KpiTile";
 import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { listExpenses } from "../db/expenses";
@@ -133,28 +134,10 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
 
       {exportError && <div className="text-sm text-danger mb-4">{exportError}</div>}
 
-      <div className="grid grid-cols-3 gap-3.5 mb-5">
-        <Card className="py-4 px-4.5 relative overflow-hidden">
-          <TrendUp size={16} weight="bold" className="text-ink-soft mb-2.5" />
-          <div className="font-medium text-xs text-ink-soft mb-1">Total facturado (base)</div>
-          <div className="font-bold text-[22px] font-mono tracking-tight">
-            {formatEUR(invoicedBase)}
-          </div>
-        </Card>
-        <Card className="py-4 px-4.5 relative overflow-hidden">
-          <Percent size={16} weight="bold" className="text-ink-soft mb-2.5" />
-          <div className="font-medium text-xs text-ink-soft mb-1">IRPF retenido</div>
-          <div className="font-bold text-[22px] font-mono tracking-tight">
-            {formatEUR(irpfWithheld)}
-          </div>
-        </Card>
-        <Card className="py-4 px-4.5 relative overflow-hidden">
-          <ChartLineUp size={16} weight="bold" className="text-accent mb-2.5" />
-          <div className="font-medium text-xs text-ink-soft mb-1">Ingreso neto estimado</div>
-          <div className="font-bold text-[22px] font-mono tracking-tight text-accent">
-            {formatEUR(netIrpfIncome)}
-          </div>
-        </Card>
+      <div className="grid grid-cols-3 gap-3.5 mb-6">
+        <KpiTile label="Total facturado (base)" value={formatEUR(invoicedBase)} icon={TrendUp} />
+        <KpiTile label="IRPF retenido" value={formatEUR(irpfWithheld)} icon={Percent} />
+        <KpiTile label="Ingreso neto estimado" value={formatEUR(netIrpfIncome)} icon={ChartLineUp} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

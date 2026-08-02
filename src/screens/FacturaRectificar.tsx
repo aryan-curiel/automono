@@ -5,7 +5,7 @@ import { Button } from "../components/ui/Button";
 import { ErrorText, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
-import { BackLink, PageHeader } from "../components/PageHeader";
+import { PageHeader } from "../components/PageHeader";
 import { invoiceNumberLabel } from "../lib/invoice";
 import { formatEUR } from "../lib/format";
 import { getClient } from "../db/clients";
@@ -86,7 +86,7 @@ export function FacturaRectificar({
 
   const origNumber = invoiceNumberLabel(original);
   const numberPreview = client
-    ? `${client.invoicePrefix}-R${String(client.nextRectificationNumber).padStart(3, "0")}`
+    ? `${client.seriesPrefix}-R${String(client.nextRectificationNumber).padStart(3, "0")}`
     : "";
   const helpText =
     rectType === "full"
@@ -147,9 +147,10 @@ export function FacturaRectificar({
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label={origNumber} onClick={onCancel} />
       <PageHeader
         title={`Rectificativa de ${origNumber}`}
+        backLabel={origNumber}
+        onBack={onCancel}
         actions={
           <Button onClick={handleEmit} disabled={submitting}>
             {submitting ? "Emitiendo…" : "Emitir rectificativa"}

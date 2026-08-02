@@ -4,7 +4,7 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ErrorText, Select, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
-import { BackLink, PageHeader } from "../components/PageHeader";
+import { PageHeader } from "../components/PageHeader";
 import {
   attachContractFile,
   createContract,
@@ -105,6 +105,8 @@ export function ContratoForm({
     };
   }, [mode, contractId]);
 
+  const clientName = clients.find((c) => String(c.id) === form.clientId)?.name ?? "";
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -186,9 +188,10 @@ export function ContratoForm({
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label={t("contracts.title")} onClick={onCancel} />
       <PageHeader
         title={mode === "create" ? t("contracts.newContract") : t("contracts.editContract")}
+        backLabel={clientName}
+        onBack={onCancel}
       />
 
       <Card className="px-5 max-w-[640px]">

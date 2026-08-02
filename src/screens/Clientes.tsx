@@ -5,7 +5,7 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { PageHeader } from "../components/PageHeader";
-import { listClients } from "../db/clients";
+import { deleteClient, listClients } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
 
 interface ClientesProps {
@@ -31,6 +31,16 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
     `${c.name} ${c.nifCif} ${c.email}`.toLowerCase().includes(query.toLowerCase()),
   );
 
+  async function handleDelete(client: ClientRecord) {
+    if (!window.confirm(t("clients.actions.confirmDelete", { name: client.name }))) return;
+    try {
+      await deleteClient(client.id);
+      setClients((rows) => rows.filter((r) => r.id !== client.id));
+    } catch {
+      window.alert(t("clients.errors.deleteRestricted"));
+    }
+  }
+
   return (
     <div className="px-8 pb-15">
       <PageHeader
@@ -48,7 +58,8 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar"
                 className="w-52 pl-8 pr-3 py-1.5 text-[13px] rounded-control bg-surface-alt border border-transparent
-                           focus:border-accent focus:bg-surface focus:outline-none transition-colors"
+                           focus:border-accent focus:bg-surface focus:outline-none focus:shadow-[0_0_0_3px_var(--color-focus-ring)]
+                           transition-[box-shadow,border-color,background-color] duration-150"
               />
             </div>
             <Button onClick={onNewClient}>+ {t("clients.newClient")}</Button>
@@ -106,7 +117,7 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
               <div className="text-[13px] font-mono font-medium">{c.nifCif}</div>
               <div>
                 <span className="font-semibold text-xs font-mono bg-surface-alt px-2 py-1 rounded-control">
-                  {c.invoicePrefix}
+                  {c.seriesPrefix}
                 </span>
               </div>
               <div className="font-medium text-[13px]">
@@ -125,6 +136,9 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
                   </MenuTrigger>
                   <MenuContent>
                     <MenuItem onSelect={() => onOpenClient(c.id)}>Ver detalle</MenuItem>
+                    <MenuItem danger onSelect={() => handleDelete(c)}>
+                      {t("clients.actions.delete")}
+                    </MenuItem>
                   </MenuContent>
                 </Menu>
               </div>

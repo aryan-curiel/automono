@@ -7,11 +7,12 @@ import { FormRow } from "../components/ui/FormRow";
 import { BackLink, PageHeader } from "../components/PageHeader";
 import { listClients } from "../db/clients";
 import type { ClientRecord, InvoiceLanguage } from "../db/clients";
-import { createDraftInvoice, issueInvoice, saveDraft } from "../db/invoices";
+import { createDraftInvoice, getInvoiceWithLines, issueInvoice, saveDraft } from "../db/invoices";
 import { formatEUR } from "../lib/format";
 import { irpfApplicable, IRPF_DEFAULT_RATE } from "../features/clients";
 
 interface FacturaNuevaProps {
+  editInvoiceId?: number;
   onBack: () => void;
 }
 
@@ -26,7 +27,7 @@ function mkLine(description: string, quantity: number, unitPrice: number): Draft
   return { key: `${Date.now()}-${Math.random()}`, description, quantity, unitPrice };
 }
 
-export function FacturaNueva({ onBack }: FacturaNuevaProps) {
+export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
   const [clients, setClients] = useState<ClientRecord[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [clientId, setClientId] = useState<number | null>(null);
@@ -47,7 +48,7 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
       .then((list) => {
         if (cancelled) return;
         setClients(list);
-        if (list.length > 0) setClientId(list[0].id);
+        if (!editInvoiceId && list.length > 0) setClientId(list[0].id);
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -55,7 +56,34 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [editInvoiceId]);
+
+  // Loads an existing draft (e.g. one just created by "duplicate") into the form instead of
+  // starting blank. irpfDefaultedFor/languageDefaultedFor are set to match so the client-change
+  // defaulting below doesn't immediately overwrite the values we just loaded.
+  useEffect(() => {
+    if (!editInvoiceId) return;
+    let cancelled = false;
+    getInvoiceWithLines(editInvoiceId).then((detail) => {
+      if (cancelled || !detail) return;
+      const { invoice, lines: invoiceLines } = detail;
+      setInvoiceId(invoice.id);
+      setClientId(invoice.clientId);
+      setIvaRate(invoice.ivaRate ?? 21);
+      setIrpfRate(invoice.irpfRate);
+      setLanguage(invoice.language ?? "es");
+      setLines(
+        invoiceLines.length
+          ? invoiceLines.map((l) => mkLine(l.description, l.quantity, l.unitPrice))
+          : [mkLine("", 1, 0)],
+      );
+      setIrpfDefaultedFor(invoice.clientId);
+      setLanguageDefaultedFor(invoice.clientId);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editInvoiceId]);
 
   const client = clients?.find((c) => c.id === clientId) ?? null;
   const ivaSelectable = client?.vatTreatment === "standard";
@@ -83,7 +111,7 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
   const total = subtotal + iva - irpf;
 
   const numberPreview = client
-    ? `${client.invoicePrefix}-${String(client.nextInvoiceNumber).padStart(3, "0")}`
+    ? `${client.seriesPrefix}-${String(client.nextInvoiceNumber).padStart(3, "0")}`
     : "";
 
   function updateLine(
@@ -180,9 +208,10 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label="Facturas" onClick={onBack} />
       <PageHeader
         title="Nueva factura"
+        backLabel="Facturas"
+        onBack={onBack}
         actions={
           <>
             <Button variant="secondary" onClick={handleSaveDraft} disabled={busy}>
@@ -225,9 +254,7 @@ export function FacturaNueva({ onBack }: FacturaNuevaProps) {
                 <option value={4}>4% — superreducido</option>
               </Select>
             ) : (
-              <div className="w-full box-border text-[13px] px-3 py-2 border border-border rounded-control bg-surface font-mono flex items-center text-ink-soft">
-                0% — tratamiento especial
-              </div>
+              <TextInput mono readOnly value="0% — tratamiento especial" />
             )}
           </FormRow>
           {irpfShown && (

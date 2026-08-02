@@ -29,7 +29,7 @@ export function Toast({ message, onDismiss }: ToastProps) {
                    border border-glass-border shadow-sheet text-[13px] font-medium text-ink
                    supports-[not(backdrop-filter)]:bg-surface"
       >
-        <WarningCircle size={18} weight="fill" className="text-danger shrink-0 mt-0.5" />
+        <WarningCircle size={18} weight="regular" className="text-danger shrink-0 mt-0.5" />
         {message}
       </motion.div>
     </AnimatePresence>

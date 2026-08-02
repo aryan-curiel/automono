@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MagnifyingGlass, Receipt, DotsThreeVertical } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
@@ -12,11 +13,22 @@ import type { InvoiceListItem } from "../db/invoices";
 
 interface FacturasProps {
   invoices: InvoiceListItem[];
+  loading: boolean;
   onOpenInvoice: (id: number) => void;
   onNewInvoice: () => void;
+  onDeleteInvoice: (id: number) => void;
+  onDuplicateInvoice: (id: number) => void;
 }
 
-export function Facturas({ invoices, onOpenInvoice, onNewInvoice }: FacturasProps) {
+export function Facturas({
+  invoices,
+  loading,
+  onOpenInvoice,
+  onNewInvoice,
+  onDeleteInvoice,
+  onDuplicateInvoice,
+}: FacturasProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
 
   const filtered = invoices.filter((inv) =>
@@ -26,8 +38,8 @@ export function Facturas({ invoices, onOpenInvoice, onNewInvoice }: FacturasProp
   return (
     <div className="px-8 pb-15">
       <PageHeader
-        title="Facturas"
-        subtitle={`${filtered.length} facturas`}
+        title={t("invoices.title")}
+        subtitle={t("invoices.subtitleCount", { count: filtered.length })}
         actions={
           <>
             <div className="relative">
@@ -38,36 +50,52 @@ export function Facturas({ invoices, onOpenInvoice, onNewInvoice }: FacturasProp
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar"
+                placeholder={t("invoices.searchPlaceholder")}
                 className="w-52 pl-8 pr-3 py-1.5 text-[13px] rounded-control bg-surface-alt border border-transparent
-                           focus:border-accent focus:bg-surface focus:outline-none transition-colors"
+                           focus:border-accent focus:bg-surface focus:outline-none focus:shadow-[0_0_0_3px_var(--color-focus-ring)]
+                           transition-[box-shadow,border-color,background-color] duration-150"
               />
             </div>
-            <Button onClick={onNewInvoice}>+ Nueva factura</Button>
+            <Button onClick={onNewInvoice}>+ {t("invoices.newInvoice")}</Button>
           </>
         }
       />
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <Card className="overflow-hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[.9fr_1.4fr_1fr_1fr_1fr_32px] py-3 px-5.5 border-t border-border first:border-t-0"
+            >
+              <div className="h-4 w-16 rounded bg-surface-alt animate-pulse" />
+              <div className="h-4 w-28 rounded bg-surface-alt animate-pulse" />
+              <div className="h-4 w-20 rounded bg-surface-alt animate-pulse" />
+              <div className="h-4 w-16 rounded bg-surface-alt animate-pulse" />
+              <div className="h-4 w-14 rounded bg-surface-alt animate-pulse" />
+            </div>
+          ))}
+        </Card>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
           <Receipt size={32} className="text-ink-soft/40" />
           <div className="text-sm text-ink-soft">
-            {invoices.length === 0 ? "Aún no hay facturas" : "Sin resultados"}
+            {invoices.length === 0 ? t("invoices.empty") : t("invoices.noResults")}
           </div>
           {invoices.length === 0 && (
             <Button variant="secondary" onClick={onNewInvoice}>
-              + Nueva factura
+              + {t("invoices.newInvoice")}
             </Button>
           )}
         </div>
       ) : (
         <Card className="overflow-hidden">
           <div className="grid grid-cols-[.9fr_1.4fr_1fr_1fr_1fr_32px] py-3 px-5.5 bg-surface-alt font-semibold text-xs uppercase tracking-wide text-ink-soft">
-            <div>Nº Factura</div>
-            <div>Cliente</div>
-            <div>Fecha</div>
-            <div>Importe</div>
-            <div>Estado</div>
+            <div>{t("invoices.columns.number")}</div>
+            <div>{t("invoices.columns.client")}</div>
+            <div>{t("invoices.columns.date")}</div>
+            <div>{t("invoices.columns.amount")}</div>
+            <div>{t("invoices.columns.status")}</div>
             <div />
           </div>
           {filtered.map((inv) => {
@@ -92,12 +120,12 @@ export function Facturas({ invoices, onOpenInvoice, onNewInvoice }: FacturasProp
                   </div>
                   {rectifies && (
                     <div className="font-medium text-[11px] text-ink-soft">
-                      rectifica {invoiceNumberLabel(rectifies)}
+                      {t("invoices.rectifies", { number: invoiceNumberLabel(rectifies) })}
                     </div>
                   )}
                   {rectifiedBy && (
                     <div className="font-medium text-[11px] text-ink-soft">
-                      rectificada por {invoiceNumberLabel(rectifiedBy)}
+                      {t("invoices.rectifiedBy", { number: invoiceNumberLabel(rectifiedBy) })}
                     </div>
                   )}
                 </div>
@@ -117,6 +145,18 @@ export function Facturas({ invoices, onOpenInvoice, onNewInvoice }: FacturasProp
                     </MenuTrigger>
                     <MenuContent>
                       <MenuItem onSelect={() => onOpenInvoice(inv.id)}>Ver detalle</MenuItem>
+                      <MenuItem onSelect={() => onDuplicateInvoice(inv.id)}>Duplicar factura</MenuItem>
+                      {inv.status === "draft" && (
+                        <MenuItem
+                          danger
+                          onSelect={() => {
+                            if (!window.confirm(t("invoices.actions.confirmDelete"))) return;
+                            onDeleteInvoice(inv.id);
+                          }}
+                        >
+                          {t("invoices.actions.delete")}
+                        </MenuItem>
+                      )}
                     </MenuContent>
                   </Menu>
                 </div>

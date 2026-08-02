@@ -30,6 +30,8 @@
       "phone": "Phone",
       "notes": "Notes",
       "invoicePrefix": "Invoice series",
+      "newSeriesOption": "+ New series",
+      "newSeriesPrefix": "New series prefix",
       "vatTreatment": "VAT treatment",
       "invoiceLanguage": "Invoice language",
       "country": "Country",
@@ -58,7 +60,7 @@
       "nifCifInvalid": "NIF/CIF is not a valid format.",
       "vatNumberInvalid": "VAT number must start with a 2-letter country code (e.g. BG123456789).",
       "invoicePrefixFormat": "Series must be exactly 3 letters (e.g. IMO).",
-      "invoicePrefixTaken": "This series is already used by another client.",
+      "invoicePrefixTaken": "A series with this prefix already exists.",
       "deleteRestricted": "Can't delete: this client has invoices associated with it.",
       "saveFailed": "Failed to save the client. Please try again.",
       "loadFailed": "Failed to load the client."
@@ -69,20 +71,37 @@
       "invoicesTitle": "Invoices"
     }
   },
+  "invoices": {
+    "title": "Invoices",
+    "subtitleCount": "{{count}} invoices",
+    "newInvoice": "New invoice",
+    "searchPlaceholder": "Search",
+    "loading": "Loading…",
+    "empty": "No invoices yet",
+    "noResults": "No results",
+    "columns": {
+      "number": "Invoice #",
+      "client": "Client",
+      "date": "Date",
+      "amount": "Amount",
+      "status": "Status"
+    },
+    "rectifies": "rectifies {{number}}",
+    "rectifiedBy": "rectified by {{number}}",
+    "actions": {
+      "delete": "Delete draft",
+      "confirmDelete": "Delete this draft? This action cannot be undone."
+    },
+    "errors": {
+      "loadFailed": "Couldn't load the invoice."
+    }
+  },
   "contracts": {
     "title": "Contracts",
-    "subtitleCount": "{{count}} contracts",
     "newContract": "New contract",
     "editContract": "Edit contract",
     "loading": "Loading…",
     "empty": "No contracts yet.",
-    "columns": {
-      "title": "Title",
-      "client": "Client",
-      "startDate": "Start",
-      "endDate": "End",
-      "status": "Status"
-    },
     "fields": {
       "client": "Client",
       "clientUnset": "— Select a client —",
@@ -93,10 +112,6 @@
       "notes": "Notes",
       "file": "File",
       "noFile": "No file attached."
-    },
-    "filters": {
-      "allClients": "All clients",
-      "allStatuses": "All statuses"
     },
     "status": {
       "active": "Active",

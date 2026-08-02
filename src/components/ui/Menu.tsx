@@ -12,7 +12,10 @@ export function MenuContent({ children }: { children: ReactNode }) {
         sideOffset={4}
         className="z-50 min-w-[180px] rounded-card bg-sheet-glass backdrop-blur-xl backdrop-saturate-150
                    border border-glass-border shadow-sheet p-1
-                   supports-[not(backdrop-filter)]:bg-surface"
+                   supports-[not(backdrop-filter)]:bg-surface
+                   [transform-origin:var(--radix-dropdown-menu-content-transform-origin)]
+                   data-[state=open]:animate-[popover-in_150ms_var(--ease-out)]
+                   data-[state=closed]:animate-[popover-out_100ms_var(--ease-out)]"
       >
         {children}
       </DropdownMenu.Content>
