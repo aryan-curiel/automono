@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import * as Switch from "@radix-ui/react-switch";
 import { Card } from "../components/ui/Card";
+import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/ui/Button";
-import { ErrorText, Label, TextInput } from "../components/ui/Field";
+import { ErrorText, TextInput } from "../components/ui/Field";
+import { FormRow } from "../components/ui/FormRow";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { getBusinessProfile, updateBusinessProfile } from "../db/businessProfile";
 import type { BusinessProfileRecord } from "../db/businessProfile";
 import { isValidNifCif, isValidVatNumber } from "../features/clients";
@@ -29,9 +33,22 @@ const EMPTY_FORM: BusinessProfileRecord = {
 };
 
 type FieldErrors = Partial<Record<"name" | "nifCif" | "vatNumber" | "iban", string>>;
+type Tab = "general" | "datos" | "backup";
 
-export function Ajustes() {
+const TABS: { value: Tab; label: string }[] = [
+  { value: "general", label: "General" },
+  { value: "datos", label: "Datos" },
+  { value: "backup", label: "Copia de seguridad" },
+];
+
+interface AjustesProps {
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
+}
+
+export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const { t } = useTranslation();
+  const [tab, setTab] = useState<Tab>("general");
   const [form, setForm] = useState<BusinessProfileRecord>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -103,7 +120,8 @@ export function Ajustes() {
     if (!form.name.trim()) next.name = "El nombre es obligatorio";
     if (!isValidNifCif(form.nifCif)) next.nifCif = "NIF/CIF con formato inválido";
     if (!isValidVatNumber(form.vatNumber)) next.vatNumber = "Número de IVA con formato inválido";
-    if (form.iban.trim() && !isValidIban(form.iban)) next.iban = "IBAN con formato o dígitos de control inválidos";
+    if (form.iban.trim() && !isValidIban(form.iban))
+      next.iban = "IBAN con formato o dígitos de control inválidos";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -201,162 +219,184 @@ export function Ajustes() {
   }
 
   return (
-    <div className="px-10 pt-8 pb-15">
-      <h1 className="font-extrabold text-2xl tracking-tight m-0 mb-6">Ajustes</h1>
+    <div className="px-8 pb-15">
+      <PageHeader title="Ajustes" />
 
-      {loading ? (
-        <div className="text-sm text-ink-soft mb-5">Cargando…</div>
-      ) : loadError ? (
-        <div className="text-sm text-danger mb-5">No se pudieron cargar los datos del negocio.</div>
-      ) : (
+      <div className="mb-5">
+        <SegmentedControl options={TABS} value={tab} onChange={setTab} />
+      </div>
+
+      {tab === "general" && (
         <>
-          <Card className="py-5.5 px-6 max-w-[640px] mb-5">
-            <div className="font-bold text-sm mb-4">Datos del negocio</div>
-            <div className="mb-3.5">
-              <Label>Nombre / Razón social</Label>
-              <TextInput
-                value={form.name}
-                error={!!errors.name}
-                onChange={(e) => set("name", e.target.value)}
-              />
-              {errors.name && <ErrorText>{errors.name}</ErrorText>}
+          <Card className="px-5 max-w-[640px] mb-5">
+            <div className="pt-4 pb-4">
+              <div className="font-bold text-sm mb-1.5">Apariencia</div>
+              <FormRow label="Modo oscuro">
+                <div className="flex items-center gap-2.5">
+                  <Switch.Root
+                    checked={theme === "dark"}
+                    onCheckedChange={onToggleTheme}
+                    className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                  >
+                    <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
+                  </Switch.Root>
+                  <span className="text-[13px] text-ink-soft">
+                    {theme === "dark" ? "Activado" : "Desactivado"}
+                  </span>
+                </div>
+              </FormRow>
             </div>
-            <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-              <div>
-                <Label>NIF</Label>
+          </Card>
+
+          <Card className="px-5 max-w-[640px]">
+            <div className="pt-4 pb-4">
+              <div className="font-bold text-sm mb-1.5">{t("settings.dbSectionTitle")}</div>
+              <div className="text-[13px] text-ink-soft">{dbStatus}</div>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {tab === "datos" &&
+        (loading ? (
+          <div className="text-sm text-ink-soft mb-5">Cargando…</div>
+        ) : loadError ? (
+          <div className="text-sm text-danger mb-5">
+            No se pudieron cargar los datos del negocio.
+          </div>
+        ) : (
+          <>
+            <Card className="px-5 max-w-[640px] mb-5">
+              <div className="font-bold text-sm pt-4 pb-1">Datos del negocio</div>
+              <FormRow label="Nombre / Razón social" error={errors.name}>
+                <TextInput
+                  value={form.name}
+                  error={!!errors.name}
+                  onChange={(e) => set("name", e.target.value)}
+                />
+              </FormRow>
+              <FormRow label="NIF" error={errors.nifCif}>
                 <TextInput
                   mono
                   value={form.nifCif}
                   error={!!errors.nifCif}
                   onChange={(e) => handleNifChange(e.target.value)}
                 />
-                {errors.nifCif && <ErrorText>{errors.nifCif}</ErrorText>}
-              </div>
-              <div>
-                <Label>Número de IVA</Label>
+              </FormRow>
+              <FormRow label="Número de IVA" error={errors.vatNumber}>
                 <TextInput
                   mono
                   value={form.vatNumber}
                   error={!!errors.vatNumber}
                   onChange={(e) => handleVatNumberChange(e.target.value)}
                 />
-                {errors.vatNumber && <ErrorText>{errors.vatNumber}</ErrorText>}
-              </div>
-            </div>
-            <div className="mb-4.5">
-              <Label>Dirección fiscal</Label>
-              <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />
-            </div>
+              </FormRow>
+              <FormRow label="Dirección fiscal">
+                <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />
+              </FormRow>
+            </Card>
 
-            {saveError && <ErrorText>{saveError}</ErrorText>}
-
-            <div className="flex items-center gap-3">
-              <Button onClick={handleSave} disabled={saving}>
-                Guardar
-              </Button>
-              {saved && <span className="text-[13px] text-ink-soft">Guardado.</span>}
-            </div>
-          </Card>
-
-          <Card className="py-5.5 px-6 max-w-[640px] mb-5">
-            <div className="font-bold text-sm mb-4">Datos bancarios</div>
-            <div className="mb-3.5">
-              <Label>Nombre del banco</Label>
-              <TextInput value={form.bankName} onChange={(e) => set("bankName", e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3.5">
-              <div>
-                <Label>IBAN</Label>
+            <Card className="px-5 max-w-[640px] mb-5">
+              <div className="font-bold text-sm pt-4 pb-1">Datos bancarios</div>
+              <FormRow label="Nombre del banco">
+                <TextInput
+                  value={form.bankName}
+                  onChange={(e) => set("bankName", e.target.value)}
+                />
+              </FormRow>
+              <FormRow label="IBAN" error={errors.iban}>
                 <TextInput
                   mono
                   value={form.iban}
                   error={!!errors.iban}
                   onChange={(e) => set("iban", e.target.value)}
                 />
-                {errors.iban && <ErrorText>{errors.iban}</ErrorText>}
-              </div>
-              <div>
-                <Label>BIC / SWIFT</Label>
+              </FormRow>
+              <FormRow label="BIC / SWIFT">
                 <TextInput mono value={form.bic} onChange={(e) => set("bic", e.target.value)} />
-              </div>
-            </div>
+              </FormRow>
+            </Card>
 
             {saveError && <ErrorText>{saveError}</ErrorText>}
-
-            <div className="flex items-center gap-3 mt-4.5">
+            <div className="flex items-center gap-3 max-w-[640px]">
               <Button onClick={handleSave} disabled={saving}>
                 Guardar
               </Button>
               {saved && <span className="text-[13px] text-ink-soft">Guardado.</span>}
             </div>
-          </Card>
+          </>
+        ))}
 
-          <Card className="py-5.5 px-6 max-w-[640px]">
+      {tab === "backup" && (
+        <Card className="px-5 max-w-[640px]">
+          <div className="pt-4 pb-3">
             <div className="font-bold text-sm mb-1.5">Copia de seguridad</div>
-            <div className="text-[13px] text-ink-soft mb-4">
-              Se guarda una copia de la base de datos, facturas y contratos en una carpeta local que tú
-              sincronizas con Drive/S3.
+            <div className="text-[13px] text-ink-soft">
+              Se guarda una copia de la base de datos, facturas y contratos en una carpeta local
+              que tú sincronizas con Drive/S3.
             </div>
+          </div>
 
-            <div className="mb-3.5">
-              <Label>Carpeta de destino</Label>
-              <div className="flex gap-2.5 items-center">
-                <TextInput value={backupSettings?.folderPath ?? ""} readOnly className="flex-1" />
-                <Button variant="secondary" onClick={handlePickFolder}>
-                  Elegir carpeta
-                </Button>
-              </div>
+          <FormRow label="Carpeta de destino">
+            <div className="flex gap-2.5 items-center">
+              <TextInput value={backupSettings?.folderPath ?? ""} readOnly className="flex-1" />
+              <Button variant="secondary" onClick={handlePickFolder}>
+                Elegir carpeta
+              </Button>
             </div>
+          </FormRow>
 
-            <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-              <div>
-                <Label>Conservar copias (días)</Label>
-                <TextInput
-                  type="number"
-                  min={0}
-                  value={backupSettings?.retentionDays ?? 30}
-                  onChange={(e) =>
-                    backupSettings &&
-                    persistBackupSettings({
-                      ...backupSettings,
-                      retentionDays: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label>Repetir automáticamente cada (días)</Label>
-                <TextInput
-                  type="number"
-                  min={1}
-                  disabled={!backupSettings?.autoBackupEnabled}
-                  value={backupSettings?.intervalDays ?? 7}
-                  onChange={(e) =>
-                    backupSettings &&
-                    persistBackupSettings({
-                      ...backupSettings,
-                      intervalDays: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-            </div>
+          <FormRow label="Conservar copias (días)">
+            <TextInput
+              type="number"
+              min={0}
+              value={backupSettings?.retentionDays ?? 30}
+              onChange={(e) =>
+                backupSettings &&
+                persistBackupSettings({
+                  ...backupSettings,
+                  retentionDays: Number(e.target.value),
+                })
+              }
+            />
+          </FormRow>
 
-            <label className="flex items-center gap-2 text-[13px] mb-4">
-              <input
-                type="checkbox"
+          <FormRow label="Copia automática">
+            <div className="flex items-center gap-2.5">
+              <Switch.Root
                 checked={backupSettings?.autoBackupEnabled ?? false}
-                onChange={(e) =>
+                onCheckedChange={(checked) =>
                   backupSettings &&
                   persistBackupSettings({
                     ...backupSettings,
-                    autoBackupEnabled: e.target.checked,
+                    autoBackupEnabled: checked,
                   })
                 }
-              />
-              Copia de seguridad automática al abrir la app
-            </label>
+                className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
+              </Switch.Root>
+              <span className="text-[13px] text-ink-soft">Al abrir la app</span>
+            </div>
+          </FormRow>
 
+          <FormRow label="Repetir cada (días)">
+            <TextInput
+              type="number"
+              min={1}
+              disabled={!backupSettings?.autoBackupEnabled}
+              value={backupSettings?.intervalDays ?? 7}
+              onChange={(e) =>
+                backupSettings &&
+                persistBackupSettings({
+                  ...backupSettings,
+                  intervalDays: Number(e.target.value),
+                })
+              }
+            />
+          </FormRow>
+
+          <div className="py-4 border-t border-border mt-1">
             {backupSettings?.lastBackupAt && (
               <div className="text-[13px] text-ink-soft mb-3.5">
                 Última copia: {new Date(backupSettings.lastBackupAt).toLocaleString()}
@@ -364,7 +404,9 @@ export function Ajustes() {
             )}
 
             {backupError && <ErrorText>{backupError}</ErrorText>}
-            {backupMessage && <div className="text-[13px] text-ink-soft mb-2">{backupMessage}</div>}
+            {backupMessage && (
+              <div className="text-[13px] text-ink-soft mb-2">{backupMessage}</div>
+            )}
 
             <div className="flex gap-2.5">
               <Button onClick={handleBackupNow} disabled={backupRunning}>
@@ -377,14 +419,16 @@ export function Ajustes() {
 
             {restoreCandidates && (
               <div className="mt-4.5 border-t border-border pt-4.5">
-                <div className="text-[13px] font-semibold mb-2.5">Elige una copia para restaurar</div>
-                <div className="flex flex-col gap-2 mb-3">
+                <div className="text-[13px] font-semibold mb-2.5">
+                  Elige una copia para restaurar
+                </div>
+                <div className="flex flex-col gap-0.5 mb-3 -mx-2">
                   {restoreCandidates.map((entry) => (
                     <button
                       key={entry.path}
                       onClick={() => handleRestoreSelect(entry)}
                       disabled={restoring}
-                      className="text-left text-[13px] font-mono px-3 py-2 border border-border rounded-lg bg-surface hover:bg-bg cursor-pointer"
+                      className="text-left text-[13px] font-mono px-3 py-2 rounded-control hover:bg-surface-alt cursor-pointer transition-colors"
                     >
                       {entry.folderName}
                     </button>
@@ -395,14 +439,9 @@ export function Ajustes() {
                 </Button>
               </div>
             )}
-          </Card>
-        </>
+          </div>
+        </Card>
       )}
-
-      <Card className="py-5.5 px-6 max-w-[640px] mt-5">
-        <div className="font-bold text-sm mb-1.5">{t("settings.dbSectionTitle")}</div>
-        <div className="text-[13px] text-ink-soft">{dbStatus}</div>
-      </Card>
     </div>
   );
 }

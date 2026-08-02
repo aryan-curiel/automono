@@ -30,6 +30,8 @@
       "phone": "Teléfono",
       "notes": "Notas",
       "invoicePrefix": "Serie de factura",
+      "newSeriesOption": "+ Nueva serie",
+      "newSeriesPrefix": "Prefijo de la nueva serie",
       "vatTreatment": "Tratamiento IVA",
       "invoiceLanguage": "Idioma de factura",
       "country": "País",
@@ -58,7 +60,7 @@
       "nifCifInvalid": "El NIF/CIF no tiene un formato válido.",
       "vatNumberInvalid": "El número de IVA debe empezar con el código de país de 2 letras (ej. BG123456789).",
       "invoicePrefixFormat": "La serie debe tener exactamente 3 letras (ej. IMO).",
-      "invoicePrefixTaken": "Esta serie ya está en uso por otro cliente.",
+      "invoicePrefixTaken": "Ya existe una serie con ese prefijo.",
       "deleteRestricted": "No se puede eliminar: este cliente tiene facturas asociadas.",
       "saveFailed": "No se pudo guardar el cliente. Inténtalo de nuevo.",
       "loadFailed": "No se pudo cargar el cliente."
@@ -69,20 +71,37 @@
       "invoicesTitle": "Facturas"
     }
   },
+  "invoices": {
+    "title": "Facturas",
+    "subtitleCount": "{{count}} facturas",
+    "newInvoice": "Nueva factura",
+    "searchPlaceholder": "Buscar",
+    "loading": "Cargando…",
+    "empty": "Aún no hay facturas",
+    "noResults": "Sin resultados",
+    "columns": {
+      "number": "Nº Factura",
+      "client": "Cliente",
+      "date": "Fecha",
+      "amount": "Importe",
+      "status": "Estado"
+    },
+    "rectifies": "rectifica {{number}}",
+    "rectifiedBy": "rectificada por {{number}}",
+    "actions": {
+      "delete": "Eliminar borrador",
+      "confirmDelete": "¿Eliminar este borrador? Esta acción no se puede deshacer."
+    },
+    "errors": {
+      "loadFailed": "No se pudo cargar la factura."
+    }
+  },
   "contracts": {
     "title": "Contratos",
-    "subtitleCount": "{{count}} contratos",
     "newContract": "Nuevo contrato",
     "editContract": "Editar contrato",
     "loading": "Cargando…",
     "empty": "No hay contratos todavía.",
-    "columns": {
-      "title": "Título",
-      "client": "Cliente",
-      "startDate": "Inicio",
-      "endDate": "Fin",
-      "status": "Estado"
-    },
     "fields": {
       "client": "Cliente",
       "clientUnset": "— Selecciona un cliente —",
@@ -93,10 +112,6 @@
       "notes": "Notas",
       "file": "Archivo",
       "noFile": "Sin archivo adjunto."
-    },
-    "filters": {
-      "allClients": "Todos los clientes",
-      "allStatuses": "Todos los estados"
     },
     "status": {
       "active": "Activo",

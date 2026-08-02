@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { WarningCircle } from "@phosphor-icons/react";
 
 interface ToastProps {
   message: string;
@@ -6,14 +8,30 @@ interface ToastProps {
 }
 
 export function Toast({ message, onDismiss }: ToastProps) {
+  const reduceMotion = useReducedMotion();
+
   useEffect(() => {
     const timer = setTimeout(onDismiss, 6000);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
   return (
-    <div className="fixed bottom-5 right-5 max-w-sm bg-danger-soft text-danger border border-danger rounded-lg px-4 py-3 text-sm font-medium shadow-lg">
-      {message}
-    </div>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -12, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -12, scale: 0.96 }}
+        transition={
+          reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }
+        }
+        className="fixed top-16 right-5 z-50 max-w-sm flex items-start gap-2.5 px-4 py-3
+                   rounded-sheet bg-sheet-glass backdrop-blur-xl backdrop-saturate-150
+                   border border-glass-border shadow-sheet text-[13px] font-medium text-ink
+                   supports-[not(backdrop-filter)]:bg-surface"
+      >
+        <WarningCircle size={18} weight="regular" className="text-danger shrink-0 mt-0.5" />
+        {message}
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -21,8 +21,10 @@ function freshDb() {
 }
 
 function insertClient(db: DatabaseSync, name: string, prefix: string): number {
+  db.exec(`INSERT INTO invoice_series (prefix) VALUES ('${prefix}')`);
+  const seriesId = (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
   db.exec(
-    `INSERT INTO clients (name, nif_cif, invoice_prefix, vat_treatment) VALUES ('${name}', 'X1', '${prefix}', 'standard')`,
+    `INSERT INTO clients (name, nif_cif, series_id, vat_treatment) VALUES ('${name}', 'X1', ${seriesId}, 'standard')`,
   );
   return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 }

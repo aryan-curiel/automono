@@ -73,13 +73,15 @@ pub async fn issue_invoice(
     let mut iva_rate: f64 = invoice.get::<Option<f64>, _>("iva_rate").unwrap_or(0.0);
 
     let client = sqlx::query(
-        "SELECT invoice_prefix, next_invoice_number, name, address, nif_cif, vat_number, vat_treatment, invoice_language
-         FROM clients WHERE id = ?",
+        "SELECT s.id AS series_id, s.prefix AS invoice_prefix, s.next_invoice_number,
+                c.name, c.address, c.nif_cif, c.vat_number, c.vat_treatment, c.invoice_language
+         FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE c.id = ?",
     )
     .bind(client_id)
     .fetch_one(&mut *tx)
     .await?;
 
+    let series_id: i64 = client.get("series_id");
     let invoice_prefix: String = client.get("invoice_prefix");
     let next_number: i64 = client.get("next_invoice_number");
     let client_name: String = client.get("name");
@@ -131,8 +133,8 @@ pub async fn issue_invoice(
     let irpf_amount = irpf_rate.map(|rate| subtotal * rate / 100.0);
     let total = subtotal + iva_amount - irpf_amount.unwrap_or(0.0);
 
-    sqlx::query("UPDATE clients SET next_invoice_number = next_invoice_number + 1 WHERE id = ?")
-        .bind(client_id)
+    sqlx::query("UPDATE invoice_series SET next_invoice_number = next_invoice_number + 1 WHERE id = ?")
+        .bind(series_id)
         .execute(&mut *tx)
         .await?;
 
@@ -296,11 +298,13 @@ pub async fn create_rectification(
     let irpf_rate: Option<f64> = original.get("irpf_rate");
 
     let client = sqlx::query(
-        "SELECT invoice_prefix, next_rectification_number FROM clients WHERE id = ?",
+        "SELECT s.id AS series_id, s.prefix AS invoice_prefix, s.next_rectification_number
+         FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE c.id = ?",
     )
     .bind(client_id)
     .fetch_one(&mut *tx)
     .await?;
+    let series_id: i64 = client.get("series_id");
     let invoice_prefix: String = client.get("invoice_prefix");
     let next_number: i64 = client.get("next_rectification_number");
 
@@ -310,9 +314,9 @@ pub async fn create_rectification(
     let total = subtotal + iva_amount - irpf_amount.unwrap_or(0.0);
 
     sqlx::query(
-        "UPDATE clients SET next_rectification_number = next_rectification_number + 1 WHERE id = ?",
+        "UPDATE invoice_series SET next_rectification_number = next_rectification_number + 1 WHERE id = ?",
     )
-    .bind(client_id)
+    .bind(series_id)
     .execute(&mut *tx)
     .await?;
 
@@ -440,7 +444,9 @@ mod tests {
             include_str!("../migrations/0005_invoice_lines.sql"),
             include_str!("../migrations/0008_invoice_lock.sql"),
             include_str!("../migrations/0009_client_vat_number.sql"),
+            include_str!("../migrations/0012_client_country.sql"),
             include_str!("../migrations/0013_rectification_numbering.sql"),
+            include_str!("../migrations/0016_invoice_series.sql"),
         ] {
             sqlx::raw_sql(sql).execute(&pool).await.expect("migrate");
         }
@@ -448,17 +454,40 @@ mod tests {
     }
 
     async fn seed_client(pool: &SqlitePool) -> i64 {
+        sqlx::query("INSERT INTO invoice_series (prefix) VALUES ('ACM')")
+            .execute(pool)
+            .await
+            .expect("insert series");
         sqlx::query(
-            "INSERT INTO clients (name, nif_cif, vat_number, invoice_prefix, vat_treatment, invoice_language)
-             VALUES ('Acme', '12345678Z', 'BG123456789', 'ACM', 'standard', 'es')",
+            "INSERT INTO clients (name, nif_cif, vat_number, series_id, vat_treatment, invoice_language)
+             VALUES ('Acme', '12345678Z', 'BG123456789', (SELECT id FROM invoice_series WHERE prefix = 'ACM'), 'standard', 'es')",
         )
         .execute(pool)
         .await
         .expect("insert client");
-        sqlx::query_scalar("SELECT id FROM clients WHERE invoice_prefix = 'ACM'")
+        sqlx::query_scalar(
+            "SELECT c.id FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE s.prefix = 'ACM'",
+        )
+        .fetch_one(pool)
+        .await
+        .expect("get client id")
+    }
+
+    async fn seed_client_on_series(pool: &SqlitePool, series_id: i64, name: &str, nif: &str) -> i64 {
+        sqlx::query(
+            "INSERT INTO clients (name, nif_cif, series_id, vat_treatment, invoice_language)
+             VALUES (?, ?, ?, 'standard', 'es')",
+        )
+        .bind(name)
+        .bind(nif)
+        .bind(series_id)
+        .execute(pool)
+        .await
+        .expect("insert client");
+        sqlx::query_scalar("SELECT last_insert_rowid()")
             .fetch_one(pool)
             .await
-            .expect("get client id")
+            .expect("last id")
     }
 
     async fn seed_draft_invoice(pool: &SqlitePool, client_id: i64) -> i64 {
@@ -532,13 +561,47 @@ mod tests {
         numbers.sort_unstable();
         assert_eq!(numbers, (1..=N as i64).collect::<Vec<_>>());
 
-        let next_number: i64 =
-            sqlx::query_scalar("SELECT next_invoice_number FROM clients WHERE id = ?")
-                .bind(client_id)
-                .fetch_one(&pool)
-                .await
-                .expect("read counter");
+        let next_number: i64 = sqlx::query_scalar(
+            "SELECT s.next_invoice_number FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE c.id = ?",
+        )
+        .bind(client_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read counter");
         assert_eq!(next_number, N as i64 + 1);
+    }
+
+    #[tokio::test]
+    async fn two_clients_sharing_a_series_get_sequential_numbers() {
+        let pool = fresh_pool().await;
+        sqlx::query("INSERT INTO invoice_series (prefix) VALUES ('ACP')")
+            .execute(&pool)
+            .await
+            .expect("insert series");
+        let series_id: i64 = sqlx::query_scalar("SELECT id FROM invoice_series WHERE prefix = 'ACP'")
+            .fetch_one(&pool)
+            .await
+            .expect("get series id");
+
+        let client_a = seed_client_on_series(&pool, series_id, "Client A", "11111111A").await;
+        let client_b = seed_client_on_series(&pool, series_id, "Client B", "22222222B").await;
+        let invoice_a = seed_draft_invoice(&pool, client_a).await;
+        let invoice_b = seed_draft_invoice(&pool, client_b).await;
+
+        let issued_a = issue_invoice(&pool, invoice_a, "2026-07-31")
+            .await
+            .expect("issue a");
+        let issued_b = issue_invoice(&pool, invoice_b, "2026-08-01")
+            .await
+            .expect("issue b");
+
+        assert_eq!(issued_a.series_prefix, "ACP");
+        assert_eq!(issued_b.series_prefix, "ACP");
+        assert_eq!(issued_a.invoice_number, 1);
+        assert_eq!(
+            issued_b.invoice_number, 2,
+            "second client on the shared series continues the same counter"
+        );
     }
 
     #[tokio::test]
@@ -672,20 +735,22 @@ mod tests {
         assert_eq!(rectification.subtotal, -100.0);
         assert_eq!(rectification.total, -issued.total);
 
-        let next_rect_number: i64 =
-            sqlx::query_scalar("SELECT next_rectification_number FROM clients WHERE id = ?")
-                .bind(client_id)
-                .fetch_one(&pool)
-                .await
-                .expect("read counter");
+        let next_rect_number: i64 = sqlx::query_scalar(
+            "SELECT s.next_rectification_number FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE c.id = ?",
+        )
+        .bind(client_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read counter");
         assert_eq!(next_rect_number, 2);
 
-        let next_invoice_number: i64 =
-            sqlx::query_scalar("SELECT next_invoice_number FROM clients WHERE id = ?")
-                .bind(client_id)
-                .fetch_one(&pool)
-                .await
-                .expect("read counter");
+        let next_invoice_number: i64 = sqlx::query_scalar(
+            "SELECT s.next_invoice_number FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE c.id = ?",
+        )
+        .bind(client_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read counter");
         assert_eq!(next_invoice_number, 2, "rectifying must not consume the regular sequence");
     }
 

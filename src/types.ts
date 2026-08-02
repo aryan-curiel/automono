@@ -15,7 +15,6 @@ export type Screen =
   | "factura-detalle"
   | "factura-nueva"
   | "factura-rectificar"
-  | "contratos"
   | "contrato-nuevo"
   | "contrato-editar"
   | "contrato-detalle"

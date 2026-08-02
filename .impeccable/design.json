@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-02T00:00:00.000Z",
+  "title": "Design System: AutoMono",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Burnt Terracotta",
+        "canonical": "oklch(55% 0.14 45)",
+        "tonalRamp": [
+          "oklch(20% 0.05 45)",
+          "oklch(30% 0.08 45)",
+          "oklch(40% 0.11 45)",
+          "oklch(50% 0.13 45)",
+          "oklch(55% 0.14 45)",
+          "oklch(65% 0.13 45)",
+          "oklch(78% 0.11 45)",
+          "oklch(92% 0.04 45)"
+        ]
+      },
+      "accent-dark": {
+        "role": "primary",
+        "displayName": "Toasted Clay",
+        "canonical": "oklch(70% 0.13 50)"
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Warm Linen",
+        "canonical": "oklch(96% 0.005 70)",
+        "tonalRamp": [
+          "oklch(18% 0.01 70)",
+          "oklch(28% 0.01 70)",
+          "oklch(40% 0.008 70)",
+          "oklch(55% 0.008 70)",
+          "oklch(70% 0.007 70)",
+          "oklch(85% 0.006 70)",
+          "oklch(92% 0.005 70)",
+          "oklch(96% 0.005 70)"
+        ]
+      },
+      "bg-dark": { "role": "neutral", "displayName": "Deep Slate Ink", "canonical": "oklch(20% 0.01 250)" },
+      "surface": { "role": "neutral", "displayName": "Paper White", "canonical": "oklch(100% 0 0)" },
+      "surface-dark": { "role": "neutral", "displayName": "Charcoal Surface", "canonical": "oklch(26% 0.01 250)" },
+      "border": { "role": "neutral", "displayName": "Dry Hairline", "canonical": "oklch(90% 0.01 70)" },
+      "ink": { "role": "neutral", "displayName": "Deep Slate Ink", "canonical": "oklch(28% 0.02 260)" },
+      "ink-soft": { "role": "neutral", "displayName": "Soft Slate", "canonical": "oklch(48% 0.02 260)" },
+      "sidebar-bg": { "role": "neutral", "displayName": "Charcoal Panel", "canonical": "oklch(28% 0.02 260)" },
+      "success": { "role": "semantic", "displayName": "Muted Forest Green", "canonical": "oklch(48% 0.1 145)" },
+      "warn": { "role": "semantic", "displayName": "Muted Amber", "canonical": "oklch(52% 0.1 85)" },
+      "info": { "role": "semantic", "displayName": "Muted Steel Blue", "canonical": "oklch(48% 0.1 250)" },
+      "danger": { "role": "semantic", "displayName": "Muted Brick Red", "canonical": "oklch(48% 0.14 30)" }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Toolbar/page-header titles only, large-title weight." },
+      "body": { "displayName": "Body", "purpose": "Default UI text, form values, table cells." },
+      "label": { "displayName": "Label", "purpose": "Field labels, column headers." },
+      "mono": { "displayName": "Mono", "purpose": "Money, fiscal codes, invoice/contract numbers." }
+    },
+    "shadows": [
+      { "name": "float", "value": "0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.1)", "purpose": "Sticky toolbar and anything pinned above scrolling content." },
+      { "name": "sheet", "value": "0 4px 8px rgb(28 36 48 / 0.08), 0 24px 48px rgb(28 36 48 / 0.18)", "purpose": "Modals, sheets, popovers, toast." }
+    ],
+    "motion": [
+      { "name": "spring-sheet", "value": "spring(stiffness: 380, damping: 32)", "purpose": "Sheet/dialog entrance; disabled under prefers-reduced-motion." },
+      { "name": "ease-hover", "value": "transition-colors/transform 150ms ease-out", "purpose": "Hover/press feedback on buttons, rows, fields." }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid accent action button, the app's one deliberate color statement.",
+      "html": "<button class=\"ds-btn-primary\">Guardar</button>",
+      "css": ".ds-btn-primary { background: #c2632c; color: #fff; font-weight: 600; font-size: 13px; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.12); transition: filter 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { filter: brightness(1.05); } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(194,99,44,0.35); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Bordered neutral action button.",
+      "html": "<button class=\"ds-btn-secondary\">Cancelar</button>",
+      "css": ".ds-btn-secondary { background: #ffffff; color: #1c2430; font-weight: 600; font-size: 13px; padding: 8px 16px; border-radius: 8px; border: 1px solid #e6e1d6; cursor: pointer; transition: background-color 150ms ease-out; } .ds-btn-secondary:hover { background: #f2efe9; } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(194,99,44,0.35); }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field-input",
+      "description": "Recessed native-feeling text input with accent focus ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"NIF / CIF\" />",
+      "css": ".ds-input { width: 100%; font-size: 13px; padding: 8px 12px; border-radius: 8px; background: #ffffff; color: #1c2430; border: 1px solid #e6e1d6; box-shadow: inset 0 1px 1px rgba(0,0,0,0.03); transition: box-shadow 150ms ease-out, border-color 150ms ease-out; } .ds-input:focus { outline: none; border-color: #c2632c; box-shadow: 0 0 0 3px rgba(194,99,44,0.35); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat in-flow container, hairline border, no shadow.",
+      "html": "<div class=\"ds-card\">Contenido</div>",
+      "css": ".ds-card { background: #ffffff; border: 1px solid #e6e1d6; border-radius: 12px; padding: 16px; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Soft-tinted pill for invoice/contract status.",
+      "html": "<span class=\"ds-badge\">Pagada</span>",
+      "css": ".ds-badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; background: #e3f2e8; color: #2f7a4f; }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "sidebar-nav-item",
+      "description": "Opaque nav row with sliding accent-tinted selection pill.",
+      "html": "<div class=\"ds-nav-item ds-nav-item--active\"><span>Facturas</span></div>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 9999px; color: #9aa5b3; font-size: 13px; font-weight: 500; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item--active { background: rgba(224,138,79,0.32); color: #ffffff; } .ds-nav-item:hover:not(.ds-nav-item--active) { background: rgba(255,255,255,0.06); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Native Panel",
+    "overview": "AutoMono is built to feel like it shipped inside macOS itself, a System Settings pane or a Mail/Notes-caliber first-party app, not a web dashboard wearing a rounded-corner costume. Every material decision asks one question: would this exist in a real NSView? Glass is honest (it only blurs where content actually scrolls beneath it), the sidebar is opaque exactly like Mail's, motion is a spring or nothing, and the one terracotta accent stands in for the system's own accent-color picker. The system explicitly rejects SaaS-dashboard aesthetics: no hero metrics, no gradient accents, no asymmetric landing-page layout, no second accent color competing with the terracotta lock, and no decorative glassmorphism applied where nothing is scrolling behind it. Confidence here comes from restraint and correctness, not visual flourish, because the data on screen is someone's real invoices and tax filings.",
+    "keyCharacteristics": [
+      "One locked accent (terracotta), used identically everywhere, never swapped for system blue",
+      "Honest glass: blur only over scrolling content (toolbar, sheets, menus); flat opaque elsewhere",
+      "Grid-predictable density: dense financial tables, organized rather than cramped",
+      "Springs, never bounce: motion is functional, fully disabled under prefers-reduced-motion"
+    ],
+    "rules": [
+      { "name": "The Color Consistency Lock", "body": "The accent is terracotta, everywhere, in both themes. Never replaced with system blue, never joined by a second accent hue.", "section": "colors" },
+      { "name": "The Honest Glass Rule", "body": "backdrop-filter glass only applies to elements over genuinely scrolling content (toolbar, sheets, menus, popovers, toast). Sidebar and in-flow cards stay flat and opaque.", "section": "colors" },
+      { "name": "The Numeric Mono Rule", "body": "Any value that is money, a fiscal code, or an invoice/contract number renders in font-mono. Plain prose never does.", "section": "typography" },
+      { "name": "The Flat-Card Rule", "body": "Card and other in-flow containers are shadow-less by design, border only. Shadow is reserved for floating layers.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use the terracotta accent identically for every primary action, active state, focus ring, and selection highlight.",
+      "Do keep glass restricted to elements over scrolling content: toolbar, sheets, menus, popovers, toast.",
+      "Do keep in-flow Card and list rows flat: hairline border, zero shadow.",
+      "Do render money, fiscal codes, and invoice/contract numbers in font-mono.",
+      "Do disable/shorten all motion under prefers-reduced-motion.",
+      "Do use the fixed radius scale exactly: control 8px, card 12px, sheet 16px, pill for badges/switches."
+    ],
+    "donts": [
+      "Don't replace the terracotta accent with system blue or introduce a second accent color anywhere.",
+      "Don't apply glass/blur to the sidebar or to in-flow cards.",
+      "Don't add a shadow to an in-flow card or list row.",
+      "Don't use bounce/elastic easing anywhere.",
+      "Don't design asymmetric, landing-page-style layouts.",
+      "Don't add responsive breakpoints or mobile navigation."
+    ]
+  }
+}

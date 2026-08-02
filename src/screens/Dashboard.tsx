@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { TrendUp, Clock, UsersThree, Wallet } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
+import { KpiTile } from "../components/ui/KpiTile";
 import { PageHeader } from "../components/PageHeader";
 import { listClients } from "../db/clients";
 import { listExpenses } from "../db/expenses";
@@ -45,26 +47,39 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice }: DashboardProp
     .reduce((s, inv) => s + inv.total, 0);
 
   const kpis = [
-    { label: "Facturado", value: formatEUR(totalFacturado), warn: false },
-    { label: "Pendiente de cobro", value: formatEUR(pendiente), warn: true },
-    { label: "Clientes activos", value: String(clientCount), warn: false },
+    {
+      label: "Facturado",
+      value: formatEUR(totalFacturado),
+      icon: TrendUp,
+      tone: "neutral" as const,
+    },
+    {
+      label: "Pendiente de cobro",
+      value: formatEUR(pendiente),
+      icon: Clock,
+      tone: "warn" as const,
+    },
+    {
+      label: "Clientes activos",
+      value: String(clientCount),
+      icon: UsersThree,
+      tone: "neutral" as const,
+    },
     {
       label: "Gastos (mes)",
       value: formatEUR(expensesThisMonth),
-      warn: false,
+      icon: Wallet,
+      tone: "neutral" as const,
     },
   ];
 
   return (
-    <div className="px-10 pt-8 pb-15">
+    <div className="px-8 pb-15">
       <PageHeader
-        title="Resumen"
+        title="Inicio"
         actions={
           <>
-            <Button variant="secondary" onClick={() => onNavigate("clientes")}>
-              + Cliente
-            </Button>
-            <Button variant="secondary" onClick={() => onNavigate("gastos")}>
+            <Button variant="secondary" onClick={() => onNavigate("gasto-nuevo")}>
               + Gasto
             </Button>
             <Button onClick={() => onNavigate("factura-nueva")}>+ Nueva factura</Button>
@@ -72,12 +87,9 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice }: DashboardProp
         }
       />
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-3.5 mb-6">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="py-4.5 px-5">
-            <div className="font-semibold text-xs text-ink-soft mb-2.5">{kpi.label}</div>
-            <div className="font-bold text-2xl font-mono tracking-tight">{kpi.value}</div>
-          </Card>
+          <KpiTile key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} tone={kpi.tone} />
         ))}
       </div>
 
@@ -90,7 +102,8 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice }: DashboardProp
               <div
                 key={inv.id}
                 onClick={() => onOpenInvoice(inv.id)}
-                className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0 cursor-pointer"
+                className="flex items-center justify-between py-2.5 px-2 -mx-2 rounded-control border-b border-border last:border-b-0
+                           cursor-pointer transition-colors hover:bg-surface-alt"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="font-semibold text-[13px] font-mono text-accent w-19 shrink-0">

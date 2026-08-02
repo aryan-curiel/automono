@@ -21,27 +21,19 @@ function freshDb() {
 }
 
 describe("migrations", () => {
-  it("enforces UNIQUE clients.invoice_prefix", () => {
+  it("enforces UNIQUE invoice_series.prefix", () => {
     const db = freshDb();
-    db.exec(
-      "INSERT INTO clients (name, nif_cif, invoice_prefix, vat_treatment) VALUES ('A', 'X1', 'DUP', 'standard')",
+    db.exec("INSERT INTO invoice_series (prefix) VALUES ('DUP')");
+    expect(() => db.exec("INSERT INTO invoice_series (prefix) VALUES ('DUP')")).toThrow(
+      /UNIQUE constraint failed/,
     );
-    expect(() =>
-      db.exec(
-        "INSERT INTO clients (name, nif_cif, invoice_prefix, vat_treatment) VALUES ('B', 'X2', 'DUP', 'standard')",
-      ),
-    ).toThrow(/UNIQUE constraint failed/);
   });
 
   it("defaults next_invoice_number and next_rectification_number to 1", () => {
     const db = freshDb();
-    db.exec(
-      "INSERT INTO clients (name, nif_cif, invoice_prefix, vat_treatment) VALUES ('A', 'X1', 'ABC', 'standard')",
-    );
+    db.exec("INSERT INTO invoice_series (prefix) VALUES ('ABC')");
     const row = db
-      .prepare(
-        "SELECT next_invoice_number, next_rectification_number FROM clients WHERE invoice_prefix = 'ABC'",
-      )
+      .prepare("SELECT next_invoice_number, next_rectification_number FROM invoice_series WHERE prefix = 'ABC'")
       .get() as { next_invoice_number: number; next_rectification_number: number };
     expect(row.next_invoice_number).toBe(1);
     expect(row.next_rectification_number).toBe(1);
@@ -49,11 +41,15 @@ describe("migrations", () => {
 
   it("allows a regular invoice and a rectification to share series_prefix/invoice_number", () => {
     const db = freshDb();
+    db.exec("INSERT INTO invoice_series (prefix) VALUES ('IMO')");
+    const seriesId = (
+      db.prepare("SELECT id FROM invoice_series WHERE prefix = 'IMO'").get() as { id: number }
+    ).id;
     db.exec(
-      "INSERT INTO clients (name, nif_cif, invoice_prefix, vat_treatment) VALUES ('A', 'X1', 'IMO', 'standard')",
+      `INSERT INTO clients (name, nif_cif, series_id, vat_treatment) VALUES ('A', 'X1', ${seriesId}, 'standard')`,
     );
     const clientId = (
-      db.prepare("SELECT id FROM clients WHERE invoice_prefix = 'IMO'").get() as { id: number }
+      db.prepare("SELECT id FROM clients WHERE series_id = ?").get(seriesId) as { id: number }
     ).id;
     db.exec(
       `INSERT INTO invoices (client_id, series_prefix, invoice_number, status, is_rectification)

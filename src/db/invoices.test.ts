@@ -21,8 +21,9 @@ function freshDb() {
 }
 
 function seedClient(db: DatabaseSync) {
+  db.exec("INSERT INTO invoice_series (prefix) VALUES ('AAA')");
   db.exec(
-    "INSERT INTO clients (name, nif_cif, invoice_prefix, vat_treatment) VALUES ('A', 'X1', 'AAA', 'standard')",
+    "INSERT INTO clients (name, nif_cif, series_id, vat_treatment) VALUES ('A', 'X1', 1, 'standard')",
   );
 }
 
@@ -82,6 +83,26 @@ describe("invoice immutability triggers", () => {
     expect(() => db.exec("UPDATE invoices SET total = 999 WHERE id = 1")).toThrow(
       /issued invoices are immutable/,
     );
+  });
+
+  it("deleting a draft invoice removes it", () => {
+    const db = freshDb();
+    seedClient(db);
+    db.exec("INSERT INTO invoices (client_id, status) VALUES (1, 'draft')");
+    const result = db.prepare("DELETE FROM invoices WHERE id = 1 AND status = 'draft'").run();
+    expect(result.changes).toBe(1);
+    expect(db.prepare("SELECT * FROM invoices WHERE id = 1").all()).toHaveLength(0);
+  });
+
+  it("the draft-only guard leaves an issued invoice untouched", () => {
+    const db = freshDb();
+    seedClient(db);
+    db.exec(
+      "INSERT INTO invoices (client_id, status, series_prefix, invoice_number) VALUES (1, 'issued', 'AAA', 1)",
+    );
+    const result = db.prepare("DELETE FROM invoices WHERE id = 1 AND status = 'draft'").run();
+    expect(result.changes).toBe(0);
+    expect(db.prepare("SELECT * FROM invoices WHERE id = 1").all()).toHaveLength(1);
   });
 
   it("blocks flipping an issued invoice back to draft", () => {

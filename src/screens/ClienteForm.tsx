@@ -2,12 +2,22 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { ErrorText, Label, Select, TextArea, TextInput } from "../components/ui/Field";
-import { BackLink } from "../components/PageHeader";
+import { ErrorText, Select, TextArea, TextInput } from "../components/ui/Field";
+import { FormRow } from "../components/ui/FormRow";
+import { PageHeader } from "../components/PageHeader";
 import { createClient, getClient, updateClient } from "../db/clients";
 import type { ClientRecord, InvoiceLanguage, NewClient, VatTreatment } from "../db/clients";
-import { isValidInvoicePrefix, isValidNifCif, isValidVatNumber, suggestVatTreatment } from "../features/clients";
+import { listSeries } from "../db/series";
+import type { SeriesRecord } from "../db/series";
+import {
+  isValidInvoicePrefix,
+  isValidNifCif,
+  isValidVatNumber,
+  suggestVatTreatment,
+} from "../features/clients";
 import { COUNTRY_CODES, countryName } from "../lib/countries";
+
+const NEW_SERIES = "__new__";
 
 interface ClienteFormProps {
   mode: "create" | "edit";
@@ -24,7 +34,8 @@ interface FormState {
   email: string;
   phone: string;
   notes: string;
-  invoicePrefix: string;
+  seriesChoice: string;
+  newSeriesPrefix: string;
   vatTreatment: VatTreatment;
   invoiceLanguage: InvoiceLanguage;
   country: string;
@@ -38,7 +49,8 @@ const EMPTY_FORM: FormState = {
   email: "",
   phone: "",
   notes: "",
-  invoicePrefix: "",
+  seriesChoice: NEW_SERIES,
+  newSeriesPrefix: "",
   vatTreatment: "standard",
   invoiceLanguage: "es",
   country: "",
@@ -53,7 +65,8 @@ function toFormState(client: ClientRecord): FormState {
     email: client.email ?? "",
     phone: client.phone ?? "",
     notes: client.notes ?? "",
-    invoicePrefix: client.invoicePrefix,
+    seriesChoice: String(client.seriesId),
+    newSeriesPrefix: "",
     vatTreatment: client.vatTreatment,
     invoiceLanguage: client.invoiceLanguage,
     country: client.country ?? "",
@@ -71,6 +84,13 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [vatNumberEdited, setVatNumberEdited] = useState(false);
+  const [seriesList, setSeriesList] = useState<SeriesRecord[]>([]);
+
+  useEffect(() => {
+    listSeries()
+      .then(setSeriesList)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (mode !== "edit" || clientId === undefined) return;
@@ -125,7 +145,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
     if (!form.name.trim()) next.name = t("clients.errors.nameRequired");
     if (!isValidNifCif(form.nifCif)) next.nifCif = t("clients.errors.nifCifInvalid");
     if (!isValidVatNumber(form.vatNumber)) next.vatNumber = t("clients.errors.vatNumberInvalid");
-    if (!isValidInvoicePrefix(form.invoicePrefix))
+    if (form.seriesChoice === NEW_SERIES && !isValidInvoicePrefix(form.newSeriesPrefix))
       next.invoicePrefix = t("clients.errors.invoicePrefixFormat");
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -143,7 +163,10 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       notes: form.notes.trim() || null,
-      invoicePrefix: form.invoicePrefix.trim().toUpperCase(),
+      series:
+        form.seriesChoice === NEW_SERIES
+          ? { newPrefix: form.newSeriesPrefix.trim().toUpperCase() }
+          : { id: Number(form.seriesChoice) },
       vatTreatment: form.vatTreatment,
       invoiceLanguage: form.invoiceLanguage,
       country: form.country || null,
@@ -160,7 +183,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
         if (updated) onSaved(updated);
       }
     } catch (err) {
-      if (String(err).includes("UNIQUE") && String(err).includes("invoice_prefix")) {
+      if (String(err).includes("UNIQUE") && String(err).includes("invoice_series")) {
         setErrors((e) => ({ ...e, invoicePrefix: t("clients.errors.invoicePrefixTaken") }));
       } else {
         setSaveError(t("clients.errors.saveFailed"));
@@ -172,7 +195,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
 
   if (loading) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-ink-soft">{t("clients.loading")}</div>
       </div>
     );
@@ -180,140 +203,133 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
 
   if (loadError) {
     return (
-      <div className="px-10 pt-8 pb-15">
+      <div className="px-8 pb-15">
         <div className="text-sm text-danger">{t("clients.errors.loadFailed")}</div>
       </div>
     );
   }
 
   return (
-    <div className="px-10 pt-8 pb-15">
-      <BackLink label={t("clients.title")} onClick={onCancel} />
-      <h1 className="font-extrabold text-2xl tracking-tight m-0 mb-5.5">
-        {mode === "create" ? t("clients.newClient") : t("clients.editClient")}
-      </h1>
+    <div className="px-8 pb-15">
+      <PageHeader
+        title={mode === "create" ? t("clients.newClient") : t("clients.editClient")}
+        backLabel={t("clients.title")}
+        onBack={onCancel}
+      />
 
-      <Card className="p-5.5 max-w-[640px]">
-        <div className="mb-3.5">
-          <Label>{t("clients.fields.name")}</Label>
+      <Card className="px-5 max-w-[640px]">
+        <FormRow label={t("clients.fields.name")} error={errors.name}>
           <TextInput
             value={form.name}
             error={!!errors.name}
             onChange={(e) => set("name", e.target.value)}
           />
-          {errors.name && <ErrorText>{errors.name}</ErrorText>}
-        </div>
+        </FormRow>
 
-        <div className="grid grid-cols-3 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("clients.fields.nifCif")}</Label>
+        <FormRow label={t("clients.fields.nifCif")} error={errors.nifCif}>
+          <TextInput
+            mono
+            value={form.nifCif}
+            error={!!errors.nifCif}
+            onChange={(e) => handleNifCifChange(e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label={t("clients.fields.vatNumber")} error={errors.vatNumber}>
+          <TextInput
+            mono
+            value={form.vatNumber}
+            error={!!errors.vatNumber}
+            onChange={(e) => handleVatNumberChange(e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label={t("clients.fields.invoicePrefix")}>
+          <Select value={form.seriesChoice} onChange={(e) => set("seriesChoice", e.target.value)}>
+            <option value={NEW_SERIES}>{t("clients.fields.newSeriesOption")}</option>
+            {seriesList.map((series) => (
+              <option key={series.id} value={String(series.id)}>
+                {series.prefix}
+              </option>
+            ))}
+          </Select>
+        </FormRow>
+
+        {form.seriesChoice === NEW_SERIES && (
+          <FormRow label={t("clients.fields.newSeriesPrefix")} error={errors.invoicePrefix}>
             <TextInput
               mono
-              value={form.nifCif}
-              error={!!errors.nifCif}
-              onChange={(e) => handleNifCifChange(e.target.value)}
-            />
-            {errors.nifCif && <ErrorText>{errors.nifCif}</ErrorText>}
-          </div>
-          <div>
-            <Label>{t("clients.fields.vatNumber")}</Label>
-            <TextInput
-              mono
-              value={form.vatNumber}
-              error={!!errors.vatNumber}
-              onChange={(e) => handleVatNumberChange(e.target.value)}
-            />
-            {errors.vatNumber && <ErrorText>{errors.vatNumber}</ErrorText>}
-          </div>
-          <div>
-            <Label>{t("clients.fields.invoicePrefix")}</Label>
-            <TextInput
-              mono
-              value={form.invoicePrefix}
+              value={form.newSeriesPrefix}
               error={!!errors.invoicePrefix}
-              onChange={(e) => set("invoicePrefix", e.target.value)}
+              onChange={(e) => set("newSeriesPrefix", e.target.value)}
             />
-            {errors.invoicePrefix && <ErrorText>{errors.invoicePrefix}</ErrorText>}
-          </div>
-        </div>
+          </FormRow>
+        )}
 
-        <div className="mb-3.5">
-          <Label>{t("clients.fields.address")}</Label>
+        <FormRow label={t("clients.fields.address")}>
           <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />
-        </div>
+        </FormRow>
 
-        <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("clients.fields.email")}</Label>
-            <TextInput
-              type="email"
-              value={form.email}
-              onChange={(e) => set("email", e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>{t("clients.fields.phone")}</Label>
-            <TextInput value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-          </div>
-        </div>
+        <FormRow label={t("clients.fields.email")}>
+          <TextInput
+            type="email"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+          />
+        </FormRow>
 
-        <div className="grid grid-cols-3 gap-3.5 mb-3.5">
-          <div>
-            <Label>{t("clients.fields.country")}</Label>
-            <Select value={form.country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="">{t("clients.fields.countryUnset")}</option>
-              {COUNTRY_CODES.map((code) => (
-                <option key={code} value={code}>
-                  {countryName(code, i18n.language)}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>{t("clients.fields.vatTreatment")}</Label>
-            <Select
-              value={form.vatTreatment}
-              onChange={(e) => set("vatTreatment", e.target.value as VatTreatment)}
-            >
-              <option value="standard">{t("clients.vatTreatment.standard")}</option>
-              <option value="reverse_charge_eu">
-                {t("clients.vatTreatment.reverse_charge_eu")}
+        <FormRow label={t("clients.fields.phone")}>
+          <TextInput value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+        </FormRow>
+
+        <FormRow label={t("clients.fields.country")}>
+          <Select value={form.country} onChange={(e) => setCountry(e.target.value)}>
+            <option value="">{t("clients.fields.countryUnset")}</option>
+            {COUNTRY_CODES.map((code) => (
+              <option key={code} value={code}>
+                {countryName(code, i18n.language)}
               </option>
-              <option value="export_outside_eu">
-                {t("clients.vatTreatment.export_outside_eu")}
-              </option>
-              <option value="exempt_other">{t("clients.vatTreatment.exempt_other")}</option>
-            </Select>
-          </div>
-          <div>
-            <Label>{t("clients.fields.invoiceLanguage")}</Label>
-            <Select
-              value={form.invoiceLanguage}
-              onChange={(e) => set("invoiceLanguage", e.target.value as InvoiceLanguage)}
-            >
-              <option value="es">{t("clients.invoiceLanguage.es")}</option>
-              <option value="en">{t("clients.invoiceLanguage.en")}</option>
-              <option value="ca">{t("clients.invoiceLanguage.ca")}</option>
-            </Select>
-          </div>
-        </div>
+            ))}
+          </Select>
+        </FormRow>
 
-        <div className="mb-4.5">
-          <Label>{t("clients.fields.notes")}</Label>
+        <FormRow label={t("clients.fields.vatTreatment")}>
+          <Select
+            value={form.vatTreatment}
+            onChange={(e) => set("vatTreatment", e.target.value as VatTreatment)}
+          >
+            <option value="standard">{t("clients.vatTreatment.standard")}</option>
+            <option value="reverse_charge_eu">{t("clients.vatTreatment.reverse_charge_eu")}</option>
+            <option value="export_outside_eu">{t("clients.vatTreatment.export_outside_eu")}</option>
+            <option value="exempt_other">{t("clients.vatTreatment.exempt_other")}</option>
+          </Select>
+        </FormRow>
+
+        <FormRow label={t("clients.fields.invoiceLanguage")}>
+          <Select
+            value={form.invoiceLanguage}
+            onChange={(e) => set("invoiceLanguage", e.target.value as InvoiceLanguage)}
+          >
+            <option value="es">{t("clients.invoiceLanguage.es")}</option>
+            <option value="en">{t("clients.invoiceLanguage.en")}</option>
+            <option value="ca">{t("clients.invoiceLanguage.ca")}</option>
+          </Select>
+        </FormRow>
+
+        <FormRow label={t("clients.fields.notes")}>
           <TextArea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-        </div>
-
-        {saveError && <ErrorText>{saveError}</ErrorText>}
-
-        <div className="flex gap-2.5 mt-4.5">
-          <Button onClick={handleSubmit} disabled={saving}>
-            {t("clients.actions.save")}
-          </Button>
-          <Button variant="secondary" onClick={onCancel} disabled={saving}>
-            {t("clients.actions.cancel")}
-          </Button>
-        </div>
+        </FormRow>
       </Card>
+
+      {saveError && <ErrorText>{saveError}</ErrorText>}
+      <div className="flex gap-2.5 justify-end mt-5">
+        <Button variant="secondary" onClick={onCancel} disabled={saving}>
+          {t("clients.actions.cancel")}
+        </Button>
+        <Button onClick={handleSubmit} disabled={saving}>
+          {t("clients.actions.save")}
+        </Button>
+      </div>
     </div>
   );
 }

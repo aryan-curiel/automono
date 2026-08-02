@@ -107,6 +107,12 @@ pub fn run() {
             sql: include_str!("../migrations/0015_business_vat_number.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 16,
+            description: "invoice_series",
+            sql: include_str!("../migrations/0016_invoice_series.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
