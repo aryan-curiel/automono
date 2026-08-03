@@ -57,3 +57,25 @@ export function defaultQuarterPeriod(): Period {
   const quarter = (Math.floor(now.getMonth() / 3) + 1) as 1 | 2 | 3 | 4;
   return quarterRange(now.getFullYear(), quarter);
 }
+
+function shiftYear(dateIso: string, deltaYears: number): string {
+  const [year, month, day] = dateIso.split("-").map(Number);
+  const newYear = year + deltaYears;
+  const clampedDay = Math.min(day, lastDayOfMonth(newYear, month));
+  return iso(newYear, month, clampedDay);
+}
+
+/**
+ * The same month/quarter/year one year earlier, for YoY comparisons. month/quarter/year
+ * periods never cross a calendar-year boundary, so `from` and `to` share one year and the
+ * label always contains it — a plain year substring swap is enough.
+ */
+export function priorYearPeriod(period: Period): Period {
+  const [year] = period.from.split("-");
+  const priorYear = String(Number(year) - 1);
+  return {
+    from: shiftYear(period.from, -1),
+    to: shiftYear(period.to, -1),
+    label: period.label.replace(year, priorYear),
+  };
+}

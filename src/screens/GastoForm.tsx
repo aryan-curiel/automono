@@ -8,6 +8,7 @@ import { PageHeader } from "../components/PageHeader";
 import {
   attachExpenseFile,
   createExpense,
+  extractReceiptFields,
   getExpense,
   pickExpenseFile,
   updateExpense,
@@ -109,8 +110,26 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
     setAttaching(true);
     setSaveError(null);
     try {
-      const stored = await attachExpenseFile(source);
-      set("receiptFilePath", stored);
+      // Best-effort PDF text extraction, run before attaching so a real receipt date (not
+      // today's fallback) is available for the attach-time filename below.
+      const extracted = source.toLowerCase().endsWith(".pdf")
+        ? await extractReceiptFields(source).catch(() => null)
+        : null;
+
+      // ponytail: falls back to today's date and a generic note when the form has nothing
+      // typed yet and extraction found nothing either.
+      const date = form.date || extracted?.date || new Date().toISOString().slice(0, 10);
+      const note = form.description.trim() || form.category.trim() || extracted?.vendorGuess || "gasto";
+      const stored = await attachExpenseFile(source, date, note);
+
+      setForm((f) => ({
+        ...f,
+        receiptFilePath: stored,
+        date: f.date || extracted?.date || f.date,
+        amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
+        ivaAmount: f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
+        description: f.description || extracted?.vendorGuess || f.description,
+      }));
     } catch {
       setSaveError(t("expenses.errors.attachFailed"));
     } finally {

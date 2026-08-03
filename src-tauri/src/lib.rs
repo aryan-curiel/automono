@@ -3,20 +3,25 @@ use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod backup;
+mod branding;
 mod contracts;
 mod expenses;
 mod export;
 mod invoicing;
 mod pdf;
+mod receipt_extract;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    let migrations = vec![
+/// The full migration list, in order. Extracted from `run()` so a test can check it against
+/// the actual `migrations/` directory — every `NNNN_*.sql` file must be registered here, or it
+/// silently never runs against a real (non-test) database, since the frontend's own migration
+/// test harness re-scans the directory independently and won't catch a registration gap here.
+fn all_migrations() -> Vec<Migration> {
+    vec![
         Migration {
             version: 1,
             description: "scaffold_healthcheck",
@@ -113,7 +118,18 @@ pub fn run() {
             sql: include_str!("../migrations/0016_invoice_series.sql"),
             kind: MigrationKind::Up,
         },
-    ];
+        Migration {
+            version: 17,
+            description: "business_logo",
+            sql: include_str!("../migrations/0017_business_logo.sql"),
+            kind: MigrationKind::Up,
+        },
+    ]
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    let migrations = all_migrations();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -132,10 +148,14 @@ pub fn run() {
             contracts::open_contract_file_cmd,
             expenses::attach_expense_file_cmd,
             expenses::open_expense_file_cmd,
+            receipt_extract::extract_receipt_fields_cmd,
+            branding::attach_business_logo_cmd,
             export::write_text_file_cmd,
+            export::export_gestor_bundle_cmd,
             backup::backup_now_cmd,
             backup::restore_backup_cmd,
-            backup::list_backups_cmd
+            backup::list_backups_cmd,
+            backup::open_backup_folder_cmd
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -145,4 +165,42 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every `migrations/NNNN_*.sql` file must be registered in `all_migrations()`, in order —
+    /// a file that exists on disk but isn't listed here silently never runs against a real
+    /// database (unlike the frontend's migration test, which re-scans the directory itself and
+    /// so can't catch a gap in this Rust-side registration).
+    #[test]
+    fn all_sql_files_are_registered_as_migrations() {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations");
+        let mut files: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .filter(|name| name.ends_with(".sql"))
+            .collect();
+        files.sort();
+
+        let migrations = all_migrations();
+        assert_eq!(
+            migrations.len(),
+            files.len(),
+            "expected {} migration(s) registered in all_migrations() to match {} .sql file(s) on disk: {:?}",
+            migrations.len(),
+            files.len(),
+            files,
+        );
+
+        for (i, file) in files.iter().enumerate() {
+            let expected_version = (i + 1) as i64;
+            assert_eq!(
+                migrations[i].version, expected_version,
+                "migrations/{file} should be registered as version {expected_version}",
+            );
+        }
+    }
 }

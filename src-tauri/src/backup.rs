@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use sqlx::{Row, SqlitePool};
 use tauri::{AppHandle, Manager};
+use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_sql::{DbInstances, DbPool};
 
 const DB_NAME: &str = "sqlite:automono.db";
@@ -197,6 +198,11 @@ pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result
         }
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn open_backup_folder_cmd(app: AppHandle, folder: String) -> Result<(), String> {
+    app.opener().open_path(folder, None::<&str>).map_err(|e| e.to_string())
 }
 
 #[derive(Serialize)]

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { save } from "@tauri-apps/plugin-dialog";
-import { TrendUp, Percent, ChartLineUp, DownloadSimple } from "@phosphor-icons/react";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { TrendUp, Percent, ChartLineUp, Scales, DownloadSimple, FolderOpen } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { KpiTile } from "../components/ui/KpiTile";
@@ -8,11 +8,18 @@ import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
-import { writeTextFile } from "../db/export";
-import { defaultQuarterPeriod, type Period } from "../lib/dateRange";
+import { writeTextFile, exportGestorBundle } from "../db/export";
+import { defaultQuarterPeriod, priorYearPeriod, type Period } from "../lib/dateRange";
+import { yoyDelta } from "../lib/analytics";
 import { csvRow } from "../lib/csv";
 import { formatEUR, formatDate } from "../lib/format";
 import type { InvoiceListItem } from "../db/invoices";
+
+function deltaLabel(delta: number | null): string | null {
+  if (delta === null) return null;
+  const sign = delta >= 0 ? "+" : "";
+  return `${sign}${delta.toFixed(0)}% vs año anterior`;
+}
 
 interface ResumenTrimestralProps {
   invoices: InvoiceListItem[];
@@ -61,23 +68,34 @@ function buildExportCsv(invoices: InvoiceListItem[], expenses: ExpenseRecord[]):
   return lines.join("\n");
 }
 
-export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
-  const [period, setPeriod] = useState<Period>(defaultQuarterPeriod);
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  useEffect(() => {
-    listExpenses({ from: period.from, to: period.to }).then(setExpenses);
-  }, [period]);
-
-  const qInvoices = invoices.filter(
+function invoicesInPeriod(invoices: InvoiceListItem[], period: Period): InvoiceListItem[] {
+  return invoices.filter(
     (inv) =>
       inv.status !== "draft" &&
       inv.issueDate !== null &&
       inv.issueDate >= period.from &&
       inv.issueDate <= period.to,
   );
+}
+
+export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
+  const [period, setPeriod] = useState<Period>(defaultQuarterPeriod);
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [priorExpenses, setPriorExpenses] = useState<ExpenseRecord[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [bundling, setBundling] = useState(false);
+
+  useEffect(() => {
+    listExpenses({ from: period.from, to: period.to }).then(setExpenses);
+  }, [period]);
+
+  const priorPeriod = priorYearPeriod(period);
+  useEffect(() => {
+    listExpenses({ from: priorPeriod.from, to: priorPeriod.to }).then(setPriorExpenses);
+  }, [priorPeriod.from, priorPeriod.to]);
+
+  const qInvoices = invoicesInPeriod(invoices, period);
 
   const byRate = new Map<number, { base: number; iva: number }>();
   qInvoices.forEach((inv) => {
@@ -98,6 +116,19 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
     0,
   );
   const netIrpfIncome = invoicedBase - expensesDeductibleBase;
+  const margin = netIrpfIncome - irpfWithheld;
+
+  // YoY: same period, one year earlier — same calc, reused inputs.
+  const priorInvoices = invoicesInPeriod(invoices, priorPeriod);
+  const priorInvoicedBase = priorInvoices.reduce((s, inv) => s + inv.subtotal, 0);
+  const priorIrpfWithheld = priorInvoices.reduce((s, inv) => s + inv.irpfAmount, 0);
+  const priorExpensesDeductibleBase = priorExpenses.reduce(
+    (s, e) => s + e.amount * (e.deductiblePct / 100),
+    0,
+  );
+  const priorMargin = priorInvoicedBase - priorExpensesDeductibleBase - priorIrpfWithheld;
+  const revenueDelta = deltaLabel(yoyDelta(invoicedBase, priorInvoicedBase));
+  const marginDelta = deltaLabel(yoyDelta(margin, priorMargin));
 
   async function handleExport() {
     setExportError(null);
@@ -116,6 +147,26 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
     }
   }
 
+  async function handleExportBundle() {
+    setExportError(null);
+    const destFolder = await open({ directory: true, multiple: false });
+    if (!destFolder || typeof destFolder !== "string") return;
+    setBundling(true);
+    try {
+      // Only already-generated/attached files are included — an invoice never opened/downloaded
+      // has no PDF yet, and won't show up here. Open it once first if it's missing.
+      const invoicePdfPaths = qInvoices.map((inv) => inv.pdfPath).filter((p): p is string => !!p);
+      const expenseReceiptPaths = expenses
+        .map((e) => e.receiptFilePath)
+        .filter((p): p is string => !!p);
+      await exportGestorBundle(destFolder, invoicePdfPaths, expenseReceiptPaths, buildExportCsv(qInvoices, expenses));
+    } catch (e) {
+      setExportError(`No se pudo exportar el paquete: ${String(e)}`);
+    } finally {
+      setBundling(false);
+    }
+  }
+
   return (
     <div className="px-8 pb-15">
       <PageHeader
@@ -128,16 +179,31 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
               <DownloadSimple size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
               {exporting ? "Exportando…" : "Exportar CSV"}
             </Button>
+            <Button variant="secondary" onClick={handleExportBundle} disabled={bundling}>
+              <FolderOpen size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
+              {bundling ? "Generando…" : "Exportar paquete (gestor)"}
+            </Button>
           </>
         }
       />
 
       {exportError && <div className="text-sm text-danger mb-4">{exportError}</div>}
 
-      <div className="grid grid-cols-3 gap-3.5 mb-6">
-        <KpiTile label="Total facturado (base)" value={formatEUR(invoicedBase)} icon={TrendUp} />
+      <div className="grid grid-cols-4 gap-3.5 mb-6">
+        <KpiTile
+          label="Total facturado (base)"
+          value={formatEUR(invoicedBase)}
+          icon={TrendUp}
+          subtitle={revenueDelta ?? undefined}
+        />
         <KpiTile label="IRPF retenido" value={formatEUR(irpfWithheld)} icon={Percent} />
         <KpiTile label="Ingreso neto estimado" value={formatEUR(netIrpfIncome)} icon={ChartLineUp} />
+        <KpiTile
+          label="Margen (tras IRPF)"
+          value={formatEUR(margin)}
+          icon={Scales}
+          subtitle={marginDelta ?? undefined}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

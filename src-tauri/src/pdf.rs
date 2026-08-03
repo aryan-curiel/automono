@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use genpdf::elements::{Break, CellDecorator, LinearLayout, Paragraph, TableLayout};
+use genpdf::elements::{Break, CellDecorator, Image, LinearLayout, Paragraph, TableLayout};
 use genpdf::error::Error as GenPdfError;
 use genpdf::fonts::{FontData, FontFamily};
 use genpdf::style::{Color, Style};
@@ -27,6 +27,7 @@ pub struct BusinessProfile {
     pub bank_name: String,
     pub iban: String,
     pub bic: String,
+    pub logo_path: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -423,6 +424,18 @@ fn build_font_family() -> Result<FontFamily<FontData>, PdfError> {
     })
 }
 
+/// Loads the business logo at a fixed physical size (via a set DPI, so it scales predictably
+/// regardless of the source image's pixel dimensions). Returns `None` — never an error — for a
+/// missing/unset/corrupt logo file, so a bad logo degrades to "no logo" rather than breaking
+/// invoice generation for everyone.
+fn logo_element(logo_path: Option<&str>) -> Option<Image> {
+    let path = logo_path?.trim();
+    if path.is_empty() {
+        return None;
+    }
+    Image::from_path(path).ok().map(|img| img.with_dpi(300.0))
+}
+
 pub(crate) fn sanitize_filename(s: &str) -> String {
     s.chars()
         .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
@@ -454,17 +467,20 @@ pub fn generate_pdf(
 
     // Header: business name masthead top-right, with an "Invoice number / Issued on / Due date"
     // metadata stack top-left - mirrors the reference's info-stack-plus-masthead layout, rather
-    // than the single huge "Invoice N" title used previously.
+    // than the single huge "Invoice N" title used previously. The logo (if set) fills the
+    // top-left cell instead of the empty placeholder.
     let mut header = TableLayout::new(vec![3, 2]);
-    header
-        .row()
-        .element(Paragraph::new(""))
-        .element(
-            Paragraph::new(business.name.clone())
-                .aligned(Alignment::Right)
-                .styled(Style::new().bold().with_font_size(16)),
-        )
-        .push()?;
+    let row = header.row();
+    let row = match logo_element(business.logo_path.as_deref()) {
+        Some(logo) => row.element(logo),
+        None => row.element(Paragraph::new("")),
+    };
+    row.element(
+        Paragraph::new(business.name.clone())
+            .aligned(Alignment::Right)
+            .styled(Style::new().bold().with_font_size(16)),
+    )
+    .push()?;
     doc.push(header);
     doc.push(Break::new(1.2));
 
@@ -726,7 +742,7 @@ pub async fn get_or_generate_invoice_pdf(
     .collect();
 
     let profile_row = sqlx::query(
-        "SELECT name, nif_cif, vat_number, address, bank_name, iban, bic FROM business_profile WHERE id = 1",
+        "SELECT name, nif_cif, vat_number, address, bank_name, iban, bic, logo_path FROM business_profile WHERE id = 1",
     )
     .fetch_one(pool)
     .await?;
@@ -738,6 +754,7 @@ pub async fn get_or_generate_invoice_pdf(
         bank_name: profile_row.get("bank_name"),
         iban: profile_row.get("iban"),
         bic: profile_row.get("bic"),
+        logo_path: profile_row.get("logo_path"),
     };
 
     let data = PdfInvoiceData {
@@ -933,6 +950,7 @@ mod tests {
             bank_name: "Banco Santander".to_string(),
             iban: "ES12 3456 7890 1234 5678 9012".to_string(),
             bic: "BSCHESMMXXX".to_string(),
+            logo_path: None,
         };
 
         for (language, suffix) in [("es", "es"), ("en", "en")] {
@@ -950,6 +968,36 @@ mod tests {
     }
 
     #[test]
+    fn generate_pdf_includes_a_logo_when_business_has_one() {
+        let logo_path = concat!(env!("CARGO_MANIFEST_DIR"), "/icons/32x32.png");
+        let business = BusinessProfile {
+            name: "Marta Ibáñez Ruiz".to_string(),
+            nif_cif: "12345678Z".to_string(),
+            vat_number: "ES12345678Z".to_string(),
+            address: "Calle de la Reina 14, Madrid".to_string(),
+            bank_name: "Banco Santander".to_string(),
+            iban: "ES12 3456 7890 1234 5678 9012".to_string(),
+            bic: "BSCHESMMXXX".to_string(),
+            logo_path: Some(logo_path.to_string()),
+        };
+        let data = sample_invoice(None, None);
+        let out_path = std::env::temp_dir().join("automono_pdf_test_logo.pdf");
+
+        generate_pdf(&business, &data, &out_path).expect("generate_pdf succeeds with a logo");
+
+        let bytes = std::fs::read(&out_path).expect("read generated pdf");
+        assert!(bytes.starts_with(b"%PDF-"));
+        std::fs::remove_file(&out_path).ok();
+    }
+
+    #[test]
+    fn logo_element_degrades_to_none_for_a_missing_or_unset_logo() {
+        assert!(logo_element(None).is_none());
+        assert!(logo_element(Some("")).is_none());
+        assert!(logo_element(Some("/nonexistent/logo.png")).is_none());
+    }
+
+    #[test]
     fn generate_pdf_smoke_test_rectification() {
         let business = BusinessProfile {
             name: "Marta Ibáñez Ruiz".to_string(),
@@ -959,6 +1007,7 @@ mod tests {
             bank_name: "Banco Santander".to_string(),
             iban: "ES12 3456 7890 1234 5678 9012".to_string(),
             bic: "BSCHESMMXXX".to_string(),
+            logo_path: None,
         };
 
         let mut data = sample_invoice(None, None);

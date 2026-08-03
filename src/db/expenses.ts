@@ -127,11 +127,36 @@ export async function pickExpenseFile(): Promise<string | null> {
   return typeof path === "string" ? path : null;
 }
 
-/** Copies the file at `sourcePath` into the app data directory and returns its new stored path. */
-export async function attachExpenseFile(sourcePath: string): Promise<string> {
-  return invoke<string>("attach_expense_file_cmd", { sourcePath });
+/** Copies the file at `sourcePath` into the app data directory, named `<date>_<note>`. */
+export async function attachExpenseFile(sourcePath: string, date: string, note: string): Promise<string> {
+  return invoke<string>("attach_expense_file_cmd", { sourcePath, date, note });
 }
 
 export async function openExpenseFile(filePath: string): Promise<void> {
   return invoke("open_expense_file_cmd", { filePath });
+}
+
+export interface ReceiptFields {
+  date: string | null;
+  amount: number | null;
+  ivaAmount: number | null;
+  vendorGuess: string | null;
+}
+
+interface ReceiptFieldsRow {
+  date: string | null;
+  amount: number | null;
+  iva_amount: number | null;
+  vendor_guess: string | null;
+}
+
+/** Best-effort field extraction from a PDF receipt's text layer; every field may be null. */
+export async function extractReceiptFields(filePath: string): Promise<ReceiptFields> {
+  const row = await invoke<ReceiptFieldsRow>("extract_receipt_fields_cmd", { filePath });
+  return {
+    date: row.date,
+    amount: row.amount,
+    ivaAmount: row.iva_amount,
+    vendorGuess: row.vendor_guess,
+  };
 }

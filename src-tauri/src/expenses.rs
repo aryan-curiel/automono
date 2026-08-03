@@ -3,22 +3,29 @@ use std::io;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::contracts::copy_into;
+use crate::contracts::{copy_into, year_of};
 
-fn attach_expense_file(app: &AppHandle, source_path: &str) -> io::Result<String> {
+fn attach_expense_file(app: &AppHandle, source_path: &str, date: &str, note: &str) -> io::Result<String> {
     let dest_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| io::Error::other(e.to_string()))?
         .join("expenses")
+        .join(year_of(date))
         .join("receipts");
-    let dest_path = copy_into(std::path::Path::new(source_path), &dest_dir)?;
+    let note = if note.trim().is_empty() { "gasto" } else { note.trim() };
+    let dest_path = copy_into(std::path::Path::new(source_path), &dest_dir, &format!("{date}_{note}"))?;
     Ok(dest_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
-pub async fn attach_expense_file_cmd(app: AppHandle, source_path: String) -> Result<String, String> {
-    attach_expense_file(&app, &source_path).map_err(|e| e.to_string())
+pub async fn attach_expense_file_cmd(
+    app: AppHandle,
+    source_path: String,
+    date: String,
+    note: String,
+) -> Result<String, String> {
+    attach_expense_file(&app, &source_path, &date, &note).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

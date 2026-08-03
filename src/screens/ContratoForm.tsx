@@ -122,7 +122,10 @@ export function ContratoForm({
     setAttaching(true);
     setSaveError(null);
     try {
-      const stored = await attachContractFile(clientId, source);
+      // ponytail: uses the start date already typed in the form at click time, so attaching
+      // before filling it in falls back to today's date.
+      const startDate = form.startDate || new Date().toISOString().slice(0, 10);
+      const stored = await attachContractFile(clientId, source, startDate);
       set("filePath", stored);
     } catch {
       setSaveError(t("contracts.errors.attachFailed"));

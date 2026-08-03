@@ -11,11 +11,14 @@ import { deleteClient, getClient } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
 import { listContracts } from "../db/contracts";
 import type { ContractRecord } from "../db/contracts";
-import { formatDate } from "../lib/format";
+import type { InvoiceListItem } from "../db/invoices";
+import { formatDate, formatEUR } from "../lib/format";
 import { contractStatusMeta } from "../lib/status";
+import { clientBalance } from "../lib/analytics";
 
 interface ClienteDetalleProps {
   clientId: number;
+  invoices: InvoiceListItem[];
   onBack: () => void;
   onEditClient: (id: number) => void;
   onDeleted: () => void;
@@ -25,6 +28,7 @@ interface ClienteDetalleProps {
 
 export function ClienteDetalle({
   clientId,
+  invoices,
   onBack,
   onEditClient,
   onDeleted,
@@ -87,6 +91,8 @@ export function ClienteDetalle({
 
   if (!client) return null;
 
+  const balance = clientBalance(invoices, clientId);
+
   return (
     <div className="px-8 pb-15">
       <BackLink label={t("clients.title")} onClick={onBack} />
@@ -139,6 +145,26 @@ export function ClienteDetalle({
           label={t("clients.fields.invoiceLanguage")}
           value={t(`clients.invoiceLanguage.${client.invoiceLanguage}`)}
         />
+      </Card>
+
+      <Card className="p-5.5 max-w-[640px] mt-6">
+        <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-4">
+          {t("clients.detail.balanceTitle")}
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <div className="text-xs text-ink-soft mb-1">{t("clients.detail.totalInvoiced")}</div>
+            <div className="font-bold text-[15px] font-mono">{formatEUR(balance.invoiced)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-ink-soft mb-1">{t("clients.detail.totalPaid")}</div>
+            <div className="font-bold text-[15px] font-mono">{formatEUR(balance.paid)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-ink-soft mb-1">{t("clients.detail.outstanding")}</div>
+            <div className="font-bold text-[15px] font-mono">{formatEUR(balance.outstanding)}</div>
+          </div>
+        </div>
       </Card>
 
       <Card className="p-5.5 max-w-[640px] mt-6">

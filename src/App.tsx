@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./components/Sidebar";
+import { CommandPalette } from "./components/CommandPalette";
 import { Toast } from "./components/ui/Toast";
 import { TooltipProvider } from "./components/ui/Tooltip";
 import { getDb } from "./db/client";
+import { listClients } from "./db/clients";
+import type { ClientRecord } from "./db/clients";
+import { listContracts } from "./db/contracts";
+import type { ContractRecord } from "./db/contracts";
+import type { SearchResult } from "./lib/search";
 import { Dashboard } from "./screens/Dashboard";
 import { Clientes } from "./screens/Clientes";
 import { ClienteDetalle } from "./screens/ClienteDetalle";
@@ -63,9 +69,44 @@ export default function App() {
   const [rectType, setRectType] = useState<RectificationType>("partial");
   const [rectReason, setRectReason] = useState("");
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteClients, setPaletteClients] = useState<ClientRecord[]>([]);
+  const [paletteContracts, setPaletteContracts] = useState<ContractRecord[]>([]);
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // ponytail: re-fetches on every open (cheap local queries) instead of a shared store, so
+  // results never go stale between a client/contract edit and the next search.
+  useEffect(() => {
+    if (!paletteOpen) return;
+    listClients().then(setPaletteClients);
+    listContracts().then(setPaletteContracts);
+  }, [paletteOpen]);
+
+  function handlePaletteSelect(result: SearchResult) {
+    if (result.type === "client") {
+      setSelectedClientId(result.id);
+      setScreen("cliente-detalle");
+    } else if (result.type === "invoice") {
+      openInvoice(result.id);
+    } else {
+      setSelectedContractId(result.id);
+      setScreen("contrato-detalle");
+    }
+  }
 
   useEffect(() => {
     getDb()
@@ -172,7 +213,12 @@ export default function App() {
 
         <div className="flex-1 overflow-y-auto min-w-0">
           {screen === "dashboard" && (
-            <Dashboard invoices={invoices} onNavigate={setScreen} onOpenInvoice={openInvoice} />
+            <Dashboard
+              invoices={invoices}
+              onNavigate={setScreen}
+              onOpenInvoice={openInvoice}
+              onDuplicateInvoice={handleDuplicateInvoice}
+            />
           )}
 
           {screen === "clientes" && (
@@ -188,6 +234,7 @@ export default function App() {
           {screen === "cliente-detalle" && selectedClientId !== null && (
             <ClienteDetalle
               clientId={selectedClientId}
+              invoices={invoices}
               onBack={() => setScreen("clientes")}
               onEditClient={(id) => {
                 setSelectedClientId(id);
@@ -391,6 +438,15 @@ export default function App() {
         {pdfErrorToast && (
           <Toast message={pdfErrorToast} onDismiss={() => setPdfErrorToast(null)} />
         )}
+
+        <CommandPalette
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+          clients={paletteClients}
+          invoices={invoices}
+          contracts={paletteContracts}
+          onSelect={handlePaletteSelect}
+        />
       </div>
     </TooltipProvider>
   );

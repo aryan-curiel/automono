@@ -13,17 +13,20 @@ export function KpiTile({
   value,
   icon: Icon,
   tone = "neutral",
+  subtitle,
 }: {
   label: string;
   value: string;
   icon: PhosphorIcon;
   tone?: Tone;
+  subtitle?: string;
 }) {
   return (
     <Card className="py-4 px-4.5 relative overflow-hidden">
       <Icon size={16} weight="bold" className={`${toneClass[tone]} mb-2.5`} />
       <div className="font-medium text-xs text-ink-soft mb-1">{label}</div>
       <div className="font-bold text-[22px] font-mono tracking-tight">{value}</div>
+      {subtitle && <div className="text-[11px] text-ink-soft mt-1">{subtitle}</div>}
     </Card>
   );
 }

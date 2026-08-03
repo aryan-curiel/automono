@@ -1,15 +1,23 @@
+import { useState } from "react";
 import { CaretDown, DotsThreeVertical, Warning, Info } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Sheet } from "../components/ui/Sheet";
+import { TextInput } from "../components/ui/Field";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { BackLink, PageHeader } from "../components/PageHeader";
 import type { BusinessProfileRecord } from "../db/businessProfile";
 import { formatDate, formatEUR } from "../lib/format";
 import { amountsFromLines, invoiceNumberLabel, lineTotal } from "../lib/invoice";
 import { invoiceStatusMeta } from "../lib/status";
+import { daysOverdue, lateInterestOwed } from "../lib/lateInterest";
 import type { InvoiceLineRecord, InvoiceListItem, InvoiceRecord } from "../db/invoices";
+
+// Ley 3/2004 sets this as ECB reference + 8 points, republished by BOE twice a year — not
+// something to hardcode precisely; this is a starting point the user corrects to the current
+// published figure before relying on the number.
+const DEFAULT_LATE_INTEREST_RATE_PCT = 8;
 
 // The client-facing document (unlike the rest of this screen's own-language UI chrome) must
 // render in the invoice's own language, matching the PDF generator's `Labels` in pdf.rs.
@@ -118,6 +126,12 @@ export function FacturaDetalle({
   const canRectify =
     invoice.status !== "draft" && !invoice.isRectification && !invoice.rectifiedByInvoiceId;
   const canMarkPaid = invoice.status !== "paid" && invoice.status !== "draft";
+
+  const [lateRatePct, setLateRatePct] = useState(DEFAULT_LATE_INTEREST_RATE_PCT);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const overdueDays =
+    invoice.status === "issued" && invoice.dueDate ? daysOverdue(invoice.dueDate, todayIso) : 0;
+  const lateInterest = lateInterestOwed(amounts.total, lateRatePct, overdueDays);
 
   function handleDelete() {
     if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
@@ -412,6 +426,39 @@ export function FacturaDetalle({
           </div>
         </div>
       </div>
+
+      {overdueDays > 0 && (
+        <Card className="py-5 px-6 mt-4">
+          <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-3.5">
+            Interés de demora (Ley 3/2004)
+          </div>
+          <div className="flex items-end gap-5">
+            <div className="text-[13.5px] text-ink-soft">
+              {overdueDays} días de retraso sobre {formatEUR(amounts.total)}
+            </div>
+            <div className="flex items-center gap-2">
+              <TextInput
+                type="number"
+                step="0.01"
+                min="0"
+                mono
+                value={lateRatePct}
+                onChange={(e) => setLateRatePct(Number(e.target.value))}
+                className="w-20"
+              />
+              <span className="text-[13px] text-ink-soft">% anual</span>
+            </div>
+            <div className="ml-auto text-right">
+              <div className="text-xs text-ink-soft mb-0.5">Interés adeudado</div>
+              <div className="font-bold text-base font-mono">{formatEUR(lateInterest)}</div>
+            </div>
+          </div>
+          <div className="text-[11px] text-ink-soft mt-3">
+            Tipo orientativo — comprueba el vigente en el BOE (interés legal + 8 puntos) antes de
+            reclamarlo.
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

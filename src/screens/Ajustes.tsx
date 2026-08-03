@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import * as Switch from "@radix-ui/react-switch";
 import { Card } from "../components/ui/Card";
@@ -7,7 +8,12 @@ import { Button } from "../components/ui/Button";
 import { ErrorText, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
-import { getBusinessProfile, updateBusinessProfile } from "../db/businessProfile";
+import {
+  attachBusinessLogo,
+  getBusinessProfile,
+  pickBusinessLogo,
+  updateBusinessProfile,
+} from "../db/businessProfile";
 import type { BusinessProfileRecord } from "../db/businessProfile";
 import { isValidNifCif, isValidVatNumber } from "../features/clients";
 import { isValidIban } from "../features/settings";
@@ -19,6 +25,7 @@ import {
   backupNow,
   listBackups,
   restoreFromBackup,
+  openBackupFolder,
 } from "../db/backup";
 import type { BackupSettingsRecord, BackupEntry } from "../db/backup";
 
@@ -30,6 +37,7 @@ const EMPTY_FORM: BusinessProfileRecord = {
   bankName: "",
   iban: "",
   bic: "",
+  logoPath: null,
 };
 
 type FieldErrors = Partial<Record<"name" | "nifCif" | "vatNumber" | "iban", string>>;
@@ -58,6 +66,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [saved, setSaved] = useState(false);
   const [dbStatus, setDbStatus] = useState(t("settings.dbChecking"));
   const [vatNumberEdited, setVatNumberEdited] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const [backupSettings, setBackupSettings] = useState<BackupSettingsRecord | null>(null);
   const [backupRunning, setBackupRunning] = useState(false);
@@ -139,6 +148,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       bankName: form.bankName.trim(),
       iban: form.iban.trim().toUpperCase(),
       bic: form.bic.trim().toUpperCase(),
+      logoPath: form.logoPath,
     };
 
     setSaving(true);
@@ -150,6 +160,21 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       setSaveError("No se pudo guardar. Inténtalo de nuevo.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePickLogo() {
+    const source = await pickBusinessLogo();
+    if (!source) return;
+    setLogoUploading(true);
+    try {
+      const stored = await attachBusinessLogo(source);
+      await updateBusinessProfile({ ...form, logoPath: stored });
+      set("logoPath", stored);
+    } catch {
+      setSaveError("No se pudo subir el logo. Inténtalo de nuevo.");
+    } finally {
+      setLogoUploading(false);
     }
   }
 
@@ -294,6 +319,21 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
               <FormRow label="Dirección fiscal">
                 <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />
               </FormRow>
+              <FormRow label="Logo">
+                <div className="flex items-center gap-2.5">
+                  {form.logoPath && (
+                    <img
+                      src={convertFileSrc(form.logoPath)}
+                      alt=""
+                      className="w-8 h-8 rounded-control object-contain bg-surface-alt shrink-0"
+                    />
+                  )}
+                  <Button variant="secondary" onClick={handlePickLogo} disabled={logoUploading}>
+                    {logoUploading ? "Subiendo…" : form.logoPath ? "Cambiar logo" : "Subir logo"}
+                  </Button>
+                  <span className="text-[13px] text-ink-soft">Se imprime en la esquina de la factura.</span>
+                </div>
+              </FormRow>
             </Card>
 
             <Card className="px-5 max-w-[640px] mb-5">
@@ -343,6 +383,11 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
               <Button variant="secondary" onClick={handlePickFolder}>
                 Elegir carpeta
               </Button>
+              {backupSettings?.folderPath && (
+                <Button variant="secondary" onClick={() => openBackupFolder(backupSettings.folderPath)}>
+                  Abrir carpeta
+                </Button>
+              )}
             </div>
           </FormRow>
 

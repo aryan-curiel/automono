@@ -1,0 +1,41 @@
+export interface TaxDeadline {
+  model: "130/303" | "190/390";
+  label: string;
+  dueDate: string;
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function iso(year: number, month: number, day: number): string {
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+/** Quarterly Modelo 130 (IRPF)/303 (IVA) deadline: the 20th of the month after the quarter ends. */
+function quarterlyDeadline(year: number, quarter: 1 | 2 | 3 | 4): TaxDeadline {
+  const dueMonth = quarter * 3 + 1;
+  const dueDate = dueMonth > 12 ? iso(year + 1, dueMonth - 12, 20) : iso(year, dueMonth, 20);
+  return { model: "130/303", label: `Modelo 130/303 (${quarter}T)`, dueDate };
+}
+
+/** Annual Modelo 190/390 summary deadline: Jan 30 of the year after the reported year. */
+function annualDeadline(reportedYear: number): TaxDeadline {
+  return { model: "190/390", label: "Modelo 190/390 (anual)", dueDate: iso(reportedYear + 1, 1, 30) };
+}
+
+/** The next `count` upcoming Spanish autónomo tax filing deadlines on or after `todayIso`. */
+export function nextTaxDeadlines(todayIso: string, count: number): TaxDeadline[] {
+  const [todayYear] = todayIso.split("-").map(Number);
+  const candidates: TaxDeadline[] = [];
+  for (const year of [todayYear - 1, todayYear, todayYear + 1]) {
+    for (const quarter of [1, 2, 3, 4] as const) {
+      candidates.push(quarterlyDeadline(year, quarter));
+    }
+    candidates.push(annualDeadline(year));
+  }
+  return candidates
+    .filter((d) => d.dueDate >= todayIso)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, count);
+}

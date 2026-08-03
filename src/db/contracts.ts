@@ -125,9 +125,13 @@ export async function pickContractFile(): Promise<string | null> {
   return typeof path === "string" ? path : null;
 }
 
-/** Copies the file at `sourcePath` into the app data directory and returns its new stored path. */
-export async function attachContractFile(clientId: number, sourcePath: string): Promise<string> {
-  return invoke<string>("attach_contract_file_cmd", { clientId, sourcePath });
+/** Copies the file at `sourcePath` into the app data directory, named `<startDate>_<original name>`. */
+export async function attachContractFile(
+  clientId: number,
+  sourcePath: string,
+  startDate: string,
+): Promise<string> {
+  return invoke<string>("attach_contract_file_cmd", { clientId, sourcePath, startDate });
 }
 
 export async function openContractFile(filePath: string): Promise<void> {

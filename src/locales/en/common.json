@@ -68,7 +68,11 @@
     "detail": {
       "dataTitle": "Client details",
       "contractsTitle": "Contracts",
-      "invoicesTitle": "Invoices"
+      "invoicesTitle": "Invoices",
+      "balanceTitle": "Balance",
+      "totalInvoiced": "Total invoiced",
+      "totalPaid": "Total paid",
+      "outstanding": "Outstanding"
     }
   },
   "invoices": {

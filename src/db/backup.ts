@@ -80,6 +80,11 @@ export function restoreFromBackup(backupFolder: string): Promise<void> {
   return invoke("restore_backup_cmd", { backupFolder });
 }
 
+/** Reveals `folder` in the OS file manager (Finder/Explorer). */
+export function openBackupFolder(folder: string): Promise<void> {
+  return invoke("open_backup_folder_cmd", { folder });
+}
+
 /** Best-effort startup catch-up: fires a backup if auto-backup is on and the configured
  * interval has elapsed since the last one. Swallows errors — a failure here must never block
  * app startup or show an alarming error on every launch. */

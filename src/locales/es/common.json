@@ -68,7 +68,11 @@
     "detail": {
       "dataTitle": "Datos del cliente",
       "contractsTitle": "Contratos",
-      "invoicesTitle": "Facturas"
+      "invoicesTitle": "Facturas",
+      "balanceTitle": "Balance",
+      "totalInvoiced": "Total facturado",
+      "totalPaid": "Total cobrado",
+      "outstanding": "Pendiente de cobro"
     }
   },
   "invoices": {

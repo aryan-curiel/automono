@@ -294,6 +294,7 @@ export interface InvoiceListItem {
   seriesPrefix: string | null;
   invoiceNumber: number | null;
   issueDate: string | null;
+  dueDate: string | null;
   status: InvoiceStatus;
   isRectification: boolean;
   rectifiesInvoiceId: number | null;
@@ -304,6 +305,7 @@ export interface InvoiceListItem {
   irpfRate: number;
   irpfAmount: number;
   total: number;
+  pdfPath: string | null;
 }
 
 interface InvoiceListRow extends InvoiceRow {
@@ -339,6 +341,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       seriesPrefix: row.series_prefix,
       invoiceNumber: row.invoice_number,
       issueDate: row.issue_date,
+      dueDate: row.due_date,
       status: row.status,
       isRectification: row.is_rectification === 1,
       rectifiesInvoiceId: row.rectifies_invoice_id,
@@ -349,6 +352,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       irpfRate,
       irpfAmount,
       total,
+      pdfPath: row.pdf_path,
     };
   });
 }

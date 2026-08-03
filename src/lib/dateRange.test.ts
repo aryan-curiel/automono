@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthRange, quarterRange, yearRange } from "./dateRange";
+import { monthRange, priorYearPeriod, quarterRange, yearRange } from "./dateRange";
 
 describe("dateRange", () => {
   it("computes February bounds in a leap year", () => {
@@ -16,5 +16,22 @@ describe("dateRange", () => {
 
   it("computes a full year span", () => {
     expect(yearRange(2026)).toMatchObject({ from: "2026-01-01", to: "2026-12-31" });
+  });
+});
+
+describe("priorYearPeriod", () => {
+  it("shifts a quarter back one year, updating the label", () => {
+    expect(priorYearPeriod(quarterRange(2026, 3))).toEqual({
+      from: "2025-07-01",
+      to: "2025-09-30",
+      label: "Q3 2025",
+    });
+  });
+
+  it("clamps Feb 29 into a non-leap prior year", () => {
+    expect(priorYearPeriod(monthRange(2024, 2))).toMatchObject({
+      from: "2023-02-01",
+      to: "2023-02-28",
+    });
   });
 });
