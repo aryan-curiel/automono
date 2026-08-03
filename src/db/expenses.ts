@@ -128,7 +128,11 @@ export async function pickExpenseFile(): Promise<string | null> {
 }
 
 /** Copies the file at `sourcePath` into the app data directory, named `<date>_<note>`. */
-export async function attachExpenseFile(sourcePath: string, date: string, note: string): Promise<string> {
+export async function attachExpenseFile(
+  sourcePath: string,
+  date: string,
+  note: string,
+): Promise<string> {
   return invoke<string>("attach_expense_file_cmd", { sourcePath, date, note });
 }
 

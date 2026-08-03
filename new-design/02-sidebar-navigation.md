@@ -31,21 +31,21 @@ File: `src/components/Sidebar.tsx` (full rewrite of the styling, keep all existi
 
 Import from `@phosphor-icons/react` (installed in spec 00), `regular` weight, `size={18}`. Map each nav item to a semantically fitting glyph:
 
-| Screen | Icon |
-|---|---|
-| `dashboard` | `House` |
-| `clientes` | `UsersThree` |
-| `facturas` | `Receipt` |
-| `contratos` | `FileText` |
-| `gastos` | `Wallet` |
-| `resumen-trimestral` | `ChartPieSlice` |
-| `ajustes` | *(moved to a footer gear icon, see below — not in the main list)* |
+| Screen               | Icon                                                              |
+| -------------------- | ----------------------------------------------------------------- |
+| `dashboard`          | `House`                                                           |
+| `clientes`           | `UsersThree`                                                      |
+| `facturas`           | `Receipt`                                                         |
+| `contratos`          | `FileText`                                                        |
+| `gastos`             | `Wallet`                                                          |
+| `resumen-trimestral` | `ChartPieSlice`                                                   |
+| `ajustes`            | _(moved to a footer gear icon, see below — not in the main list)_ |
 
 Extend the `NAV_ITEMS` array (Sidebar.tsx:11-19) to carry an `icon` component reference alongside `id`/`label`. Keep `ajustes` in `NAV_ITEMS` for now if moving it feels risky — icon-only or icon+label both work, this is a styling call, not a functional one.
 
 ## Selection state: sliding pill, not solid block
 
-Current active state (`bg-accent` full block, line 75) is a flat-web pattern. macOS list selection is a rounded pill inset from the row edges, with the *pill itself* animating between positions when you switch items (this is the one place `motion`'s `layoutId` earns its keep — see spec 00's dependency note and spec 12).
+Current active state (`bg-accent` full block, line 75) is a flat-web pattern. macOS list selection is a rounded pill inset from the row edges, with the _pill itself_ animating between positions when you switch items (this is the one place `motion`'s `layoutId` earns its keep — see spec 00's dependency note and spec 12).
 
 ```tsx
 import { motion } from "motion/react";
@@ -67,16 +67,18 @@ import { motion } from "motion/react";
             transition={{ type: "spring", stiffness: 500, damping: 40 }}
           />
         )}
-        <div className={`relative z-10 flex items-center gap-2.5 ${
-          active ? "font-semibold text-white" : "font-medium text-sidebar-text hover:text-white"
-        }`}>
+        <div
+          className={`relative z-10 flex items-center gap-2.5 ${
+            active ? "font-semibold text-white" : "font-medium text-sidebar-text hover:text-white"
+          }`}
+        >
           <Icon size={18} weight="regular" />
           {item.label}
         </div>
       </div>
     );
   })}
-</div>
+</div>;
 ```
 
 `--color-sidebar-selection` is the accent-tinted translucent token added in spec 00 — a soft orange wash, not a solid fill. This reads as "selected" without turning the whole row into a saturated block, matching how macOS selection pills look next to a dark sidebar background.
@@ -107,7 +109,7 @@ import * as Switch from "@radix-ui/react-switch";
   >
     <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
   </Switch.Root>
-</div>
+</div>;
 ```
 
 Same visual result as today, but now keyboard-operable and with a proper `role="switch"` — the current div has neither.

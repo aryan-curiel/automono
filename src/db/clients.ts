@@ -89,7 +89,9 @@ function mapRow(row: ClientRow): ClientRecord {
 
 async function resolveSeriesId(db: Database, series: SeriesSelection): Promise<number> {
   if ("id" in series) return series.id;
-  const result = await db.execute("INSERT INTO invoice_series (prefix) VALUES ($1)", [series.newPrefix]);
+  const result = await db.execute("INSERT INTO invoice_series (prefix) VALUES ($1)", [
+    series.newPrefix,
+  ]);
   return result.lastInsertId!;
 }
 
@@ -156,7 +158,10 @@ export async function updateClient(id: number, patch: Partial<NewClient>): Promi
 
   const setClause = setPairs.map(([col], i) => `${col} = $${i + 1}`).join(", ");
   const values = setPairs.map(([, value]) => value);
-  await db.execute(`UPDATE clients SET ${setClause} WHERE id = $${setPairs.length + 1}`, [...values, id]);
+  await db.execute(`UPDATE clients SET ${setClause} WHERE id = $${setPairs.length + 1}`, [
+    ...values,
+    id,
+  ]);
 }
 
 export async function deleteClient(id: number): Promise<void> {

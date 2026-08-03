@@ -25,7 +25,7 @@ import { SegmentedControl } from "./ui/SegmentedControl";
     ]}
   />
   {/* existing conditional month/quarter+year/year TextInput blocks, unchanged */}
-</div>
+</div>;
 ```
 
 Only the `kind` selector changes — the conditional `TextInput type="month"` / quarter-`Select`+year-`TextInput` / year-`TextInput` blocks (lines 45-96) keep their exact current logic, just restyled automatically via spec 04's `Field.tsx` update (no edits needed there beyond what spec 04 already covers).

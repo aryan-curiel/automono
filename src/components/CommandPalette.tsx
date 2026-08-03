@@ -117,7 +117,9 @@ export function CommandPalette({
             </div>
             <div className="max-h-[320px] overflow-y-auto p-1.5">
               {query.trim() && results.length === 0 && (
-                <div className="px-3 py-6 text-center text-[13px] text-ink-soft">Sin resultados</div>
+                <div className="px-3 py-6 text-center text-[13px] text-ink-soft">
+                  Sin resultados
+                </div>
               )}
               {results.map((result, i) => {
                 const Icon = TYPE_ICON[result.type];

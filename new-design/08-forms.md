@@ -23,7 +23,15 @@ Current pattern stacks `Label` above `TextInput` inside a 2-3 column grid (`Gast
 
 ```tsx
 // src/components/ui/FormRow.tsx
-export function FormRow({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
+export function FormRow({
+  label,
+  children,
+  error,
+}: {
+  label: string;
+  children: ReactNode;
+  error?: string;
+}) {
   return (
     <div className="flex items-start justify-between gap-6 py-3 border-t border-border first:border-t-0">
       <label className="text-[13px] text-ink-soft pt-2 w-40 shrink-0">{label}</label>
@@ -39,29 +47,67 @@ export function FormRow({ label, children, error }: { label: string; children: R
 ```tsx
 <Card className="px-5 max-w-[560px]">
   <FormRow label={t("expenses.fields.date")} error={errors.date}>
-    <TextInput type="date" value={form.date} error={!!errors.date} onChange={(e) => set("date", e.target.value)} />
+    <TextInput
+      type="date"
+      value={form.date}
+      error={!!errors.date}
+      onChange={(e) => set("date", e.target.value)}
+    />
   </FormRow>
   <FormRow label={t("expenses.fields.category")}>
-    <TextInput list="expense-categories" value={form.category} onChange={(e) => set("category", e.target.value)} />
+    <TextInput
+      list="expense-categories"
+      value={form.category}
+      onChange={(e) => set("category", e.target.value)}
+    />
   </FormRow>
   <FormRow label={t("expenses.fields.description")}>
-    <TextArea rows={2} value={form.description} onChange={(e) => set("description", e.target.value)} />
+    <TextArea
+      rows={2}
+      value={form.description}
+      onChange={(e) => set("description", e.target.value)}
+    />
   </FormRow>
   <FormRow label={t("expenses.fields.amount")} error={errors.amount}>
-    <TextInput type="number" step="0.01" mono value={form.amount} error={!!errors.amount} onChange={(e) => set("amount", e.target.value)} />
+    <TextInput
+      type="number"
+      step="0.01"
+      mono
+      value={form.amount}
+      error={!!errors.amount}
+      onChange={(e) => set("amount", e.target.value)}
+    />
   </FormRow>
   <FormRow label={t("expenses.fields.ivaAmount")}>
-    <TextInput type="number" step="0.01" mono value={form.ivaAmount} onChange={(e) => set("ivaAmount", e.target.value)} />
+    <TextInput
+      type="number"
+      step="0.01"
+      mono
+      value={form.ivaAmount}
+      onChange={(e) => set("ivaAmount", e.target.value)}
+    />
   </FormRow>
   <FormRow label={t("expenses.fields.deductiblePct")}>
-    <TextInput type="number" step="1" min="0" max="100" mono value={form.deductiblePct} onChange={(e) => set("deductiblePct", e.target.value)} />
+    <TextInput
+      type="number"
+      step="1"
+      min="0"
+      max="100"
+      mono
+      value={form.deductiblePct}
+      onChange={(e) => set("deductiblePct", e.target.value)}
+    />
   </FormRow>
   <FormRow label={t("expenses.fields.file")}>
     <div className="flex items-center gap-2.5">
       <Button variant="secondary" onClick={handleAttachFile} disabled={attaching}>
         {attaching ? t("expenses.actions.attaching") : t("expenses.actions.attachFile")}
       </Button>
-      {form.receiptFilePath && <span className="text-[13px] text-ink-soft truncate">{fileNameOf(form.receiptFilePath)}</span>}
+      {form.receiptFilePath && (
+        <span className="text-[13px] text-ink-soft truncate">
+          {fileNameOf(form.receiptFilePath)}
+        </span>
+      )}
     </div>
   </FormRow>
 </Card>
@@ -69,18 +115,24 @@ export function FormRow({ label, children, error }: { label: string; children: R
 
 `FormRow` is a new shared component (`src/components/ui/FormRow.tsx`) — build it once here, reuse across all five form screens. Every field's `value`/`onChange`/validation logic is untouched, this is purely a layout wrapper swap around existing `TextInput`/`Select`/`TextArea` calls.
 
-**Judgment call, apply per-screen:** where two fields are logically paired and short (e.g. Ajustes' NIF + Número de IVA side-by-side, `ClienteForm`'s likely name+country pairing), it's fine to keep a 2-up grid *inside* a single `FormRow`'s right-hand column rather than forcing every field onto its own full-width row — don't mechanically split every existing 2-column grid pair into two rows if that hurts a genuinely related pair. Use judgment per field group, the single-column form-row is the default, not an absolute rule.
+**Judgment call, apply per-screen:** where two fields are logically paired and short (e.g. Ajustes' NIF + Número de IVA side-by-side, `ClienteForm`'s likely name+country pairing), it's fine to keep a 2-up grid _inside_ a single `FormRow`'s right-hand column rather than forcing every field onto its own full-width row — don't mechanically split every existing 2-column grid pair into two rows if that hurts a genuinely related pair. Use judgment per field group, the single-column form-row is the default, not an absolute rule.
 
 ### 3. Save/cancel row
 
 Keep `Button onClick={handleSubmit}` + `Button variant="secondary" onClick={onCancel}` — no structural change, just move it outside the `Card` (macOS forms typically put primary actions below the grouped card, not inside it as the last row) and align right:
 
 ```tsx
-{saveError && <ErrorText>{saveError}</ErrorText>}
+{
+  saveError && <ErrorText>{saveError}</ErrorText>;
+}
 <div className="flex gap-2.5 justify-end mt-5">
-  <Button variant="secondary" onClick={onCancel} disabled={saving}>{t("expenses.actions.cancel")}</Button>
-  <Button onClick={handleSubmit} disabled={saving}>{t("expenses.actions.save")}</Button>
-</div>
+  <Button variant="secondary" onClick={onCancel} disabled={saving}>
+    {t("expenses.actions.cancel")}
+  </Button>
+  <Button onClick={handleSubmit} disabled={saving}>
+    {t("expenses.actions.save")}
+  </Button>
+</div>;
 ```
 
 Note the order flip (Cancelar now first/left, Guardar last/right) — matches macOS's own dialog button convention (default/primary action is the rightmost, and visually emphasized by being solid vs. bordered). Apply consistently across all five forms and the two Ajustes save buttons (spec 11).

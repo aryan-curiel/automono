@@ -331,7 +331,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   <Button variant="secondary" onClick={handlePickLogo} disabled={logoUploading}>
                     {logoUploading ? "Subiendo…" : form.logoPath ? "Cambiar logo" : "Subir logo"}
                   </Button>
-                  <span className="text-[13px] text-ink-soft">Se imprime en la esquina de la factura.</span>
+                  <span className="text-[13px] text-ink-soft">
+                    Se imprime en la esquina de la factura.
+                  </span>
                 </div>
               </FormRow>
             </Card>
@@ -372,8 +374,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           <div className="pt-4 pb-3">
             <div className="font-bold text-sm mb-1.5">Copia de seguridad</div>
             <div className="text-[13px] text-ink-soft">
-              Se guarda una copia de la base de datos, facturas y contratos en una carpeta local
-              que tú sincronizas con Drive/S3.
+              Se guarda una copia de la base de datos, facturas y contratos en una carpeta local que
+              tú sincronizas con Drive/S3.
             </div>
           </div>
 
@@ -384,7 +386,10 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                 Elegir carpeta
               </Button>
               {backupSettings?.folderPath && (
-                <Button variant="secondary" onClick={() => openBackupFolder(backupSettings.folderPath)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => openBackupFolder(backupSettings.folderPath)}
+                >
                   Abrir carpeta
                 </Button>
               )}
@@ -449,9 +454,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             )}
 
             {backupError && <ErrorText>{backupError}</ErrorText>}
-            {backupMessage && (
-              <div className="text-[13px] text-ink-soft mb-2">{backupMessage}</div>
-            )}
+            {backupMessage && <div className="text-[13px] text-ink-soft mb-2">{backupMessage}</div>}
 
             <div className="flex gap-2.5">
               <Button onClick={handleBackupNow} disabled={backupRunning}>

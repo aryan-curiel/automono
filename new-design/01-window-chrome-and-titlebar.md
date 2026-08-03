@@ -19,8 +19,8 @@ This touches `src-tauri/tauri.conf.json` only — window chrome configuration, n
   "height": 800,
   "minWidth": 960,
   "minHeight": 600,
-  "titleBarStyle": "Overlay",   // macOS only — traffic lights overlay content, no title strip
-  "hiddenTitle": true            // macOS only — don't show the window title text next to traffic lights
+  "titleBarStyle": "Overlay", // macOS only — traffic lights overlay content, no title strip
+  "hiddenTitle": true, // macOS only — don't show the window title text next to traffic lights
 }
 ```
 
@@ -30,7 +30,7 @@ This touches `src-tauri/tauri.conf.json` only — window chrome configuration, n
 
 ## Change 2 (required): reserve space for the traffic lights + make top bar draggable
 
-With `Overlay`, the OS still draws the three traffic-light buttons in the top-left, but *your* content now extends underneath them — you must inset your own layout so nothing sits behind the buttons, and mark a drag region so the window can still be moved.
+With `Overlay`, the OS still draws the three traffic-light buttons in the top-left, but _your_ content now extends underneath them — you must inset your own layout so nothing sits behind the buttons, and mark a drag region so the window can still be moved.
 
 In `src/components/Sidebar.tsx`, the top logo row (currently `pt-1.5 pb-5.5`, line 61) needs its top padding increased to clear the traffic lights (~28px tall, macOS convention is ~52px total top inset including the buttons' vertical centering) and a `data-tauri-drag-region` attribute so the empty space above the logo remains window-draggable:
 
@@ -47,7 +47,7 @@ The main content pane (spec 03's toolbar) also needs top clearance since it has 
 
 ## Change 3 (optional, follow-up, not required to ship this redesign): real native vibrancy
 
-`window-vibrancy` (Rust crate) applies a true `NSVisualEffectView` material to the window background, blurring whatever is behind the *entire window* (desktop, other apps) — not just scrolling content like the CSS approximation in spec 00. This is the most authentic possible version of "liquid glass" but is a genuine native/Rust change:
+`window-vibrancy` (Rust crate) applies a true `NSVisualEffectView` material to the window background, blurring whatever is behind the _entire window_ (desktop, other apps) — not just scrolling content like the CSS approximation in spec 00. This is the most authentic possible version of "liquid glass" but is a genuine native/Rust change:
 
 ```toml
 # src-tauri/Cargo.toml — only if pursuing this optional step

@@ -12,7 +12,12 @@ import { invoiceNumberLabel } from "../lib/invoice";
 import { invoiceStatusMeta } from "../lib/status";
 import { formatDate, formatEUR } from "../lib/format";
 import { monthRange, yearRange } from "../lib/dateRange";
-import { agingReport, expenseByCategory, revenueByClient, type AgingBucket } from "../lib/analytics";
+import {
+  agingReport,
+  expenseByCategory,
+  revenueByClient,
+  type AgingBucket,
+} from "../lib/analytics";
 import { nextTaxDeadlines } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
 import type { InvoiceListItem } from "../db/invoices";
@@ -32,7 +37,12 @@ interface DashboardProps {
   onDuplicateInvoice: (id: number) => Promise<void>;
 }
 
-export function Dashboard({ invoices, onNavigate, onOpenInvoice, onDuplicateInvoice }: DashboardProps) {
+export function Dashboard({
+  invoices,
+  onNavigate,
+  onOpenInvoice,
+  onDuplicateInvoice,
+}: DashboardProps) {
   const [clientCount, setClientCount] = useState(0);
   const [expensesThisMonth, setExpensesThisMonth] = useState(0);
   const [expensesThisYear, setExpensesThisYear] = useState<ExpenseRecord[]>([]);
@@ -130,7 +140,13 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice, onDuplicateInvo
 
       <div className="grid grid-cols-4 gap-3.5 mb-6">
         {kpis.map((kpi) => (
-          <KpiTile key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} tone={kpi.tone} />
+          <KpiTile
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value}
+            icon={kpi.icon}
+            tone={kpi.tone}
+          />
         ))}
       </div>
 
@@ -248,7 +264,9 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice, onDuplicateInvo
       <div className="grid grid-cols-2 gap-4 mt-4">
         <Card className="p-5.5">
           <div className="font-bold text-[15px] mb-4">Ingresos por cliente ({thisYear})</div>
-          {topClients.length === 0 && <div className="text-xs text-ink-soft">Sin datos todavía</div>}
+          {topClients.length === 0 && (
+            <div className="text-xs text-ink-soft">Sin datos todavía</div>
+          )}
           {topClients.map((c) => (
             <div key={c.clientId} className="py-2 border-b border-border last:border-b-0">
               <div className="flex items-center justify-between mb-1">
@@ -267,7 +285,9 @@ export function Dashboard({ invoices, onNavigate, onOpenInvoice, onDuplicateInvo
 
         <Card className="p-5.5">
           <div className="font-bold text-[15px] mb-4">Gastos por categoría ({thisYear})</div>
-          {topCategories.length === 0 && <div className="text-xs text-ink-soft">Sin datos todavía</div>}
+          {topCategories.length === 0 && (
+            <div className="text-xs text-ink-soft">Sin datos todavía</div>
+          )}
           {topCategories.map((c) => (
             <div key={c.category} className="py-2 border-b border-border last:border-b-0">
               <div className="flex items-center justify-between mb-1">

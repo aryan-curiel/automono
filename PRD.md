@@ -3,7 +3,7 @@
 ## 1. Overview
 
 A desktop application (Tauri + React + TypeScript) to manage the administrative
-process of working as an *autónomo* in Spain: invoicing, client management,
+process of working as an _autónomo_ in Spain: invoicing, client management,
 contract storage, and deductible expense tracking. Built local-first, with
 automatic backup to a user-owned cloud location (S3/Drive folder). Tax
 declaration autofill (Modelo 130/303, Verifactu/SII) is explicitly deferred to
@@ -16,7 +16,7 @@ v2 but the data model is designed so v1 doesn't need to be reworked to support i
 - Support clients with different VAT treatments (standard, reverse charge EU,
   export outside EU, other exemptions), each with a legally correct note,
   snapshotted per invoice, in the client's invoice language.
-- Support rectification invoices (*facturas rectificativas*) that reference
+- Support rectification invoices (_facturas rectificativas_) that reference
   and correct a prior invoice without ever mutating it.
 - Manage clients, contracts (file storage), and deductible expenses.
 - Multi-language invoice output (starting with ES/EN, extensible to CA).
@@ -102,8 +102,8 @@ expenses (
 ## 6. Milestones
 
 Each milestone below is written as a standalone prompt to hand to Claude Code
-with `/plan`, one at a time, in order. Do not start milestone *N+1* until
-*N* is merged and working.
+with `/plan`, one at a time, in order. Do not start milestone _N+1_ until
+_N_ is merged and working.
 
 ---
 

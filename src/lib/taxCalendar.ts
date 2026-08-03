@@ -21,7 +21,11 @@ function quarterlyDeadline(year: number, quarter: 1 | 2 | 3 | 4): TaxDeadline {
 
 /** Annual Modelo 190/390 summary deadline: Jan 30 of the year after the reported year. */
 function annualDeadline(reportedYear: number): TaxDeadline {
-  return { model: "190/390", label: "Modelo 190/390 (anual)", dueDate: iso(reportedYear + 1, 1, 30) };
+  return {
+    model: "190/390",
+    label: "Modelo 190/390 (anual)",
+    dueDate: iso(reportedYear + 1, 1, 30),
+  };
 }
 
 /** The next `count` upcoming Spanish autónomo tax filing deadlines on or after `todayIso`. */

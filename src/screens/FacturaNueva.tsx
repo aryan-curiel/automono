@@ -8,6 +8,7 @@ import { BackLink, PageHeader } from "../components/PageHeader";
 import { listClients } from "../db/clients";
 import type { ClientRecord, InvoiceLanguage } from "../db/clients";
 import { createDraftInvoice, getInvoiceWithLines, issueInvoice, saveDraft } from "../db/invoices";
+import { getPreferences } from "../db/preferences";
 import { formatEUR } from "../lib/format";
 import { irpfApplicable, IRPF_DEFAULT_RATE } from "../features/clients";
 
@@ -34,6 +35,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
   const [lines, setLines] = useState<DraftLine[]>([mkLine("", 1, 0)]);
   const [ivaRate, setIvaRate] = useState(21);
   const [irpfRate, setIrpfRate] = useState<number | null>(IRPF_DEFAULT_RATE);
+  const [defaultIrpfRate, setDefaultIrpfRate] = useState(IRPF_DEFAULT_RATE);
   const [language, setLanguage] = useState<InvoiceLanguage>("es");
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [irpfDefaultedFor, setIrpfDefaultedFor] = useState<number | null>(null);
@@ -41,6 +43,17 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
   const [saving, setSaving] = useState(false);
   const [issuing, setIssuing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Seeds the IVA/IRPF defaults from Ajustes for a brand-new invoice; an invoice being edited
+  // keeps whatever rates it was saved with, loaded separately below.
+  useEffect(() => {
+    if (editInvoiceId) return;
+    getPreferences().then((prefs) => {
+      setDefaultIrpfRate(prefs.defaultIrpfRate);
+      setIvaRate(prefs.defaultIvaRate);
+      setIrpfRate(prefs.defaultIrpfRate);
+    });
+  }, [editInvoiceId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +108,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
   // than an effect, so switching clients doesn't leave a stale rate from the previous one.
   if (client && irpfDefaultedFor !== clientId) {
     setIrpfDefaultedFor(clientId);
-    setIrpfRate(irpfShown ? IRPF_DEFAULT_RATE : null);
+    setIrpfRate(irpfShown ? defaultIrpfRate : null);
   }
 
   // Same pattern for the invoice language: default it from the selected client's preference
@@ -260,7 +273,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
           {irpfShown && (
             <FormRow label="Retención IRPF">
               <Select
-                value={irpfRate ?? IRPF_DEFAULT_RATE}
+                value={irpfRate ?? defaultIrpfRate}
                 onChange={(e) => setIrpfRate(Number(e.target.value))}
                 disabled={busy}
               >

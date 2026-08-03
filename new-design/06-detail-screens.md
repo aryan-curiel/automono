@@ -42,7 +42,9 @@ function InfoRow({ label, value, mono }: { label: string; value: ReactNode; mono
   return (
     <div className="flex items-center justify-between py-2.5 border-t border-border first:border-t-0">
       <span className="text-[13px] text-ink-soft">{label}</span>
-      <span className={`text-[13px] font-medium text-right ${mono ? "font-mono" : ""}`}>{value}</span>
+      <span className={`text-[13px] font-medium text-right ${mono ? "font-mono" : ""}`}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -54,7 +56,7 @@ function InfoRow({ label, value, mono }: { label: string; value: ReactNode; mono
   <InfoRow label="NIF/CIF" value={client.nifCif} mono />
   <InfoRow label="Dirección" value={client.address} />
   <InfoRow label="Trato de IVA" value={t(`clients.vatTreatment.${client.vatTreatment}`)} />
-</Card>
+</Card>;
 ```
 
 This is the **one row pattern to reuse across all three detail screens** — define `InfoRow` once (a small shared component, e.g. `src/components/ui/InfoRow.tsx`) rather than copy-pasting it into each screen file. This directly satisfies Section 4.9's "no `border-t` on every row" concern by using `first:border-t-0` (only interior rows get a divider, not the whole block boxed in) and Section 4.4's Shape Consistency Lock (one `Card`/radius system, reused).

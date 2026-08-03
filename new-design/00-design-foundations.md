@@ -14,8 +14,8 @@ Dials: `VARIANCE 3` (native apps are grid-predictable, not asymmetric-landing-pa
 
 There is no official web CSS for Apple's Liquid Glass — see Appendix C of the design-taste skill. We approximate with `backdrop-filter` + layered borders + highlight overlays, and we label it as an approximation in code comments where it matters. Two tiers:
 
-1. **CSS approximation (default, do this first)** — `backdrop-filter: blur() saturate()` on toolbars/sheets/popovers that sit *over scrolling content*. This only reads as "glass" where there's something moving underneath to blur, so use it exclusively on elements that overlap scrollable content: the sticky toolbar (spec 03), modals/sheets (spec 04), popovers/menus (spec 04).
-2. **Real native vibrancy (optional upgrade, separate spec)** — the `window-vibrancy` Rust crate can apply true `NSVisualEffectView` materials to the actual Tauri window, blurring whatever is *behind the window* (other apps, desktop). This is the authentic version but touches `src-tauri/Cargo.toml` and `lib.rs`. Left as an optional follow-up in `01-window-chrome-and-titlebar.md` — do the CSS version first, it gets you 90% of the way with zero Rust changes.
+1. **CSS approximation (default, do this first)** — `backdrop-filter: blur() saturate()` on toolbars/sheets/popovers that sit _over scrolling content_. This only reads as "glass" where there's something moving underneath to blur, so use it exclusively on elements that overlap scrollable content: the sticky toolbar (spec 03), modals/sheets (spec 04), popovers/menus (spec 04).
+2. **Real native vibrancy (optional upgrade, separate spec)** — the `window-vibrancy` Rust crate can apply true `NSVisualEffectView` materials to the actual Tauri window, blurring whatever is _behind the window_ (other apps, desktop). This is the authentic version but touches `src-tauri/Cargo.toml` and `lib.rs`. Left as an optional follow-up in `01-window-chrome-and-titlebar.md` — do the CSS version first, it gets you 90% of the way with zero Rust changes.
 
 The sidebar itself is **not** glass — real macOS sidebars (Mail, Notes, Settings) sit at a flat opaque-ish tint with no content behind them to blur. Giving it `backdrop-filter` with nothing behind it is just a translucency effect with a color-mixing artifact, not glass. Keep it a solid material (see below).
 
@@ -28,14 +28,14 @@ Extend `src/index.css` `:root` / `.dark` blocks — keep the existing custom-pro
   /* existing tokens unchanged */
 
   /* new: materials */
-  --color-toolbar-glass: rgb(247 245 241 / 0.72);   /* bg tinted, translucent */
+  --color-toolbar-glass: rgb(247 245 241 / 0.72); /* bg tinted, translucent */
   --color-sheet-glass: rgb(255 255 255 / 0.82);
-  --color-glass-border: rgb(255 255 255 / 0.5);      /* inner highlight edge */
-  --color-glass-border-soft: rgb(28 36 48 / 0.06);   /* outer hairline */
-  --color-overlay-scrim: rgb(28 36 48 / 0.25);        /* behind modals/sheets */
+  --color-glass-border: rgb(255 255 255 / 0.5); /* inner highlight edge */
+  --color-glass-border-soft: rgb(28 36 48 / 0.06); /* outer hairline */
+  --color-overlay-scrim: rgb(28 36 48 / 0.25); /* behind modals/sheets */
 
   /* new: sidebar material (opaque, not glass) */
-  --color-sidebar-selection: rgb(194 99 44 / 0.16);   /* accent-tinted selection pill */
+  --color-sidebar-selection: rgb(194 99 44 / 0.16); /* accent-tinted selection pill */
 
   /* new: focus ring, matches accent */
   --color-focus-ring: rgb(194 99 44 / 0.35);
@@ -58,12 +58,12 @@ Add matching entries to the `@theme` block so these are usable as Tailwind utili
 
 macOS uses continuous "squircle" corners that CSS can't produce natively — we approximate with a slightly larger, consistent radius scale than the current app uses. Pick these and use them everywhere, no exceptions:
 
-| Token | Value | Use |
-|---|---|---|
-| `--radius-control` | `8px` | buttons, inputs, select, nav rows, table row hover |
-| `--radius-card` | `12px` | Card, grouped-form sections, KPI tiles |
-| `--radius-sheet` | `16px` | modals, sheets, popovers, menus |
-| `--radius-pill` | `9999px` | badges, toggle switches, avatar, segmented control |
+| Token              | Value    | Use                                                |
+| ------------------ | -------- | -------------------------------------------------- |
+| `--radius-control` | `8px`    | buttons, inputs, select, nav rows, table row hover |
+| `--radius-card`    | `12px`   | Card, grouped-form sections, KPI tiles             |
+| `--radius-sheet`   | `16px`   | modals, sheets, popovers, menus                    |
+| `--radius-pill`    | `9999px` | badges, toggle switches, avatar, segmented control |
 
 Add as Tailwind theme values: `--radius-control`, `--radius-card`, `--radius-sheet` in the `@theme` block (Tailwind v4 already namespaces `--radius-*` to `rounded-*` utilities automatically — confirm `rounded-control` / `rounded-card` / `rounded-sheet` resolve after adding).
 
@@ -74,10 +74,11 @@ Replace every current `rounded-lg` → `rounded-control`, `rounded-xl` → `roun
 Current app has almost none (2 total uses). macOS uses soft, hue-tinted shadows for anything that floats above content (menus, popovers, sheets) and none for flat in-flow cards. Add to `@theme` or as plain utility classes:
 
 ```css
---shadow-float: 0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.10);
+--shadow-float: 0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.1);
 --shadow-sheet: 0 4px 8px rgb(28 36 48 / 0.08), 0 24px 48px rgb(28 36 48 / 0.18);
 ```
-Dark mode: same shadows, but shadows read as pure darkening in dark UIs — keep the same alpha values, they still work since the shadow sits on top of a lighter scrim in both modes. Do not use pure-black shadows (`rgb(0 0 0 / …)`) — tint toward `--color-ink` (`#1c2430` / `#eef1f5`... actually shadows always tint dark regardless of theme, so tint toward the *light-mode* ink `#1c2430` in both themes).
+
+Dark mode: same shadows, but shadows read as pure darkening in dark UIs — keep the same alpha values, they still work since the shadow sits on top of a lighter scrim in both modes. Do not use pure-black shadows (`rgb(0 0 0 / …)`) — tint toward `--color-ink` (`#1c2430` / `#eef1f5`... actually shadows always tint dark regardless of theme, so tint toward the _light-mode_ ink `#1c2430` in both themes).
 
 In-flow `Card` stays shadow-less (flat, `border` only) exactly as today — only floating layers (spec 04's Sheet/Popover/Menu, spec 12's toast) get shadows.
 

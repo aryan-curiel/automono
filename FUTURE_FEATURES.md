@@ -6,12 +6,14 @@ Spain's new anti-fraud invoicing standard. Not a new tax — a technical/securit
 standard invoicing software must meet, enforced by AEAT (the tax agency).
 
 **Deadlines** (confirmed pushed back from the original 2026 dates):
+
 - Corporate-tax companies: mandatory from **Jan 1, 2027**.
 - Everyone else, including autónomos: mandatory from **July 1, 2027**.
 
 **What compliant software must do:**
+
 - Generate an immutable "invoicing record" for every invoice — corrections/
-  cancellations create a *new* record, never edit or delete the old one.
+  cancellations create a _new_ record, never edit or delete the old one.
 - Chain each record to the previous one via hash, forming a tamper-evident
   sequential log (this is exactly the append-only shape AutoMono's issued-invoice
   lock triggers already assume — Verifactu just adds the hash chain and AEAT

@@ -49,7 +49,9 @@ describe("invoices numbering constraint", () => {
     const db = freshDb();
     seedClient(db);
     db.exec("INSERT INTO invoices (client_id, status) VALUES (1, 'draft')");
-    expect(() => db.exec("INSERT INTO invoices (client_id, status) VALUES (1, 'draft')")).not.toThrow();
+    expect(() =>
+      db.exec("INSERT INTO invoices (client_id, status) VALUES (1, 'draft')"),
+    ).not.toThrow();
   });
 
   it("rejects a duplicate real series_prefix/invoice_number pair", () => {
@@ -125,7 +127,9 @@ describe("invoice immutability triggers", () => {
         "INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, total) VALUES (1, 'work', 1, 10, 10)",
       ),
     ).not.toThrow();
-    expect(() => db.exec("UPDATE invoice_lines SET description = 'renamed' WHERE invoice_id = 1")).not.toThrow();
+    expect(() =>
+      db.exec("UPDATE invoice_lines SET description = 'renamed' WHERE invoice_id = 1"),
+    ).not.toThrow();
     expect(() => db.exec("DELETE FROM invoice_lines WHERE invoice_id = 1")).not.toThrow();
   });
 
@@ -144,9 +148,9 @@ describe("invoice immutability triggers", () => {
         "INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, total) VALUES (1, 'extra', 1, 1, 1)",
       ),
     ).toThrow(/cannot add line items/);
-    expect(() => db.exec("UPDATE invoice_lines SET description = 'renamed' WHERE invoice_id = 1")).toThrow(
-      /cannot edit line items/,
-    );
+    expect(() =>
+      db.exec("UPDATE invoice_lines SET description = 'renamed' WHERE invoice_id = 1"),
+    ).toThrow(/cannot edit line items/);
     expect(() => db.exec("DELETE FROM invoice_lines WHERE invoice_id = 1")).toThrow(
       /cannot delete line items/,
     );
@@ -157,7 +161,9 @@ describe("listInvoices query", () => {
   it("computes a draft's total from its lines and stored rates", () => {
     const db = freshDb();
     seedClient(db);
-    db.exec("INSERT INTO invoices (client_id, status, iva_rate, irpf_rate) VALUES (1, 'draft', 21, 15)");
+    db.exec(
+      "INSERT INTO invoices (client_id, status, iva_rate, irpf_rate) VALUES (1, 'draft', 21, 15)",
+    );
     db.exec(
       "INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, total) VALUES (1, 'work', 2, 100, 200)",
     );

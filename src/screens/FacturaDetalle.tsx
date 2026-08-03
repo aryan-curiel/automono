@@ -229,8 +229,8 @@ export function FacturaDetalle({
         <div className="flex items-start gap-2.5 bg-danger-soft text-danger rounded-card py-3 px-4 font-medium text-[13px] mb-6">
           <Warning size={16} weight="fill" className="shrink-0 mt-0.5" />
           <span>
-            Rectifica a <b className="font-mono">{rectifies ? invoiceNumberLabel(rectifies) : ""}</b>{" "}
-            —{" "}
+            Rectifica a{" "}
+            <b className="font-mono">{rectifies ? invoiceNumberLabel(rectifies) : ""}</b> —{" "}
             {invoice.rectificationType === "full" ? "anulación completa" : "corrección parcial"}.
             Motivo: {invoice.rectificationReason}
           </span>

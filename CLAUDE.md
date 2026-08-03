@@ -22,6 +22,7 @@ Package manager is **bun** (`bun.lock` present) — use `bun run <script>` / `bu
 **Two runtimes, one SQLite DB.** The Rust side (`src-tauri/src/`) owns the SQL migrations and any filesystem/PDF work; the frontend (`src/`) talks to SQLite directly via `@tauri-apps/plugin-sql` (`src/db/client.ts` → `Database.load("sqlite:automono.db")`) for all CRUD, and calls Rust only for things JS can't do: file attach/copy, PDF generation, backups, receipt text extraction. Business logic (validators, tax math, formatting) lives in `src/lib/` and `src/features/*/`, not in Rust — Rust is IO/OS-boundary only.
 
 **Migrations are the single source of truth for schema, and must be registered in two places that don't cross-check each other:**
+
 - SQL files live in `src-tauri/migrations/NNNN_description.sql`, numbered sequentially.
 - They must be added to `all_migrations()` in `src-tauri/src/lib.rs` (Rust runtime, in-order `Migration` structs consumed by `tauri-plugin-sql`) — a file that exists on disk but isn't listed here **silently never runs** in production and causes cryptic "no such column" errors at query time, not at startup. A Rust test (`all_sql_files_are_registered_as_migrations`) guards against this gap now; keep it green when adding migrations.
 - `src/db/migrations.test.ts` independently re-scans the `migrations/` directory and replays every `.sql` file against an in-memory `node:sqlite` DB for frontend-side schema tests — it does NOT read `all_migrations()`, so it won't catch a registration gap in the Rust list.
@@ -31,6 +32,7 @@ Package manager is **bun** (`bun.lock` present) — use `bun run <script>` / `bu
 **Filesystem layout mirrors tax-year bookkeeping.** All attached files (contracts, expense receipts, business logo) are copied into `app_data_dir()` under per-year folders (e.g. `expenses/<year>/receipts/`, `contracts/<year>/<client_id>/`), named `<date>_<note-or-original-name>.<ext>` where `<date>` is the record's business date (expense date / contract start date), not the attach time — this makes the app-data folder itself a browsable, accountant-readable archive. See `contracts.rs`/`expenses.rs`/`branding.rs` for the shared `copy_into`-style helpers.
 
 **Frontend structure:**
+
 - `src/screens/` — one screen per route, Spanish-named to match the product's UI language (`Facturas`, `Clientes`, `Gastos`, `ResumenTrimestral`, `Ajustes`, etc.), wired up in `src/App.tsx` via a `Screen` union type (no router library — plain state-driven view switching).
 - `src/db/` — one module per entity (`clients.ts`, `invoices.ts`, `contracts.ts`, `expenses.ts`, `businessProfile.ts`, `backup.ts`, `export.ts`) — each wraps raw SQL against `getDb()`.
 - `src/features/<entity>/` — pure validators and business rules (e.g. tax defaults, form validators) kept separate from the `db/` data-access layer and from `screens/` presentation.

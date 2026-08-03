@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { TrendUp, Percent, ChartLineUp, Scales, DownloadSimple, FolderOpen } from "@phosphor-icons/react";
+import {
+  TrendUp,
+  Percent,
+  ChartLineUp,
+  Scales,
+  DownloadSimple,
+  FolderOpen,
+} from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { KpiTile } from "../components/ui/KpiTile";
@@ -159,7 +166,12 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
       const expenseReceiptPaths = expenses
         .map((e) => e.receiptFilePath)
         .filter((p): p is string => !!p);
-      await exportGestorBundle(destFolder, invoicePdfPaths, expenseReceiptPaths, buildExportCsv(qInvoices, expenses));
+      await exportGestorBundle(
+        destFolder,
+        invoicePdfPaths,
+        expenseReceiptPaths,
+        buildExportCsv(qInvoices, expenses),
+      );
     } catch (e) {
       setExportError(`No se pudo exportar el paquete: ${String(e)}`);
     } finally {
@@ -197,7 +209,11 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
           subtitle={revenueDelta ?? undefined}
         />
         <KpiTile label="IRPF retenido" value={formatEUR(irpfWithheld)} icon={Percent} />
-        <KpiTile label="Ingreso neto estimado" value={formatEUR(netIrpfIncome)} icon={ChartLineUp} />
+        <KpiTile
+          label="Ingreso neto estimado"
+          value={formatEUR(netIrpfIncome)}
+          icon={ChartLineUp}
+        />
         <KpiTile
           label="Margen (tras IRPF)"
           value={formatEUR(margin)}

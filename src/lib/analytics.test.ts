@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { agingReport, clientBalance, expenseByCategory, revenueByClient, yoyDelta } from "./analytics";
+import {
+  agingReport,
+  clientBalance,
+  expenseByCategory,
+  revenueByClient,
+  yoyDelta,
+} from "./analytics";
 import type { InvoiceListItem } from "../db/invoices";
 import type { ExpenseRecord } from "../db/expenses";
 
@@ -70,7 +76,10 @@ describe("expenseByCategory", () => {
   });
 
   it("buckets missing/blank category as Sin categoría", () => {
-    const result = expenseByCategory([expense({ category: null, amount: 10 }), expense({ category: "  ", amount: 5 })]);
+    const result = expenseByCategory([
+      expense({ category: null, amount: 10 }),
+      expense({ category: "  ", amount: 5 }),
+    ]);
     expect(result).toEqual([{ category: "Sin categoría", total: 15 }]);
   });
 });

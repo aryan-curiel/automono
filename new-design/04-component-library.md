@@ -18,12 +18,9 @@ const base =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
 
 const variants: Record<Variant, string> = {
-  primary:
-    "bg-accent text-white px-4 py-2 shadow-[0_1px_2px_rgb(0,0,0,0.12)] hover:brightness-105",
-  secondary:
-    "bg-surface text-ink border border-border px-4 py-2 hover:bg-surface-alt",
-  "ghost-danger":
-    "bg-transparent text-danger px-1 py-2 hover:bg-danger-soft rounded-control",
+  primary: "bg-accent text-white px-4 py-2 shadow-[0_1px_2px_rgb(0,0,0,0.12)] hover:brightness-105",
+  secondary: "bg-surface text-ink border border-border px-4 py-2 hover:bg-surface-alt",
+  "ghost-danger": "bg-transparent text-danger px-1 py-2 hover:bg-danger-soft rounded-control",
   dashed:
     "bg-transparent text-accent border border-dashed border-border px-3.5 py-2 hover:bg-surface-alt",
 };
@@ -37,7 +34,7 @@ Padding tightened from `px-5 py-2.5` to `px-4 py-2` and text from `text-sm` to `
 
 ## `Field.tsx` — restyle, same API
 
-Current `fieldBase` (Field.tsx:12) is `rounded-lg` with a plain 1px border and browser-default focus (the `input:focus { border-color: accent !important }` global rule in `index.css:87-91`). macOS text fields have a subtle inset look and a soft focus *ring* (glow), not just a border color swap:
+Current `fieldBase` (Field.tsx:12) is `rounded-lg` with a plain 1px border and browser-default focus (the `input:focus { border-color: accent !important }` global rule in `index.css:87-91`). macOS text fields have a subtle inset look and a soft focus _ring_ (glow), not just a border color swap:
 
 ```tsx
 const fieldBase =
@@ -90,7 +87,7 @@ export function Toast({ message, onDismiss }: ToastProps) {
 }
 ```
 
-Moved from bottom-right to top-right (macOS Notification Center convention) and now glass since it *floats over* content — this is one of the legitimate glass use-cases from spec 00. Only requires wrapping the existing two call sites in `App.tsx` (lines 352-353) with `<AnimatePresence>` if you want exit animations on dismiss too — optional, the entrance alone satisfies "motion claimed, motion shown" here since dismiss is a timeout/unmount either way.
+Moved from bottom-right to top-right (macOS Notification Center convention) and now glass since it _floats over_ content — this is one of the legitimate glass use-cases from spec 00. Only requires wrapping the existing two call sites in `App.tsx` (lines 352-353) with `<AnimatePresence>` if you want exit animations on dismiss too — optional, the entrance alone satisfies "motion claimed, motion shown" here since dismiss is a timeout/unmount either way.
 
 ## New: `Sheet` (modal dialog) — `src/components/ui/Sheet.tsx`
 
@@ -103,14 +100,24 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 
 export function Sheet({
-  open, onOpenChange, title, children,
-}: { open: boolean; onOpenChange: (open: boolean) => void; title: string; children: ReactNode }) {
+  open,
+  onOpenChange,
+  title,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay asChild>
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-overlay-scrim"
           />
         </Dialog.Overlay>
@@ -170,7 +177,11 @@ export function MenuContent({ children }: { children: ReactNode }) {
   );
 }
 
-export function MenuItem({ children, danger, ...props }: React.ComponentProps<typeof DropdownMenu.Item> & { danger?: boolean }) {
+export function MenuItem({
+  children,
+  danger,
+  ...props
+}: React.ComponentProps<typeof DropdownMenu.Item> & { danger?: boolean }) {
   return (
     <DropdownMenu.Item
       className={`flex items-center gap-2 px-2.5 py-1.5 rounded-control text-[13px] cursor-pointer outline-none
@@ -221,8 +232,14 @@ macOS's `NSSegmentedControl` — used to replace `PeriodSelector`'s kind-picker 
 
 ```tsx
 export function SegmentedControl<T extends string>({
-  options, value, onChange,
-}: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
   return (
     <div className="inline-flex p-0.5 rounded-control bg-surface-alt border border-border">
       {options.map((opt) => (

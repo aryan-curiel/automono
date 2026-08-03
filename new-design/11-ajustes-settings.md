@@ -18,13 +18,27 @@ Apply spec 08's `FormRow` component to every field in all three form-bearing car
 <Card className="px-5 max-w-[640px] mb-5">
   <div className="font-bold text-sm pt-4 pb-1">Datos del negocio</div>
   <FormRow label="Nombre / Razón social" error={errors.name}>
-    <TextInput value={form.name} error={!!errors.name} onChange={(e) => set("name", e.target.value)} />
+    <TextInput
+      value={form.name}
+      error={!!errors.name}
+      onChange={(e) => set("name", e.target.value)}
+    />
   </FormRow>
   <FormRow label="NIF" error={errors.nifCif}>
-    <TextInput mono value={form.nifCif} error={!!errors.nifCif} onChange={(e) => handleNifChange(e.target.value)} />
+    <TextInput
+      mono
+      value={form.nifCif}
+      error={!!errors.nifCif}
+      onChange={(e) => handleNifChange(e.target.value)}
+    />
   </FormRow>
   <FormRow label="Número de IVA" error={errors.vatNumber}>
-    <TextInput mono value={form.vatNumber} error={!!errors.vatNumber} onChange={(e) => handleVatNumberChange(e.target.value)} />
+    <TextInput
+      mono
+      value={form.vatNumber}
+      error={!!errors.vatNumber}
+      onChange={(e) => handleVatNumberChange(e.target.value)}
+    />
   </FormRow>
   <FormRow label="Dirección fiscal">
     <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />
@@ -32,7 +46,9 @@ Apply spec 08's `FormRow` component to every field in all three form-bearing car
 
   {saveError && <ErrorText>{saveError}</ErrorText>}
   <div className="flex items-center gap-3 py-4 border-t border-border mt-1">
-    <Button onClick={handleSave} disabled={saving}>Guardar</Button>
+    <Button onClick={handleSave} disabled={saving}>
+      Guardar
+    </Button>
     {saved && <span className="text-[13px] text-ink-soft">Guardado.</span>}
   </div>
 </Card>
@@ -76,7 +92,7 @@ This card mixes: a folder-picker row (`TextInput readOnly` + Button, lines 302-3
 </div>
 ```
 
-- The `window.confirm()` at line 186-191 for restore confirmation: **optional** upgrade to `Sheet` (spec 04), consistent with FacturaDetalle's mark-paid flow (spec 07) — not required, native `confirm()` is functionally correct and this is a genuinely destructive action where a blocking native dialog is arguably *more* trustworthy to a cautious user than a custom sheet. Judgment call; do it only if you want full visual consistency across every confirmation in the app.
+- The `window.confirm()` at line 186-191 for restore confirmation: **optional** upgrade to `Sheet` (spec 04), consistent with FacturaDetalle's mark-paid flow (spec 07) — not required, native `confirm()` is functionally correct and this is a genuinely destructive action where a blocking native dialog is arguably _more_ trustworthy to a cautious user than a custom sheet. Judgment call; do it only if you want full visual consistency across every confirmation in the app.
 
 ## DB healthcheck card (lines 402-405)
 

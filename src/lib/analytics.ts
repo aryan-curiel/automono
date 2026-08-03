@@ -14,7 +14,12 @@ export function revenueByClient(invoices: InvoiceListItem[]): ClientRevenue[] {
     if (inv.status === "draft") continue;
     const existing = byClient.get(inv.clientId);
     if (existing) existing.total += inv.total;
-    else byClient.set(inv.clientId, { clientId: inv.clientId, clientName: inv.clientName, total: inv.total });
+    else
+      byClient.set(inv.clientId, {
+        clientId: inv.clientId,
+        clientName: inv.clientName,
+        total: inv.total,
+      });
   }
   return [...byClient.values()].sort((a, b) => b.total - a.total);
 }
@@ -63,7 +68,8 @@ export function agingReport(invoices: InvoiceListItem[], todayIso: string): Agin
   for (const inv of invoices) {
     if (inv.status !== "issued" || !inv.dueDate) continue;
     const overdue = daysBetween(inv.dueDate, todayIso);
-    const bucket: AgingBucket = overdue <= 0 ? "current" : overdue <= 30 ? "0-30" : overdue <= 60 ? "30-60" : "60+";
+    const bucket: AgingBucket =
+      overdue <= 0 ? "current" : overdue <= 30 ? "0-30" : overdue <= 60 ? "30-60" : "60+";
     grouped[bucket].push(inv);
   }
   return AGING_BUCKETS.map((bucket) => ({
@@ -87,8 +93,12 @@ export interface ClientBalance {
 
 /** Total invoiced (issued + paid, excludes drafts) vs. total paid for one client. */
 export function clientBalance(invoices: InvoiceListItem[], clientId: number): ClientBalance {
-  const clientInvoices = invoices.filter((inv) => inv.clientId === clientId && inv.status !== "draft");
+  const clientInvoices = invoices.filter(
+    (inv) => inv.clientId === clientId && inv.status !== "draft",
+  );
   const invoiced = clientInvoices.reduce((s, inv) => s + inv.total, 0);
-  const paid = clientInvoices.filter((inv) => inv.status === "paid").reduce((s, inv) => s + inv.total, 0);
+  const paid = clientInvoices
+    .filter((inv) => inv.status === "paid")
+    .reduce((s, inv) => s + inv.total, 0);
   return { invoiced, paid, outstanding: invoiced - paid };
 }

@@ -34,7 +34,10 @@ describe("contracts", () => {
     const db = freshDb();
     const clientId = insertClient(db, "Acme", "ACM");
     db.exec(`INSERT INTO contracts (client_id, title) VALUES (${clientId}, 'Service agreement')`);
-    const row = db.prepare("SELECT * FROM contracts").get() as { status: string; file_path: string | null };
+    const row = db.prepare("SELECT * FROM contracts").get() as {
+      status: string;
+      file_path: string | null;
+    };
     expect(row.status).toBe("active");
     expect(row.file_path).toBeNull();
   });
@@ -54,10 +57,14 @@ describe("contracts", () => {
     const clientA = insertClient(db, "A", "AAA");
     const clientB = insertClient(db, "B", "BBB");
     db.exec(`INSERT INTO contracts (client_id, title, status) VALUES (${clientA}, 'A1', 'active')`);
-    db.exec(`INSERT INTO contracts (client_id, title, status) VALUES (${clientA}, 'A2', 'expired')`);
+    db.exec(
+      `INSERT INTO contracts (client_id, title, status) VALUES (${clientA}, 'A2', 'expired')`,
+    );
     db.exec(`INSERT INTO contracts (client_id, title, status) VALUES (${clientB}, 'B1', 'active')`);
 
-    const forClientA = db.prepare("SELECT title FROM contracts WHERE client_id = ?").all(clientA) as {
+    const forClientA = db
+      .prepare("SELECT title FROM contracts WHERE client_id = ?")
+      .all(clientA) as {
       title: string;
     }[];
     expect(forClientA.map((r) => r.title).sort()).toEqual(["A1", "A2"]);

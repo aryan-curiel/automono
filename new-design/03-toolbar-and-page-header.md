@@ -55,11 +55,12 @@ export function BackLink({ label, onClick }: { label: string; onClick: () => voi
 (`CaretLeft` from `@phosphor-icons/react` — replaces the literal `&larr;` glyph.)
 
 Notes on the recipe:
+
 - `sticky top-0 z-20` pins it while the screen's own container scrolls underneath.
 - `-mx-8` cancels the screen container's `px-10`/`px-8` padding so the glass bar spans full-bleed edge-to-edge (macOS toolbars always touch both window edges) — **check each screen's actual container padding before copying this value**, some use `px-10` (see spec 05/06/08 for per-screen container changes).
 - `backdrop-blur-xl backdrop-saturate-150` is the glass approximation from spec 00 — this is the one place in the whole app where it's justified, because real content scrolls underneath it.
 - `supports-[not(backdrop-filter)]:bg-bg` is the solid-fill fallback for browsers/contexts without `backdrop-filter` support (Section 4.11/Appendix C requirement). Tauri's webview (WKWebView on macOS) supports it, but keep the fallback — it's one utility class, not a maintenance burden.
-- `data-tauri-drag-region` — since the title bar is now overlaid (spec 01), this toolbar is the natural drag handle for the content side of the window (mirroring the sidebar's drag spacer). Only add this to the *empty* background of the bar — Tailwind's `data-tauri-drag-region` on the outer div is fine since the title/actions are separate child elements the OS won't intercept clicks on incorrectly (Tauri only treats mousedown on the exact drag-region element as drag-start, children remain clickable).
+- `data-tauri-drag-region` — since the title bar is now overlaid (spec 01), this toolbar is the natural drag handle for the content side of the window (mirroring the sidebar's drag spacer). Only add this to the _empty_ background of the bar — Tailwind's `data-tauri-drag-region` on the outer div is fine since the title/actions are separate child elements the OS won't intercept clicks on incorrectly (Tauri only treats mousedown on the exact drag-region element as drag-start, children remain clickable).
 - Title size dropped from `text-2xl font-extrabold` to `text-[17px] font-bold` — matches spec 00's typography note and macOS's actual toolbar title size (much smaller than a web "page hero" title; the content itself carries visual weight, not the header).
 
 ## Ajustes.tsx doesn't use PageHeader today

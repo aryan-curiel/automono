@@ -119,7 +119,8 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       // ponytail: falls back to today's date and a generic note when the form has nothing
       // typed yet and extraction found nothing either.
       const date = form.date || extracted?.date || new Date().toISOString().slice(0, 10);
-      const note = form.description.trim() || form.category.trim() || extracted?.vendorGuess || "gasto";
+      const note =
+        form.description.trim() || form.category.trim() || extracted?.vendorGuess || "gasto";
       const stored = await attachExpenseFile(source, date, note);
 
       setForm((f) => ({
@@ -127,7 +128,8 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
         receiptFilePath: stored,
         date: f.date || extracted?.date || f.date,
         amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
-        ivaAmount: f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
+        ivaAmount:
+          f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
         description: f.description || extracted?.vendorGuess || f.description,
       }));
     } catch {

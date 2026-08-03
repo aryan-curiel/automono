@@ -48,7 +48,12 @@ export function searchEntities(
   for (const contract of contracts) {
     const clientName = clientNameById.get(contract.clientId);
     if (matches(q, contract.title, clientName)) {
-      results.push({ type: "contract", id: contract.id, label: contract.title, subtitle: clientName });
+      results.push({
+        type: "contract",
+        id: contract.id,
+        label: contract.title,
+        subtitle: clientName,
+      });
     }
   }
 

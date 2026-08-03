@@ -25,6 +25,7 @@ import { GastoDetalle } from "./screens/GastoDetalle";
 import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
 import { Ajustes } from "./screens/Ajustes";
+import { Onboarding } from "./screens/Onboarding";
 import {
   deleteInvoice,
   duplicateInvoice,
@@ -38,13 +39,16 @@ import {
 } from "./db/invoices";
 import { getBusinessProfile } from "./db/businessProfile";
 import type { BusinessProfileRecord } from "./db/businessProfile";
+import { getPreferences, updatePreferences } from "./db/preferences";
+import type { PreferencesRecord } from "./db/preferences";
 import { checkAutoBackup } from "./db/backup";
 import type { RectificationType, Screen } from "./types";
 
 export default function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [screen, setScreen] = useState<Screen>("dashboard");
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [preferences, setPreferences] = useState<PreferencesRecord | null>(null);
   const [dbReady, setDbReady] = useState(false);
   const [dbErrorToast, setDbErrorToast] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
@@ -128,6 +132,15 @@ export default function App() {
 
   useEffect(() => {
     if (!dbReady) return;
+    getPreferences().then((prefs) => {
+      setPreferences(prefs);
+      setTheme(prefs.theme);
+      void i18n.changeLanguage(prefs.language);
+    });
+  }, [dbReady, i18n]);
+
+  useEffect(() => {
+    if (!dbReady) return;
     checkAutoBackup();
   }, [dbReady]);
 
@@ -198,11 +211,32 @@ export default function App() {
     }
   }
 
-  if (!dbReady) {
+  function handleToggleTheme() {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      void updatePreferences({ theme: next });
+      return next;
+    });
+  }
+
+  if (!dbReady || !preferences) {
     return (
       <div className="flex h-screen items-center justify-center bg-bg text-ink-soft text-sm">
         {t("app.initializing")}
       </div>
+    );
+  }
+
+  if (!preferences.onboardingCompleted) {
+    return (
+      <Onboarding
+        initialPreferences={preferences}
+        onComplete={(finalPrefs) => {
+          setPreferences(finalPrefs);
+          setTheme(finalPrefs.theme);
+          getBusinessProfile().then(setBusinessProfile);
+        }}
+      />
     );
   }
 
@@ -323,7 +357,10 @@ export default function App() {
           )}
 
           {screen === "factura-nueva" && (
-            <FacturaNueva editInvoiceId={editInvoiceId ?? undefined} onBack={() => setScreen("facturas")} />
+            <FacturaNueva
+              editInvoiceId={editInvoiceId ?? undefined}
+              onBack={() => setScreen("facturas")}
+            />
           )}
 
           {screen === "factura-rectificar" && rectifyingInvoice && (
@@ -426,12 +463,7 @@ export default function App() {
           )}
 
           {screen === "resumen-trimestral" && <ResumenTrimestral invoices={invoices} />}
-          {screen === "ajustes" && (
-            <Ajustes
-              theme={theme}
-              onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-            />
-          )}
+          {screen === "ajustes" && <Ajustes theme={theme} onToggleTheme={handleToggleTheme} />}
         </div>
 
         {dbErrorToast && <Toast message={dbErrorToast} onDismiss={() => setDbErrorToast(null)} />}

@@ -145,7 +145,9 @@ export function Facturas({
                     </MenuTrigger>
                     <MenuContent>
                       <MenuItem onSelect={() => onOpenInvoice(inv.id)}>Ver detalle</MenuItem>
-                      <MenuItem onSelect={() => onDuplicateInvoice(inv.id)}>Duplicar factura</MenuItem>
+                      <MenuItem onSelect={() => onDuplicateInvoice(inv.id)}>
+                        Duplicar factura
+                      </MenuItem>
                       {inv.status === "draft" && (
                         <MenuItem
                           danger

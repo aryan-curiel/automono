@@ -64,10 +64,7 @@ interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 export function TextArea({ error, className = "", ...props }: TextAreaProps) {
   return (
-    <textarea
-      className={`${fieldBase} ${borderClass(error)} resize-y ${className}`}
-      {...props}
-    />
+    <textarea className={`${fieldBase} ${borderClass(error)} resize-y ${className}`} {...props} />
   );
 }
 

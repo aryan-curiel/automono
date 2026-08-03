@@ -14,11 +14,7 @@ export function SegmentedControl<T extends string>({
           key={opt.value}
           onClick={() => onChange(opt.value)}
           className={`px-3 py-1 text-[12.5px] font-medium rounded-control transition-colors cursor-pointer
-            ${
-              value === opt.value
-                ? "bg-surface text-ink"
-                : "text-ink-soft hover:text-ink"
-            }`}
+            ${value === opt.value ? "bg-surface text-ink" : "text-ink-soft hover:text-ink"}`}
         >
           {opt.label}
         </button>

@@ -6,6 +6,7 @@ export type ContractStatus = "active" | "expired" | "terminated";
 export type RectificationType = "full" | "partial";
 
 export type Screen =
+  | "onboarding"
   | "dashboard"
   | "clientes"
   | "cliente-detalle"

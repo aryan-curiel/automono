@@ -39,31 +39,94 @@
           "oklch(96% 0.005 70)"
         ]
       },
-      "bg-dark": { "role": "neutral", "displayName": "Deep Slate Ink", "canonical": "oklch(20% 0.01 250)" },
-      "surface": { "role": "neutral", "displayName": "Paper White", "canonical": "oklch(100% 0 0)" },
-      "surface-dark": { "role": "neutral", "displayName": "Charcoal Surface", "canonical": "oklch(26% 0.01 250)" },
-      "border": { "role": "neutral", "displayName": "Dry Hairline", "canonical": "oklch(90% 0.01 70)" },
-      "ink": { "role": "neutral", "displayName": "Deep Slate Ink", "canonical": "oklch(28% 0.02 260)" },
-      "ink-soft": { "role": "neutral", "displayName": "Soft Slate", "canonical": "oklch(48% 0.02 260)" },
-      "sidebar-bg": { "role": "neutral", "displayName": "Charcoal Panel", "canonical": "oklch(28% 0.02 260)" },
-      "success": { "role": "semantic", "displayName": "Muted Forest Green", "canonical": "oklch(48% 0.1 145)" },
-      "warn": { "role": "semantic", "displayName": "Muted Amber", "canonical": "oklch(52% 0.1 85)" },
-      "info": { "role": "semantic", "displayName": "Muted Steel Blue", "canonical": "oklch(48% 0.1 250)" },
-      "danger": { "role": "semantic", "displayName": "Muted Brick Red", "canonical": "oklch(48% 0.14 30)" }
+      "bg-dark": {
+        "role": "neutral",
+        "displayName": "Deep Slate Ink",
+        "canonical": "oklch(20% 0.01 250)"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "oklch(100% 0 0)"
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Charcoal Surface",
+        "canonical": "oklch(26% 0.01 250)"
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Dry Hairline",
+        "canonical": "oklch(90% 0.01 70)"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Deep Slate Ink",
+        "canonical": "oklch(28% 0.02 260)"
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Slate",
+        "canonical": "oklch(48% 0.02 260)"
+      },
+      "sidebar-bg": {
+        "role": "neutral",
+        "displayName": "Charcoal Panel",
+        "canonical": "oklch(28% 0.02 260)"
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Muted Forest Green",
+        "canonical": "oklch(48% 0.1 145)"
+      },
+      "warn": {
+        "role": "semantic",
+        "displayName": "Muted Amber",
+        "canonical": "oklch(52% 0.1 85)"
+      },
+      "info": {
+        "role": "semantic",
+        "displayName": "Muted Steel Blue",
+        "canonical": "oklch(48% 0.1 250)"
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Muted Brick Red",
+        "canonical": "oklch(48% 0.14 30)"
+      }
     },
     "typographyMeta": {
-      "title": { "displayName": "Title", "purpose": "Toolbar/page-header titles only, large-title weight." },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Toolbar/page-header titles only, large-title weight."
+      },
       "body": { "displayName": "Body", "purpose": "Default UI text, form values, table cells." },
       "label": { "displayName": "Label", "purpose": "Field labels, column headers." },
       "mono": { "displayName": "Mono", "purpose": "Money, fiscal codes, invoice/contract numbers." }
     },
     "shadows": [
-      { "name": "float", "value": "0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.1)", "purpose": "Sticky toolbar and anything pinned above scrolling content." },
-      { "name": "sheet", "value": "0 4px 8px rgb(28 36 48 / 0.08), 0 24px 48px rgb(28 36 48 / 0.18)", "purpose": "Modals, sheets, popovers, toast." }
+      {
+        "name": "float",
+        "value": "0 1px 2px rgb(28 36 48 / 0.06), 0 8px 24px rgb(28 36 48 / 0.1)",
+        "purpose": "Sticky toolbar and anything pinned above scrolling content."
+      },
+      {
+        "name": "sheet",
+        "value": "0 4px 8px rgb(28 36 48 / 0.08), 0 24px 48px rgb(28 36 48 / 0.18)",
+        "purpose": "Modals, sheets, popovers, toast."
+      }
     ],
     "motion": [
-      { "name": "spring-sheet", "value": "spring(stiffness: 380, damping: 32)", "purpose": "Sheet/dialog entrance; disabled under prefers-reduced-motion." },
-      { "name": "ease-hover", "value": "transition-colors/transform 150ms ease-out", "purpose": "Hover/press feedback on buttons, rows, fields." }
+      {
+        "name": "spring-sheet",
+        "value": "spring(stiffness: 380, damping: 32)",
+        "purpose": "Sheet/dialog entrance; disabled under prefers-reduced-motion."
+      },
+      {
+        "name": "ease-hover",
+        "value": "transition-colors/transform 150ms ease-out",
+        "purpose": "Hover/press feedback on buttons, rows, fields."
+      }
     ],
     "breakpoints": []
   },
@@ -127,10 +190,26 @@
       "Springs, never bounce: motion is functional, fully disabled under prefers-reduced-motion"
     ],
     "rules": [
-      { "name": "The Color Consistency Lock", "body": "The accent is terracotta, everywhere, in both themes. Never replaced with system blue, never joined by a second accent hue.", "section": "colors" },
-      { "name": "The Honest Glass Rule", "body": "backdrop-filter glass only applies to elements over genuinely scrolling content (toolbar, sheets, menus, popovers, toast). Sidebar and in-flow cards stay flat and opaque.", "section": "colors" },
-      { "name": "The Numeric Mono Rule", "body": "Any value that is money, a fiscal code, or an invoice/contract number renders in font-mono. Plain prose never does.", "section": "typography" },
-      { "name": "The Flat-Card Rule", "body": "Card and other in-flow containers are shadow-less by design, border only. Shadow is reserved for floating layers.", "section": "elevation" }
+      {
+        "name": "The Color Consistency Lock",
+        "body": "The accent is terracotta, everywhere, in both themes. Never replaced with system blue, never joined by a second accent hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Honest Glass Rule",
+        "body": "backdrop-filter glass only applies to elements over genuinely scrolling content (toolbar, sheets, menus, popovers, toast). Sidebar and in-flow cards stay flat and opaque.",
+        "section": "colors"
+      },
+      {
+        "name": "The Numeric Mono Rule",
+        "body": "Any value that is money, a fiscal code, or an invoice/contract number renders in font-mono. Plain prose never does.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-Card Rule",
+        "body": "Card and other in-flow containers are shadow-less by design, border only. Shadow is reserved for floating layers.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do use the terracotta accent identically for every primary action, active state, focus ring, and selection highlight.",

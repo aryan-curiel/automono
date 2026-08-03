@@ -32,7 +32,10 @@ Current row (`Clientes.tsx:51-72`): `border-t border-border`, no hover state, `c
              transition-colors hover:bg-surface-alt"
 >
   {/* existing 5 columns unchanged */}
-  <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+  <div
+    className="opacity-0 group-hover:opacity-100 transition-opacity"
+    onClick={(e) => e.stopPropagation()}
+  >
     <Menu>
       <MenuTrigger className="p-1.5 rounded-control hover:bg-border cursor-pointer">
         <DotsThreeVertical size={16} weight="bold" />
@@ -59,7 +62,7 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 
 const [query, setQuery] = useState("");
 const filtered = clients.filter((c) =>
-  `${c.name} ${c.nifCif} ${c.email}`.toLowerCase().includes(query.toLowerCase())
+  `${c.name} ${c.nifCif} ${c.email}`.toLowerCase().includes(query.toLowerCase()),
 );
 ```
 
@@ -70,7 +73,10 @@ const filtered = clients.filter((c) =>
   actions={
     <>
       <div className="relative">
-        <MagnifyingGlass size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-soft" />
+        <MagnifyingGlass
+          size={14}
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-soft"
+        />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -117,7 +123,9 @@ Plain Tailwind `animate-pulse` — no shimmer library needed (ladder: native CSS
 <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
   <UsersThree size={32} className="text-ink-soft/40" />
   <div className="text-sm text-ink-soft">{t("clients.empty")}</div>
-  <Button variant="secondary" onClick={onNewClient}>+ {t("clients.newClient")}</Button>
+  <Button variant="secondary" onClick={onNewClient}>
+    + {t("clients.newClient")}
+  </Button>
 </div>
 ```
 

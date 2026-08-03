@@ -14,21 +14,21 @@ Dials: `VARIANCE 3` · `MOTION 4` · `DENSITY 6` — this is a calm, grid-predic
 
 ## Execution order
 
-| # | File | Touches | New deps introduced |
-|---|---|---|---|
-| 00 | `00-design-foundations.md` | `src/index.css`, `package.json` | Phosphor, Radix (5 packages), `motion` |
-| 01 | `01-window-chrome-and-titlebar.md` | `src-tauri/tauri.conf.json` | — (optional: `window-vibrancy` Rust crate) |
-| 02 | `02-sidebar-navigation.md` | `src/components/Sidebar.tsx` | — |
-| 03 | `03-toolbar-and-page-header.md` | `src/components/PageHeader.tsx`, `src/screens/Ajustes.tsx` (1-line fix) | — |
-| 04 | `04-component-library.md` | `src/components/ui/*.tsx` (all), + new `Sheet.tsx`/`Menu.tsx`/`Tooltip.tsx`/`SegmentedControl.tsx` | — |
-| 05 | `05-list-table-screens.md` | `Clientes.tsx`, `Facturas.tsx`, `Contratos.tsx`, `Gastos.tsx` | — |
-| 06 | `06-detail-screens.md` | `ClienteDetalle.tsx`, `ContratoDetalle.tsx`, `GastoDetalle.tsx`, + new `InfoRow.tsx` | — |
-| 07 | `07-invoice-detail.md` | `FacturaDetalle.tsx` | — |
-| 08 | `08-forms.md` | `ClienteForm.tsx`, `ContratoForm.tsx`, `GastoForm.tsx`, `FacturaNueva.tsx`, `FacturaRectificar.tsx`, + new `FormRow.tsx` | — |
-| 09 | `09-dashboard.md` | `Dashboard.tsx` | — |
-| 10 | `10-resumen-trimestral.md` | `ResumenTrimestral.tsx`, `PeriodSelector.tsx` | — |
-| 11 | `11-ajustes-settings.md` | `Ajustes.tsx` | — |
-| 12 | `12-motion-and-interactions.md` | all screens (entrance animation), `src/index.css` (reduced-motion) | — |
+| #   | File                               | Touches                                                                                                                  | New deps introduced                        |
+| --- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| 00  | `00-design-foundations.md`         | `src/index.css`, `package.json`                                                                                          | Phosphor, Radix (5 packages), `motion`     |
+| 01  | `01-window-chrome-and-titlebar.md` | `src-tauri/tauri.conf.json`                                                                                              | — (optional: `window-vibrancy` Rust crate) |
+| 02  | `02-sidebar-navigation.md`         | `src/components/Sidebar.tsx`                                                                                             | —                                          |
+| 03  | `03-toolbar-and-page-header.md`    | `src/components/PageHeader.tsx`, `src/screens/Ajustes.tsx` (1-line fix)                                                  | —                                          |
+| 04  | `04-component-library.md`          | `src/components/ui/*.tsx` (all), + new `Sheet.tsx`/`Menu.tsx`/`Tooltip.tsx`/`SegmentedControl.tsx`                       | —                                          |
+| 05  | `05-list-table-screens.md`         | `Clientes.tsx`, `Facturas.tsx`, `Contratos.tsx`, `Gastos.tsx`                                                            | —                                          |
+| 06  | `06-detail-screens.md`             | `ClienteDetalle.tsx`, `ContratoDetalle.tsx`, `GastoDetalle.tsx`, + new `InfoRow.tsx`                                     | —                                          |
+| 07  | `07-invoice-detail.md`             | `FacturaDetalle.tsx`                                                                                                     | —                                          |
+| 08  | `08-forms.md`                      | `ClienteForm.tsx`, `ContratoForm.tsx`, `GastoForm.tsx`, `FacturaNueva.tsx`, `FacturaRectificar.tsx`, + new `FormRow.tsx` | —                                          |
+| 09  | `09-dashboard.md`                  | `Dashboard.tsx`                                                                                                          | —                                          |
+| 10  | `10-resumen-trimestral.md`         | `ResumenTrimestral.tsx`, `PeriodSelector.tsx`                                                                            | —                                          |
+| 11  | `11-ajustes-settings.md`           | `Ajustes.tsx`                                                                                                            | —                                          |
+| 12  | `12-motion-and-interactions.md`    | all screens (entrance animation), `src/index.css` (reduced-motion)                                                       | —                                          |
 
 00 and 04 are load-bearing for everything after — don't skip ahead. 01 is independent (window chrome) and can be done any time after 00. 05-11 can technically be reordered among themselves (they don't depend on each other, only on 00/03/04), but going in order keeps the shared components (`InfoRow`, `FormRow`) built before their first real use.
 

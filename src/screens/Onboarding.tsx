@@ -1,0 +1,356 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import * as Switch from "@radix-ui/react-switch";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Buildings, Bank, SlidersHorizontal } from "@phosphor-icons/react";
+import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { TextInput } from "../components/ui/Field";
+import { FormRow } from "../components/ui/FormRow";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
+import { attachBusinessLogo, pickBusinessLogo, updateBusinessProfile } from "../db/businessProfile";
+import type { BusinessProfileRecord } from "../db/businessProfile";
+import { updatePreferences } from "../db/preferences";
+import type { PreferencesRecord } from "../db/preferences";
+import { isValidNifCif, isValidVatNumber } from "../features/clients";
+import { isValidIban } from "../features/settings";
+
+interface OnboardingProps {
+  initialPreferences: PreferencesRecord;
+  onComplete: (preferences: PreferencesRecord) => void;
+}
+
+const EMPTY_BUSINESS: BusinessProfileRecord = {
+  name: "",
+  nifCif: "",
+  vatNumber: "",
+  address: "",
+  bankName: "",
+  iban: "",
+  bic: "",
+  logoPath: null,
+};
+
+type Step = 1 | 2 | 3;
+type StepOneErrors = Partial<Record<"name" | "nifCif" | "vatNumber", string>>;
+
+const STEP_ICON = { 1: Buildings, 2: Bank, 3: SlidersHorizontal };
+
+const stepVariants = {
+  enter: (direction: number) => ({ opacity: 0, x: direction * 24 }),
+  center: { opacity: 1, x: 0 },
+  exit: (direction: number) => ({ opacity: 0, x: direction * -24 }),
+};
+
+export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) {
+  const { i18n } = useTranslation();
+  const reduceMotion = useReducedMotion();
+  const [step, setStep] = useState<Step>(1);
+  const [direction, setDirection] = useState(1);
+  const [business, setBusiness] = useState<BusinessProfileRecord>(EMPTY_BUSINESS);
+  const [vatNumberEdited, setVatNumberEdited] = useState(false);
+  const [prefs, setPrefs] = useState<PreferencesRecord>(initialPreferences);
+  const [stepOneErrors, setStepOneErrors] = useState<StepOneErrors>({});
+  const [ibanError, setIbanError] = useState<string>();
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+
+  function goTo(next: Step) {
+    setDirection(next > step ? 1 : -1);
+    setStep(next);
+  }
+
+  function set<K extends keyof BusinessProfileRecord>(key: K, value: BusinessProfileRecord[K]) {
+    setBusiness((b) => ({ ...b, [key]: value }));
+  }
+
+  function handleNifChange(value: string) {
+    setBusiness((b) => ({
+      ...b,
+      nifCif: value,
+      vatNumber: vatNumberEdited ? b.vatNumber : `ES${value.toUpperCase()}`,
+    }));
+  }
+
+  async function skip() {
+    await updatePreferences({ onboardingCompleted: true });
+    onComplete({ ...prefs, onboardingCompleted: true });
+  }
+
+  function continueFromStepOne() {
+    const errors: StepOneErrors = {};
+    if (!business.name.trim()) errors.name = "El nombre es obligatorio";
+    if (business.nifCif.trim() && !isValidNifCif(business.nifCif))
+      errors.nifCif = "NIF/CIF con formato inválido";
+    if (business.vatNumber.trim() && !isValidVatNumber(business.vatNumber))
+      errors.vatNumber = "Número de IVA con formato inválido";
+    setStepOneErrors(errors);
+    if (Object.keys(errors).length === 0) goTo(2);
+  }
+
+  function continueFromStepTwo() {
+    if (business.iban.trim() && !isValidIban(business.iban)) {
+      setIbanError("IBAN con formato o dígitos de control inválidos");
+      return;
+    }
+    setIbanError(undefined);
+    goTo(3);
+  }
+
+  async function handlePickLogo() {
+    const source = await pickBusinessLogo();
+    if (!source) return;
+    setLogoUploading(true);
+    try {
+      const stored = await attachBusinessLogo(source);
+      set("logoPath", stored);
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  function handleLanguageChange(language: "es" | "en") {
+    setPrefs((p) => ({ ...p, language }));
+    void i18n.changeLanguage(language);
+  }
+
+  async function finish() {
+    setFinishing(true);
+    try {
+      await updateBusinessProfile({
+        name: business.name.trim(),
+        nifCif: business.nifCif.trim().toUpperCase(),
+        vatNumber: business.vatNumber.trim().toUpperCase(),
+        address: business.address.trim(),
+        bankName: business.bankName.trim(),
+        iban: business.iban.trim().toUpperCase(),
+        bic: business.bic.trim().toUpperCase(),
+        logoPath: business.logoPath,
+      });
+      const finalPrefs: PreferencesRecord = { ...prefs, onboardingCompleted: true };
+      await updatePreferences(finalPrefs);
+      onComplete(finalPrefs);
+    } finally {
+      setFinishing(false);
+    }
+  }
+
+  const StepIcon = STEP_ICON[step];
+  const entranceTransition = reduceMotion
+    ? { duration: 0 }
+    : ({ type: "spring", stiffness: 380, damping: 32 } as const);
+  const slideTransition = reduceMotion
+    ? { duration: 0 }
+    : ({ type: "spring", stiffness: 380, damping: 34 } as const);
+  const progressTransition = reduceMotion
+    ? { duration: 0 }
+    : ({ type: "spring", stiffness: 300, damping: 30 } as const);
+
+  return (
+    <div className="flex h-screen items-center justify-center bg-bg text-ink px-6">
+      <motion.div
+        initial={reduceMotion ? undefined : { opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={entranceTransition}
+        className="w-full max-w-[560px]"
+      >
+        <Card className="px-6 py-6 overflow-hidden">
+          <div className="h-1.5 rounded-pill bg-surface-alt mb-5 overflow-hidden">
+            <motion.div
+              className="h-full rounded-pill bg-accent"
+              initial={false}
+              animate={{ width: `${(step / 3) * 100}%` }}
+              transition={progressTransition}
+            />
+          </div>
+
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <motion.div
+              key={step}
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={slideTransition}
+            >
+              <div className="flex items-center gap-2 mb-0.5">
+                <StepIcon size={18} weight="bold" className="text-accent" />
+                <div className="font-bold text-lg">
+                  {step === 1 && "Bienvenido a AutoMono"}
+                  {step === 2 && "Cuenta bancaria"}
+                  {step === 3 && "Preferencias"}
+                </div>
+              </div>
+
+              {step === 1 && (
+                <>
+                  <div className="text-[13px] text-ink-soft mb-4">
+                    Empecemos con los datos de tu negocio.
+                  </div>
+                  <FormRow label="Nombre / Razón social" error={stepOneErrors.name}>
+                    <TextInput
+                      value={business.name}
+                      error={!!stepOneErrors.name}
+                      onChange={(e) => set("name", e.target.value)}
+                    />
+                  </FormRow>
+                  <FormRow label="NIF" error={stepOneErrors.nifCif}>
+                    <TextInput
+                      mono
+                      value={business.nifCif}
+                      error={!!stepOneErrors.nifCif}
+                      onChange={(e) => handleNifChange(e.target.value)}
+                    />
+                  </FormRow>
+                  <FormRow label="Número de IVA" error={stepOneErrors.vatNumber}>
+                    <TextInput
+                      mono
+                      value={business.vatNumber}
+                      error={!!stepOneErrors.vatNumber}
+                      onChange={(e) => {
+                        setVatNumberEdited(true);
+                        set("vatNumber", e.target.value);
+                      }}
+                    />
+                  </FormRow>
+                  <FormRow label="Dirección fiscal">
+                    <TextInput
+                      value={business.address}
+                      onChange={(e) => set("address", e.target.value)}
+                    />
+                  </FormRow>
+                  <FormRow label="Logo">
+                    <Button variant="secondary" onClick={handlePickLogo} disabled={logoUploading}>
+                      {logoUploading
+                        ? "Subiendo…"
+                        : business.logoPath
+                          ? "Cambiar logo"
+                          : "Subir logo"}
+                    </Button>
+                  </FormRow>
+
+                  <div className="flex items-center justify-between mt-5">
+                    <Button variant="secondary" onClick={skip}>
+                      Saltar por ahora
+                    </Button>
+                    <Button onClick={continueFromStepOne}>Continuar</Button>
+                  </div>
+                </>
+              )}
+
+              {step === 2 && (
+                <>
+                  <div className="text-[13px] text-ink-soft mb-4">
+                    Se usará para mostrar los datos de pago en tus facturas.
+                  </div>
+                  <FormRow label="Nombre del banco">
+                    <TextInput
+                      value={business.bankName}
+                      onChange={(e) => set("bankName", e.target.value)}
+                    />
+                  </FormRow>
+                  <FormRow label="IBAN" error={ibanError}>
+                    <TextInput
+                      mono
+                      value={business.iban}
+                      error={!!ibanError}
+                      onChange={(e) => set("iban", e.target.value)}
+                    />
+                  </FormRow>
+                  <FormRow label="BIC / SWIFT">
+                    <TextInput
+                      mono
+                      value={business.bic}
+                      onChange={(e) => set("bic", e.target.value)}
+                    />
+                  </FormRow>
+
+                  <div className="flex items-center justify-between mt-5">
+                    <Button variant="secondary" onClick={skip}>
+                      Saltar por ahora
+                    </Button>
+                    <div className="flex gap-2.5">
+                      <Button variant="secondary" onClick={() => goTo(1)}>
+                        Atrás
+                      </Button>
+                      <Button onClick={continueFromStepTwo}>Continuar</Button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step === 3 && (
+                <>
+                  <div className="text-[13px] text-ink-soft mb-4">
+                    Puedes cambiar esto más adelante en Ajustes.
+                  </div>
+                  <FormRow label="Modo oscuro">
+                    <div className="flex items-center gap-2.5">
+                      <Switch.Root
+                        checked={prefs.theme === "dark"}
+                        onCheckedChange={(checked) =>
+                          setPrefs((p) => ({ ...p, theme: checked ? "dark" : "light" }))
+                        }
+                        className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                      >
+                        <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
+                      </Switch.Root>
+                      <span className="text-[13px] text-ink-soft">
+                        {prefs.theme === "dark" ? "Activado" : "Desactivado"}
+                      </span>
+                    </div>
+                  </FormRow>
+                  <FormRow label="Idioma">
+                    <SegmentedControl
+                      options={[
+                        { value: "es", label: "Español" },
+                        { value: "en", label: "English" },
+                      ]}
+                      value={prefs.language}
+                      onChange={handleLanguageChange}
+                    />
+                  </FormRow>
+                  <FormRow label="IVA por defecto (%)">
+                    <TextInput
+                      type="number"
+                      min={0}
+                      value={prefs.defaultIvaRate}
+                      onChange={(e) =>
+                        setPrefs((p) => ({ ...p, defaultIvaRate: Number(e.target.value) || 0 }))
+                      }
+                    />
+                  </FormRow>
+                  <FormRow label="IRPF por defecto (%)">
+                    <TextInput
+                      type="number"
+                      min={0}
+                      value={prefs.defaultIrpfRate}
+                      onChange={(e) =>
+                        setPrefs((p) => ({ ...p, defaultIrpfRate: Number(e.target.value) || 0 }))
+                      }
+                    />
+                  </FormRow>
+
+                  <div className="flex items-center justify-between mt-5">
+                    <Button variant="secondary" onClick={skip}>
+                      Saltar por ahora
+                    </Button>
+                    <div className="flex gap-2.5">
+                      <Button variant="secondary" onClick={() => goTo(2)}>
+                        Atrás
+                      </Button>
+                      <Button onClick={finish} disabled={finishing}>
+                        {finishing ? "Guardando…" : "Finalizar"}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}

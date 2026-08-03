@@ -33,7 +33,9 @@ describe("migrations", () => {
     const db = freshDb();
     db.exec("INSERT INTO invoice_series (prefix) VALUES ('ABC')");
     const row = db
-      .prepare("SELECT next_invoice_number, next_rectification_number FROM invoice_series WHERE prefix = 'ABC'")
+      .prepare(
+        "SELECT next_invoice_number, next_rectification_number FROM invoice_series WHERE prefix = 'ABC'",
+      )
       .get() as { next_invoice_number: number; next_rectification_number: number };
     expect(row.next_invoice_number).toBe(1);
     expect(row.next_rectification_number).toBe(1);

@@ -124,6 +124,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0017_business_logo.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 18,
+            description: "preferences",
+            sql: include_str!("../migrations/0018_preferences.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

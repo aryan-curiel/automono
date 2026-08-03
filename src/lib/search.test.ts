@@ -71,9 +71,7 @@ describe("searchEntities", () => {
 
   it("matches clients by name, case-insensitively", () => {
     const results = searchEntities("acme", [client({ id: 1, name: "Acme Corp" })], [], []);
-    expect(results).toEqual([
-      { type: "client", id: 1, label: "Acme Corp", subtitle: "B12345678" },
-    ]);
+    expect(results).toEqual([{ type: "client", id: 1, label: "Acme Corp", subtitle: "B12345678" }]);
   });
 
   it("matches clients by NIF/CIF", () => {
@@ -85,12 +83,18 @@ describe("searchEntities", () => {
     const results = searchEntities(
       "AAA-014",
       [],
-      [invoice({ id: 5, seriesPrefix: "AAA", invoiceNumber: 14, clientName: "Acme Corp", total: 106 })],
+      [
+        invoice({
+          id: 5,
+          seriesPrefix: "AAA",
+          invoiceNumber: 14,
+          clientName: "Acme Corp",
+          total: 106,
+        }),
+      ],
       [],
     );
-    expect(results).toEqual([
-      { type: "invoice", id: 5, label: "AAA-014", subtitle: "Acme Corp" },
-    ]);
+    expect(results).toEqual([{ type: "invoice", id: 5, label: "AAA-014", subtitle: "Acme Corp" }]);
   });
 
   it("matches contracts by title, with the client name as subtitle", () => {
@@ -106,7 +110,9 @@ describe("searchEntities", () => {
   });
 
   it("caps results at 20 across all entity types", () => {
-    const clients = Array.from({ length: 30 }, (_, i) => client({ id: i, name: `Cliente Uno ${i}` }));
+    const clients = Array.from({ length: 30 }, (_, i) =>
+      client({ id: i, name: `Cliente Uno ${i}` }),
+    );
     const results = searchEntities("cliente uno", clients, [], []);
     expect(results).toHaveLength(20);
   });
