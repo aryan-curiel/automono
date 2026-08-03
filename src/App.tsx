@@ -353,6 +353,10 @@ export default function App() {
               onDownloadPdf={handleDownloadPdf}
               onDelete={() => handleDeleteInvoice(invoiceDetail.invoice.id)}
               onDuplicate={() => handleDuplicateInvoice(invoiceDetail.invoice.id)}
+              onEdit={() => {
+                setEditInvoiceId(invoiceDetail.invoice.id);
+                setScreen("factura-nueva");
+              }}
             />
           )}
 
@@ -360,6 +364,7 @@ export default function App() {
             <FacturaNueva
               editInvoiceId={editInvoiceId ?? undefined}
               onBack={() => setScreen("facturas")}
+              onSaved={openInvoice}
             />
           )}
 

@@ -44,6 +44,39 @@ const LIST_INVOICES_SQL = `
   ORDER BY invoices.id DESC
 `;
 
+// Mirrors SELECT_INVOICE in src/db/invoices.ts (see LIST_INVOICES_SQL comment above for why).
+const SELECT_INVOICE_SQL = `
+  SELECT invoices.*,
+    clients.name AS live_client_name,
+    clients.nif_cif AS live_client_nif,
+    clients.vat_number AS live_client_vat_number,
+    clients.address AS live_client_address,
+    clients.vat_treatment AS live_client_vat_treatment,
+    (SELECT id FROM invoices r WHERE r.rectifies_invoice_id = invoices.id) AS rectified_by_invoice_id,
+    (SELECT note_text FROM vat_note_templates
+     WHERE treatment_code = clients.vat_treatment
+       AND language = COALESCE(invoices.language, 'es')) AS live_vat_note_text_in_language,
+    (SELECT note_text FROM vat_note_templates
+     WHERE treatment_code = clients.vat_treatment AND language = 'es') AS live_vat_note_text_es
+  FROM invoices
+  JOIN clients ON clients.id = invoices.client_id
+`;
+
+describe("getInvoice query (invoice preview data)", () => {
+  it("falls back to the live client's vat_treatment and the note template for an unissued draft", () => {
+    const db = freshDb();
+    seedClient(db);
+    db.exec(
+      "INSERT INTO clients (name, nif_cif, series_id, vat_treatment) VALUES ('B', 'X2', 1, 'reverse_charge_eu')",
+    );
+    db.exec("INSERT INTO invoices (client_id, status, language) VALUES (2, 'draft', 'en')");
+    const [row] = db.prepare(SELECT_INVOICE_SQL).all() as Record<string, unknown>[];
+    expect(row.vat_treatment).toBeNull();
+    expect(row.live_client_vat_treatment).toBe("reverse_charge_eu");
+    expect(row.live_vat_note_text_in_language).toMatch(/reverse charged/);
+  });
+});
+
 describe("invoices numbering constraint", () => {
   it("allows multiple drafts with NULL series_prefix/invoice_number to coexist", () => {
     const db = freshDb();

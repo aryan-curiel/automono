@@ -22,6 +22,7 @@ function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
     irpfAmount: 15,
     total: 106,
     pdfPath: null,
+    clientCountry: null,
     ...overrides,
   };
 }

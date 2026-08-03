@@ -51,6 +51,7 @@ pub struct PdfInvoiceData {
     pub client_vat_number: Option<String>,
     pub client_vat_treatment: String,
     pub client_address: Option<String>,
+    pub client_is_foreign: bool,
     pub subtotal: f64,
     pub iva_rate: f64,
     pub iva_amount: f64,
@@ -154,6 +155,7 @@ struct Labels {
     rectification_tag: &'static str,
     rectifies: &'static str,
     reason: &'static str,
+    foreign_client: &'static str,
 }
 
 impl Labels {
@@ -184,6 +186,7 @@ impl Labels {
             rectification_tag: "Factura rectificativa",
             rectifies: "Rectifica a la factura",
             reason: "Motivo",
+            foreign_client: "cliente extranjero",
         }
     }
 
@@ -214,6 +217,7 @@ impl Labels {
             rectification_tag: "Rectification invoice",
             rectifies: "Rectifies invoice",
             reason: "Reason",
+            foreign_client: "foreign client",
         }
     }
 
@@ -300,22 +304,32 @@ fn client_block_lines(data: &PdfInvoiceData, labels: &Labels) -> Vec<String> {
 
 /// The subtotal/IVA/IRPF/total rows, in render order. Pure so the IVA/IRPF rate labels can be
 /// unit-tested without generating an actual PDF.
+///
+/// The IRPF row is always shown (never omitted) — a foreign client withholds nothing, so the
+/// rate is 0%, annotated with "(foreign client)" rather than the row disappearing, which used
+/// to read as a missing/broken invoice rather than "not applicable here".
 fn totals_lines(data: &PdfInvoiceData, labels: &Labels) -> Vec<(String, String)> {
-    let mut rows = vec![
+    let irpf_rate = data.irpf_rate.unwrap_or(0.0);
+    let irpf_amount = data.irpf_amount.unwrap_or(0.0);
+    let irpf_label = if data.client_is_foreign {
+        format!(
+            "{} ({}%) ({})",
+            labels.irpf,
+            format_rate(irpf_rate),
+            labels.foreign_client
+        )
+    } else {
+        format!("{} ({}%)", labels.irpf, format_rate(irpf_rate))
+    };
+    vec![
         (labels.subtotal.to_string(), format_eur(data.subtotal)),
         (
             format!("{} ({}%)", labels.iva, format_rate(data.iva_rate)),
             format_eur(data.iva_amount),
         ),
-    ];
-    if let (Some(irpf_rate), Some(irpf_amount)) = (data.irpf_rate, data.irpf_amount) {
-        rows.push((
-            format!("{} ({}%)", labels.irpf, format_rate(irpf_rate)),
-            format!("-{}", format_eur(irpf_amount)),
-        ));
-    }
-    rows.push((labels.total.to_string(), format_eur(data.total)));
-    rows
+        (irpf_label, format!("-{}", format_eur(irpf_amount))),
+        (labels.total.to_string(), format_eur(data.total)),
+    ]
 }
 
 /// A full-width horizontal line with no height of its own. genpdf's `TableLayout` can only apply
@@ -682,12 +696,17 @@ pub async fn get_or_generate_invoice_pdf(
     force: bool,
 ) -> Result<String, PdfError> {
     let invoice_row = sqlx::query(
-        "SELECT status, series_prefix, invoice_number, is_rectification, issue_date, due_date,
-                language, client_name_snapshot, client_address_snapshot, client_nif_snapshot,
-                client_vat_number_snapshot, vat_treatment, subtotal, iva_rate, iva_amount, irpf_rate,
-                irpf_amount, total, vat_note_text, pdf_path, rectifies_invoice_id,
-                rectification_reason
-         FROM invoices WHERE id = ?",
+        "SELECT invoices.status, invoices.series_prefix, invoices.invoice_number,
+                invoices.is_rectification, invoices.issue_date, invoices.due_date,
+                invoices.language, invoices.client_name_snapshot, invoices.client_address_snapshot,
+                invoices.client_nif_snapshot, invoices.client_vat_number_snapshot,
+                invoices.client_country_snapshot, invoices.vat_treatment, invoices.subtotal,
+                invoices.iva_rate, invoices.iva_amount, invoices.irpf_rate, invoices.irpf_amount,
+                invoices.total, invoices.vat_note_text, invoices.pdf_path,
+                invoices.rectifies_invoice_id, invoices.rectification_reason,
+                clients.country AS live_client_country
+         FROM invoices JOIN clients ON clients.id = invoices.client_id
+         WHERE invoices.id = ?",
     )
     .bind(invoice_id)
     .fetch_optional(pool)
@@ -773,6 +792,12 @@ pub async fn get_or_generate_invoice_pdf(
             .get::<Option<String>, _>("vat_treatment")
             .unwrap_or_else(|| "standard".to_string()),
         client_address: invoice_row.get("client_address_snapshot"),
+        client_is_foreign: {
+            let country: Option<String> = invoice_row
+                .get::<Option<String>, _>("client_country_snapshot")
+                .or_else(|| invoice_row.get("live_client_country"));
+            country.as_deref().is_some_and(|c| c != "ES")
+        },
         subtotal: invoice_row.get::<Option<f64>, _>("subtotal").unwrap_or(0.0),
         iva_rate: invoice_row.get::<Option<f64>, _>("iva_rate").unwrap_or(0.0),
         iva_amount: invoice_row.get::<Option<f64>, _>("iva_amount").unwrap_or(0.0),
@@ -853,6 +878,7 @@ mod tests {
             client_vat_number: vat_number.map(str::to_string),
             client_vat_treatment: vat_treatment.to_string(),
             client_address: Some("Calle Falsa 123".to_string()),
+            client_is_foreign: false,
             subtotal: 100.0,
             iva_rate: 21.0,
             iva_amount: 21.0,
@@ -923,15 +949,31 @@ mod tests {
     }
 
     #[test]
-    fn totals_lines_omit_irpf_row_when_not_applicable() {
+    fn totals_lines_show_irpf_row_as_zero_with_foreign_note_when_not_applicable() {
         let labels = Labels::es();
         let mut data = sample_invoice(None, None);
         data.irpf_rate = None;
         data.irpf_amount = None;
+        data.client_is_foreign = true;
         data.total = 121.0;
         let rows = totals_lines(&data, &labels);
-        assert_eq!(rows.len(), 3);
-        assert!(!rows.iter().any(|(label, _)| label.contains(labels.irpf)));
+        assert_eq!(rows.len(), 4);
+        let irpf_row = rows.iter().find(|(label, _)| label.contains(labels.irpf)).unwrap();
+        assert!(irpf_row.0.contains("0"));
+        assert!(irpf_row.0.contains(labels.foreign_client));
+        assert_eq!(irpf_row.1, format!("-{}", format_eur(0.0)));
+    }
+
+    #[test]
+    fn totals_lines_show_irpf_row_without_note_for_domestic_zero_rate() {
+        let labels = Labels::es();
+        let mut data = sample_invoice(None, None);
+        data.irpf_rate = Some(0.0);
+        data.irpf_amount = Some(0.0);
+        data.client_is_foreign = false;
+        let rows = totals_lines(&data, &labels);
+        let irpf_row = rows.iter().find(|(label, _)| label.contains(labels.irpf)).unwrap();
+        assert!(!irpf_row.0.contains(labels.foreign_client));
     }
 
     #[test]

@@ -13,6 +13,7 @@ import type { ClientRecord } from "../db/clients";
 import { createRectification, getInvoiceWithLines } from "../db/invoices";
 import type { InvoiceListItem, InvoiceRecord } from "../db/invoices";
 import type { RectificationType } from "../types";
+import { irpfApplicable } from "../features/clients";
 
 interface FacturaRectificarProps {
   original: InvoiceListItem;
@@ -28,12 +29,17 @@ interface FacturaRectificarProps {
 interface DraftLine {
   key: string;
   description: string;
-  quantity: number;
-  unitPrice: number;
+  quantity: string;
+  unitPrice: string;
 }
 
 function mkLine(description: string, quantity: number, unitPrice: number): DraftLine {
-  return { key: `${Date.now()}-${Math.random()}`, description, quantity, unitPrice };
+  return {
+    key: `${Date.now()}-${Math.random()}`,
+    description,
+    quantity: String(quantity),
+    unitPrice: String(unitPrice),
+  };
 }
 
 export function FacturaRectificar({
@@ -93,17 +99,13 @@ export function FacturaRectificar({
       ? "La anulación completa generará líneas negativas que igualan y anulan el importe total de la factura original."
       : "La corrección parcial empieza en blanco — añade solo las líneas que corrigen el importe original.";
 
-  const subtotal = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+  const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
   const iva = (subtotal * original.ivaRate) / 100;
-  const irpfShown = original.irpfRate > 0;
-  const irpf = irpfShown ? (subtotal * original.irpfRate) / 100 : 0;
+  const irpf = (subtotal * original.irpfRate) / 100;
+  const irpfForeignClient = !irpfApplicable(original.clientCountry);
   const total = subtotal + iva - irpf;
 
-  function updateLine(
-    idx: number,
-    field: "description" | "quantity" | "unitPrice",
-    value: string | number,
-  ) {
+  function updateLine(idx: number, field: "description" | "quantity" | "unitPrice", value: string) {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
   }
 
@@ -133,8 +135,8 @@ export function FacturaRectificar({
         reason.trim(),
         validLines.map((l) => ({
           description: l.description,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice,
+          quantity: Number(l.quantity) || 0,
+          unitPrice: Number(l.unitPrice) || 0,
         })),
       );
       onEmit(created);
@@ -196,14 +198,14 @@ export function FacturaRectificar({
             <span>IVA ({original.ivaRate}%)</span>
             <span className="font-medium font-mono text-[13.5px] text-ink">{formatEUR(iva)}</span>
           </div>
-          {irpfShown && (
-            <div className="flex justify-between pt-1.5 pb-3.5 text-[13.5px] text-ink-soft">
-              <span>IRPF ({original.irpfRate}%)</span>
-              <span className="font-medium font-mono text-[13.5px] text-ink">
-                -{formatEUR(irpf)}
-              </span>
-            </div>
-          )}
+          <div className="flex justify-between pt-1.5 pb-3.5 text-[13.5px] text-ink-soft">
+            <span>
+              IRPF ({original.irpfRate}%){irpfForeignClient && " (cliente extranjero)"}
+            </span>
+            <span className="font-medium font-mono text-[13.5px] text-ink">
+              -{formatEUR(irpf)}
+            </span>
+          </div>
           <div className="flex justify-between pt-3.5 border-t border-border font-bold text-[15px]">
             <span>Total</span>
             <span className="font-bold text-[17px] font-mono">{formatEUR(total)}</span>
@@ -240,17 +242,17 @@ export function FacturaRectificar({
             <TextInput
               mono
               value={l.quantity}
-              onChange={(e) => updateLine(idx, "quantity", Number(e.target.value) || 0)}
+              onChange={(e) => updateLine(idx, "quantity", e.target.value)}
               disabled={submitting}
             />
             <TextInput
               mono
               value={l.unitPrice}
-              onChange={(e) => updateLine(idx, "unitPrice", Number(e.target.value) || 0)}
+              onChange={(e) => updateLine(idx, "unitPrice", e.target.value)}
               disabled={submitting}
             />
             <div className="font-semibold text-[13px] font-mono py-2">
-              {formatEUR(l.quantity * l.unitPrice)}
+              {formatEUR((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0))}
             </div>
             <button
               onClick={() => !submitting && removeLine(idx)}

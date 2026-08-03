@@ -130,6 +130,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0018_preferences.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 19,
+            description: "invoice_client_country_snapshot",
+            sql: include_str!("../migrations/0019_invoice_client_country_snapshot.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

@@ -27,6 +27,7 @@ export interface InvoiceRecord {
   clientNif: string;
   clientVatNumber: string | null;
   clientAddress: string | null;
+  clientCountry: string | null;
   seriesPrefix: string | null;
   invoiceNumber: number | null;
   issueDate: string | null;
@@ -56,6 +57,10 @@ interface InvoiceRow {
   live_client_nif: string;
   live_client_vat_number: string | null;
   live_client_address: string | null;
+  live_client_vat_treatment: VatTreatment;
+  live_client_country: string | null;
+  live_vat_note_text_in_language: string | null;
+  live_vat_note_text_es: string | null;
   series_prefix: string | null;
   invoice_number: number | null;
   issue_date: string | null;
@@ -68,6 +73,7 @@ interface InvoiceRow {
   client_address_snapshot: string | null;
   client_nif_snapshot: string | null;
   client_vat_number_snapshot: string | null;
+  client_country_snapshot: string | null;
   subtotal: number | null;
   iva_rate: number | null;
   iva_amount: number | null;
@@ -82,17 +88,25 @@ interface InvoiceRow {
   pdf_path: string | null;
 }
 
-// invoices.* only carries client_*_snapshot columns once issued (see 0004/0008
-// migrations) — drafts have no snapshot yet, so fall back to the live client
-// row. rectified_by_invoice_id has no column; it's the inverse of
-// rectifies_invoice_id, resolved via a correlated subquery below.
+// invoices.* only carries client_*_snapshot columns, and vat_treatment/vat_note_text,
+// once issued (see 0004/0008 migrations and invoicing.rs) — drafts have neither yet, so
+// fall back to the live client row and to vat_note_templates for the note text.
+// rectified_by_invoice_id has no column; it's the inverse of rectifies_invoice_id,
+// resolved via a correlated subquery below.
 const SELECT_INVOICE = `
   SELECT invoices.*,
     clients.name AS live_client_name,
     clients.nif_cif AS live_client_nif,
     clients.vat_number AS live_client_vat_number,
     clients.address AS live_client_address,
-    (SELECT id FROM invoices r WHERE r.rectifies_invoice_id = invoices.id) AS rectified_by_invoice_id
+    clients.vat_treatment AS live_client_vat_treatment,
+    clients.country AS live_client_country,
+    (SELECT id FROM invoices r WHERE r.rectifies_invoice_id = invoices.id) AS rectified_by_invoice_id,
+    (SELECT note_text FROM vat_note_templates
+     WHERE treatment_code = clients.vat_treatment
+       AND language = COALESCE(invoices.language, 'es')) AS live_vat_note_text_in_language,
+    (SELECT note_text FROM vat_note_templates
+     WHERE treatment_code = clients.vat_treatment AND language = 'es') AS live_vat_note_text_es
   FROM invoices
   JOIN clients ON clients.id = invoices.client_id
 `;
@@ -114,13 +128,14 @@ function mapInvoiceRow(row: InvoiceRow): InvoiceRecord {
     clientNif: row.client_nif_snapshot ?? row.live_client_nif,
     clientVatNumber: row.client_vat_number_snapshot ?? row.live_client_vat_number,
     clientAddress: row.client_address_snapshot ?? row.live_client_address,
+    clientCountry: row.client_country_snapshot ?? row.live_client_country,
     seriesPrefix: row.series_prefix,
     invoiceNumber: row.invoice_number,
     issueDate: row.issue_date,
     dueDate: row.due_date,
     status: row.status,
-    vatTreatment: row.vat_treatment,
-    vatNoteText: row.vat_note_text,
+    vatTreatment: row.vat_treatment ?? row.live_client_vat_treatment,
+    vatNoteText: row.vat_note_text ?? row.live_vat_note_text_in_language ?? row.live_vat_note_text_es,
     language: row.language,
     subtotal: row.subtotal,
     ivaRate: row.iva_rate,
@@ -181,14 +196,15 @@ export interface DraftPatch {
   ivaRate: number;
   irpfRate: number | null;
   language: InvoiceLanguage;
+  issueDate: string;
   lines: NewInvoiceLine[];
 }
 
 export async function saveDraft(id: number, patch: DraftPatch): Promise<void> {
   const db = await getDb();
   await db.execute(
-    "UPDATE invoices SET iva_rate = $1, irpf_rate = $2, language = $3 WHERE id = $4 AND status = 'draft'",
-    [patch.ivaRate, patch.irpfRate, patch.language, id],
+    "UPDATE invoices SET iva_rate = $1, irpf_rate = $2, language = $3, issue_date = $4 WHERE id = $5 AND status = 'draft'",
+    [patch.ivaRate, patch.irpfRate, patch.language, patch.issueDate, id],
   );
   await db.execute("DELETE FROM invoice_lines WHERE invoice_id = $1", [id]);
   for (const line of patch.lines) {
@@ -214,8 +230,10 @@ interface IssuedInvoice {
   total: number;
 }
 
-export async function issueInvoice(id: number): Promise<InvoiceRecord> {
-  const issueDate = new Date().toISOString().slice(0, 10);
+export async function issueInvoice(
+  id: number,
+  issueDate: string = new Date().toISOString().slice(0, 10),
+): Promise<InvoiceRecord> {
   await invoke<IssuedInvoice>("issue_invoice_cmd", { invoiceId: id, issueDate });
   const invoice = await getInvoice(id);
   if (!invoice) throw new Error("Failed to load invoice after issuing");
@@ -258,6 +276,7 @@ export async function duplicateInvoice(id: number): Promise<InvoiceRecord> {
     ivaRate: invoice.ivaRate ?? 0,
     irpfRate: invoice.irpfRate,
     language: invoice.language ?? "es",
+    issueDate: new Date().toISOString().slice(0, 10),
     lines: lines.map((l) => ({
       description: l.description,
       quantity: l.quantity,
@@ -306,6 +325,7 @@ export interface InvoiceListItem {
   irpfAmount: number;
   total: number;
   pdfPath: string | null;
+  clientCountry: string | null;
 }
 
 interface InvoiceListRow extends InvoiceRow {
@@ -319,6 +339,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       clients.name AS live_client_name,
       clients.nif_cif AS live_client_nif,
       clients.address AS live_client_address,
+      clients.country AS live_client_country,
       (SELECT id FROM invoices r WHERE r.rectifies_invoice_id = invoices.id) AS rectified_by_invoice_id,
       COALESCE(SUM(invoice_lines.quantity * invoice_lines.unit_price), 0) AS lines_subtotal
     FROM invoices
@@ -353,6 +374,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       irpfAmount,
       total,
       pdfPath: row.pdf_path,
+      clientCountry: row.client_country_snapshot ?? row.live_client_country,
     };
   });
 }

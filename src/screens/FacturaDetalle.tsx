@@ -13,6 +13,7 @@ import { amountsFromLines, invoiceNumberLabel, lineTotal } from "../lib/invoice"
 import { invoiceStatusMeta } from "../lib/status";
 import { daysOverdue, lateInterestOwed } from "../lib/lateInterest";
 import type { InvoiceLineRecord, InvoiceListItem, InvoiceRecord } from "../db/invoices";
+import { irpfApplicable } from "../features/clients";
 
 // Ley 3/2004 sets this as ECB reference + 8 points, republished by BOE twice a year — not
 // something to hardcode precisely; this is a starting point the user corrects to the current
@@ -40,6 +41,7 @@ const PREVIEW_LABELS = {
     subtotal: "Base imponible",
     iva: "IVA",
     irpf: "IRPF",
+    foreignClient: "cliente extranjero",
     total: "Total",
     payByBankTransfer: "Paga por transferencia bancaria",
     reference: "Referencia",
@@ -63,6 +65,7 @@ const PREVIEW_LABELS = {
     subtotal: "Subtotal",
     iva: "VAT",
     irpf: "IRPF withholding",
+    foreignClient: "foreign client",
     total: "Total",
     payByBankTransfer: "Pay by bank transfer",
     reference: "Reference",
@@ -86,6 +89,7 @@ interface FacturaDetalleProps {
   onDownloadPdf: (force: boolean) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onEdit: () => void;
 }
 
 export function FacturaDetalle({
@@ -103,6 +107,7 @@ export function FacturaDetalle({
   onDownloadPdf,
   onDelete,
   onDuplicate,
+  onEdit,
 }: FacturaDetalleProps) {
   const amounts =
     invoice.total != null
@@ -114,7 +119,8 @@ export function FacturaDetalle({
         }
       : amountsFromLines(lines, invoice.ivaRate ?? 0, invoice.irpfRate ?? 0);
   const meta = invoiceStatusMeta(invoice.status);
-  const irpfShown = invoice.irpfRate !== null;
+  const irpfForeignClient = !irpfApplicable(invoice.clientCountry);
+  const irpfRateShown = invoice.irpfRate ?? 0;
   const t = PREVIEW_LABELS[invoice.language === "en" ? "en" : "es"];
 
   const rectifies = invoice.rectifiesInvoiceId
@@ -152,6 +158,11 @@ export function FacturaDetalle({
         subtitle={`${invoice.clientName} · emitida ${formatDate(invoice.issueDate)}`}
         actions={
           <>
+            {invoice.status === "draft" && (
+              <Button variant="secondary" onClick={onEdit}>
+                Editar
+              </Button>
+            )}
             {canRectify && (
               <Button variant="secondary" onClick={onStartRectification}>
                 Crear rectificativa
@@ -273,14 +284,14 @@ export function FacturaDetalle({
               {formatEUR(amounts.ivaAmount)}
             </span>
           </div>
-          {irpfShown && (
-            <div className="flex justify-between pt-1 pb-2.5 text-[13.5px] text-ink-soft">
-              <span>IRPF ({invoice.irpfRate}%)</span>
-              <span className="font-medium font-mono text-[13.5px]">
-                -{formatEUR(amounts.irpfAmount)}
-              </span>
-            </div>
-          )}
+          <div className="flex justify-between pt-1 pb-2.5 text-[13.5px] text-ink-soft">
+            <span>
+              IRPF ({irpfRateShown}%){irpfForeignClient && " (cliente extranjero)"}
+            </span>
+            <span className="font-medium font-mono text-[13.5px]">
+              -{formatEUR(amounts.irpfAmount)}
+            </span>
+          </div>
           <div className="flex justify-between pt-2.5 border-t border-border font-bold text-[15px]">
             <span>Total</span>
             <span className="font-bold text-base font-mono">{formatEUR(amounts.total)}</span>
@@ -318,18 +329,17 @@ export function FacturaDetalle({
               <div className="text-[11.5px] text-[#5b6472] leading-relaxed">
                 {invoice.clientName}
                 <br />
-                {invoice.vatTreatment === "standard" || !invoice.vatTreatment ? (
+                {(invoice.vatTreatment === "standard" || !invoice.vatTreatment) && (
                   <>
                     {t.taxId}: {invoice.clientNif}
                     <br />
                   </>
-                ) : (
-                  invoice.clientVatNumber && (
-                    <>
-                      {t.vatNumber}: {invoice.clientVatNumber}
-                      <br />
-                    </>
-                  )
+                )}
+                {invoice.clientVatNumber && (
+                  <>
+                    {t.vatNumber}: {invoice.clientVatNumber}
+                    <br />
+                  </>
                 )}
                 {invoice.clientAddress}
               </div>
@@ -386,14 +396,12 @@ export function FacturaDetalle({
               </span>
               <span>{formatEUR(amounts.ivaAmount)}</span>
             </div>
-            {irpfShown && (
-              <div className="flex justify-between text-xs py-1.5">
-                <span>
-                  {t.irpf} {invoice.irpfRate}%
-                </span>
-                <span>-{formatEUR(amounts.irpfAmount)}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-xs py-1.5">
+              <span>
+                {t.irpf} {irpfRateShown}%{irpfForeignClient && ` (${t.foreignClient})`}
+              </span>
+              <span>-{formatEUR(amounts.irpfAmount)}</span>
+            </div>
             <div className="flex justify-between font-bold text-sm py-1.5 border-t border-[#1c2430]">
               <span>{t.total}</span>
               <span>{formatEUR(amounts.total)}</span>

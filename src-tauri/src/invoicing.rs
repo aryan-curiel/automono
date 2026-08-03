@@ -69,12 +69,12 @@ pub async fn issue_invoice(
     }
     let client_id: i64 = invoice.get("client_id");
     let invoice_language: Option<String> = invoice.get("language");
-    let irpf_rate: Option<f64> = invoice.get("irpf_rate");
+    let mut irpf_rate: Option<f64> = invoice.get("irpf_rate");
     let mut iva_rate: f64 = invoice.get::<Option<f64>, _>("iva_rate").unwrap_or(0.0);
 
     let client = sqlx::query(
         "SELECT s.id AS series_id, s.prefix AS invoice_prefix, s.next_invoice_number,
-                c.name, c.address, c.nif_cif, c.vat_number, c.vat_treatment, c.invoice_language
+                c.name, c.address, c.nif_cif, c.vat_number, c.vat_treatment, c.invoice_language, c.country
          FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE c.id = ?",
     )
     .bind(client_id)
@@ -90,12 +90,21 @@ pub async fn issue_invoice(
     let client_vat_number: Option<String> = client.get("vat_number");
     let vat_treatment: String = client.get("vat_treatment");
     let client_language: String = client.get("invoice_language");
+    let client_country: Option<String> = client.get("country");
+    let client_is_foreign = client_country.as_deref().is_some_and(|c| c != "ES");
 
     // VAT is all-or-nothing per invoice: non-standard treatments are always 0%,
     // regardless of whatever the draft had stored (the FE already enforces this,
     // this is the server-side backstop).
     if vat_treatment != "standard" {
         iva_rate = 0.0;
+    }
+
+    // IRPF withholding doesn't apply to foreign clients — 0%, not absent, so the
+    // totals breakdown can still show the line with a "foreign client" note instead
+    // of hiding it. Same server-side-backstop rationale as the VAT rate above.
+    if client_is_foreign {
+        irpf_rate = Some(0.0);
     }
 
     let language = invoice_language.unwrap_or(client_language);
@@ -144,7 +153,7 @@ pub async fn issue_invoice(
             due_date = COALESCE(due_date, date(?, '+30 days')),
             vat_treatment = ?, vat_note_text = ?, language = ?,
             client_name_snapshot = ?, client_address_snapshot = ?, client_nif_snapshot = ?,
-            client_vat_number_snapshot = ?,
+            client_vat_number_snapshot = ?, client_country_snapshot = ?,
             subtotal = ?, iva_rate = ?, iva_amount = ?, irpf_rate = ?, irpf_amount = ?, total = ?
          WHERE id = ? AND status = 'draft'",
     )
@@ -159,6 +168,7 @@ pub async fn issue_invoice(
     .bind(&client_address)
     .bind(&client_nif)
     .bind(&client_vat_number)
+    .bind(&client_country)
     .bind(subtotal)
     .bind(iva_rate)
     .bind(iva_amount)
@@ -262,7 +272,7 @@ pub async fn create_rectification(
     let original = sqlx::query(
         "SELECT client_id, status, is_rectification, vat_treatment, vat_note_text, language,
                 client_name_snapshot, client_address_snapshot, client_nif_snapshot,
-                client_vat_number_snapshot, iva_rate, irpf_rate
+                client_vat_number_snapshot, client_country_snapshot, iva_rate, irpf_rate
          FROM invoices WHERE id = ?",
     )
     .bind(original_invoice_id)
@@ -294,6 +304,7 @@ pub async fn create_rectification(
     let client_address: Option<String> = original.get("client_address_snapshot");
     let client_nif: Option<String> = original.get("client_nif_snapshot");
     let client_vat_number: Option<String> = original.get("client_vat_number_snapshot");
+    let client_country: Option<String> = original.get("client_country_snapshot");
     let iva_rate: f64 = original.get::<Option<f64>, _>("iva_rate").unwrap_or(0.0);
     let irpf_rate: Option<f64> = original.get("irpf_rate");
 
@@ -356,7 +367,7 @@ pub async fn create_rectification(
             series_prefix = ?, invoice_number = ?, status = 'issued', issue_date = ?,
             vat_treatment = ?, vat_note_text = ?, language = ?,
             client_name_snapshot = ?, client_address_snapshot = ?, client_nif_snapshot = ?,
-            client_vat_number_snapshot = ?,
+            client_vat_number_snapshot = ?, client_country_snapshot = ?,
             subtotal = ?, iva_rate = ?, iva_amount = ?, irpf_rate = ?, irpf_amount = ?, total = ?
          WHERE id = ? AND status = 'draft'",
     )
@@ -370,6 +381,7 @@ pub async fn create_rectification(
     .bind(&client_address)
     .bind(&client_nif)
     .bind(&client_vat_number)
+    .bind(&client_country)
     .bind(subtotal)
     .bind(iva_rate)
     .bind(iva_amount)
@@ -447,6 +459,7 @@ mod tests {
             include_str!("../migrations/0012_client_country.sql"),
             include_str!("../migrations/0013_rectification_numbering.sql"),
             include_str!("../migrations/0016_invoice_series.sql"),
+            include_str!("../migrations/0019_invoice_client_country_snapshot.sql"),
         ] {
             sqlx::raw_sql(sql).execute(&pool).await.expect("migrate");
         }
@@ -511,6 +524,26 @@ mod tests {
         .await
         .expect("insert line");
         id
+    }
+
+    async fn seed_foreign_client(pool: &SqlitePool) -> i64 {
+        sqlx::query("INSERT INTO invoice_series (prefix) VALUES ('FOR')")
+            .execute(pool)
+            .await
+            .expect("insert series");
+        sqlx::query(
+            "INSERT INTO clients (name, nif_cif, series_id, vat_treatment, invoice_language, country)
+             VALUES ('Foreign Co', 'US1234567', (SELECT id FROM invoice_series WHERE prefix = 'FOR'), 'export_outside_eu', 'en', 'US')",
+        )
+        .execute(pool)
+        .await
+        .expect("insert client");
+        sqlx::query_scalar(
+            "SELECT c.id FROM clients c JOIN invoice_series s ON s.id = c.series_id WHERE s.prefix = 'FOR'",
+        )
+        .fetch_one(pool)
+        .await
+        .expect("get client id")
     }
 
     async fn seed_draft_invoice_no_irpf(pool: &SqlitePool, client_id: i64) -> i64 {
@@ -701,6 +734,28 @@ mod tests {
                 .await
                 .expect("read irpf_rate");
         assert_eq!(stored_rate, None);
+    }
+
+    #[tokio::test]
+    async fn issuing_forces_zero_irpf_and_snapshots_country_for_a_foreign_client() {
+        let pool = fresh_pool().await;
+        let client_id = seed_foreign_client(&pool).await;
+        let invoice_id = seed_draft_invoice_no_irpf(&pool, client_id).await;
+
+        let issued = issue_invoice(&pool, invoice_id, "2026-07-31")
+            .await
+            .expect("issue succeeds");
+
+        assert_eq!(issued.irpf_rate, Some(0.0));
+        assert_eq!(issued.irpf_amount, Some(0.0));
+
+        let country: Option<String> =
+            sqlx::query_scalar("SELECT client_country_snapshot FROM invoices WHERE id = ?")
+                .bind(invoice_id)
+                .fetch_one(&pool)
+                .await
+                .expect("read client_country_snapshot");
+        assert_eq!(country.as_deref(), Some("US"));
     }
 
     #[tokio::test]

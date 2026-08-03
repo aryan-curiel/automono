@@ -15,20 +15,26 @@ import { irpfApplicable, IRPF_DEFAULT_RATE } from "../features/clients";
 interface FacturaNuevaProps {
   editInvoiceId?: number;
   onBack: () => void;
+  onSaved: (id: number) => void;
 }
 
 interface DraftLine {
   key: string;
   description: string;
-  quantity: number;
-  unitPrice: number;
+  quantity: string;
+  unitPrice: string;
 }
 
 function mkLine(description: string, quantity: number, unitPrice: number): DraftLine {
-  return { key: `${Date.now()}-${Math.random()}`, description, quantity, unitPrice };
+  return {
+    key: `${Date.now()}-${Math.random()}`,
+    description,
+    quantity: String(quantity),
+    unitPrice: String(unitPrice),
+  };
 }
 
-export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
+export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaProps) {
   const [clients, setClients] = useState<ClientRecord[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [clientId, setClientId] = useState<number | null>(null);
@@ -37,6 +43,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
   const [irpfRate, setIrpfRate] = useState<number | null>(IRPF_DEFAULT_RATE);
   const [defaultIrpfRate, setDefaultIrpfRate] = useState(IRPF_DEFAULT_RATE);
   const [language, setLanguage] = useState<InvoiceLanguage>("es");
+  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [irpfDefaultedFor, setIrpfDefaultedFor] = useState<number | null>(null);
   const [languageDefaultedFor, setLanguageDefaultedFor] = useState<number | null>(null);
@@ -85,6 +92,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
       setIvaRate(invoice.ivaRate ?? 21);
       setIrpfRate(invoice.irpfRate);
       setLanguage(invoice.language ?? "es");
+      setIssueDate(invoice.issueDate ?? new Date().toISOString().slice(0, 10));
       setLines(
         invoiceLines.length
           ? invoiceLines.map((l) => mkLine(l.description, l.quantity, l.unitPrice))
@@ -101,14 +109,17 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
   const client = clients?.find((c) => c.id === clientId) ?? null;
   const ivaSelectable = client?.vatTreatment === "standard";
   const effIvaRate = ivaSelectable ? ivaRate : 0;
-  const irpfShown = irpfApplicable(client?.country ?? null);
+  const irpfSelectable = irpfApplicable(client?.country ?? null);
+  const irpfForeignClient = !irpfSelectable;
 
   // Resets the IRPF default whenever the selected client changes, following React's
   // "adjusting state when a prop changes" pattern (state update during render) rather
   // than an effect, so switching clients doesn't leave a stale rate from the previous one.
+  // Foreign clients get an explicit 0 (not null) so the totals breakdown can still show the
+  // IRPF line, annotated as not applicable, instead of hiding it.
   if (client && irpfDefaultedFor !== clientId) {
     setIrpfDefaultedFor(clientId);
-    setIrpfRate(irpfShown ? defaultIrpfRate : null);
+    setIrpfRate(irpfSelectable ? defaultIrpfRate : 0);
   }
 
   // Same pattern for the invoice language: default it from the selected client's preference
@@ -118,7 +129,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
     setLanguage(client.invoiceLanguage);
   }
 
-  const subtotal = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+  const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
   const iva = (subtotal * effIvaRate) / 100;
   const irpf = irpfRate !== null ? (subtotal * irpfRate) / 100 : 0;
   const total = subtotal + iva - irpf;
@@ -127,11 +138,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
     ? `${client.seriesPrefix}-${String(client.nextInvoiceNumber).padStart(3, "0")}`
     : "";
 
-  function updateLine(
-    idx: number,
-    field: "description" | "quantity" | "unitPrice",
-    value: string | number,
-  ) {
+  function updateLine(idx: number, field: "description" | "quantity" | "unitPrice", value: string) {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
   }
 
@@ -157,9 +164,14 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
       ivaRate: effIvaRate,
       irpfRate,
       language,
+      issueDate,
       lines: lines
         .filter((l) => l.description.trim())
-        .map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice })),
+        .map((l) => ({
+          description: l.description,
+          quantity: Number(l.quantity) || 0,
+          unitPrice: Number(l.unitPrice) || 0,
+        })),
     });
     return id;
   }
@@ -168,7 +180,8 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
     setSaveError(null);
     setSaving(true);
     try {
-      await persistDraft();
+      const id = await persistDraft();
+      onSaved(id);
     } catch {
       setSaveError("No se pudo guardar el borrador.");
     } finally {
@@ -181,7 +194,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
     setIssuing(true);
     try {
       const id = await persistDraft();
-      await issueInvoice(id);
+      await issueInvoice(id, issueDate);
       onBack();
     } catch {
       setSaveError("No se pudo emitir la factura.");
@@ -222,7 +235,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
   return (
     <div className="px-8 pb-15">
       <PageHeader
-        title="Nueva factura"
+        title={editInvoiceId ? "Editar factura" : "Nueva factura"}
         backLabel="Facturas"
         onBack={onBack}
         actions={
@@ -255,6 +268,15 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
           <FormRow label="Nº de factura">
             <TextInput mono readOnly value={numberPreview} />
           </FormRow>
+          <FormRow label="Fecha de emisión">
+            <TextInput
+              mono
+              type="date"
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+              disabled={busy}
+            />
+          </FormRow>
           <FormRow label="Tipo de IVA">
             {ivaSelectable ? (
               <Select
@@ -270,7 +292,7 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
               <TextInput mono readOnly value="0% — tratamiento especial" />
             )}
           </FormRow>
-          {irpfShown && (
+          {irpfSelectable && (
             <FormRow label="Retención IRPF">
               <Select
                 value={irpfRate ?? defaultIrpfRate}
@@ -308,14 +330,12 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
             <span>IVA</span>
             <span className="font-medium font-mono text-[13.5px] text-ink">{formatEUR(iva)}</span>
           </div>
-          {irpfShown && (
-            <div className="flex justify-between pt-1.5 pb-3.5 text-[13.5px] text-ink-soft">
-              <span>Retención IRPF</span>
-              <span className="font-medium font-mono text-[13.5px] text-ink">
-                {formatEUR(irpf)}
-              </span>
-            </div>
-          )}
+          <div className="flex justify-between pt-1.5 pb-3.5 text-[13.5px] text-ink-soft">
+            <span>Retención IRPF{irpfForeignClient && " (cliente extranjero)"}</span>
+            <span className="font-medium font-mono text-[13.5px] text-ink">
+              {formatEUR(irpf)}
+            </span>
+          </div>
           <div className="flex justify-between pt-3.5 border-t border-border font-bold text-[15px]">
             <span>Total</span>
             <span className="font-bold text-[17px] font-mono">{formatEUR(total)}</span>
@@ -349,17 +369,17 @@ export function FacturaNueva({ editInvoiceId, onBack }: FacturaNuevaProps) {
             <TextInput
               mono
               value={l.quantity}
-              onChange={(e) => updateLine(idx, "quantity", Number(e.target.value) || 0)}
+              onChange={(e) => updateLine(idx, "quantity", e.target.value)}
               disabled={busy}
             />
             <TextInput
               mono
               value={l.unitPrice}
-              onChange={(e) => updateLine(idx, "unitPrice", Number(e.target.value) || 0)}
+              onChange={(e) => updateLine(idx, "unitPrice", e.target.value)}
               disabled={busy}
             />
             <div className="font-semibold text-[13px] font-mono py-2">
-              {formatEUR(l.quantity * l.unitPrice)}
+              {formatEUR((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0))}
             </div>
             <button
               onClick={() => !busy && removeLine(idx)}
