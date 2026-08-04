@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -72,6 +72,14 @@ function fileNameOf(path: string): string {
   return path.split(/[/\\]/).pop() ?? path;
 }
 
+function computedIrpfAmount(form: FormState, autoManaged: boolean): string {
+  if (!autoManaged || !form.irpfRate.trim()) return form.irpfAmount;
+  const rate = Number(form.irpfRate);
+  const base = Number(form.amount);
+  if (Number.isNaN(rate) || Number.isNaN(base)) return form.irpfAmount;
+  return ((base * rate) / 100).toFixed(2);
+}
+
 type FieldErrors = Partial<Record<"date" | "amount", string>>;
 
 export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps) {
@@ -86,8 +94,11 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
   const [saveError, setSaveError] = useState<string | null>(null);
   const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
   // Tracks whether irpfAmount should keep auto-recomputing from rate × amount, or has been
-  // taken over by a manual/OCR-extracted value it shouldn't clobber.
-  const irpfAutoManaged = useRef(true);
+  // taken over by a manual/OCR-extracted value it shouldn't clobber. State, not a ref: its
+  // value feeds a render-time derived value (irpfAmountDisplay below), and refs can't be
+  // read during render.
+  const [irpfAutoManaged, setIrpfAutoManaged] = useState(true);
+  const irpfAmountDisplay = computedIrpfAmount(form, irpfAutoManaged);
 
   useEffect(() => {
     listExpenseCategories().then(setCategories);
@@ -100,7 +111,7 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       .then((expense) => {
         if (cancelled) return;
         if (expense) {
-          irpfAutoManaged.current = expense.irpfAmount === null;
+          setIrpfAutoManaged(expense.irpfAmount === null);
           setForm(toFormState(expense));
         }
       })
@@ -114,15 +125,6 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       cancelled = true;
     };
   }, [mode, expenseId]);
-
-  useEffect(() => {
-    if (!irpfAutoManaged.current) return;
-    const rate = Number(form.irpfRate);
-    const base = Number(form.amount);
-    if (!form.irpfRate.trim() || Number.isNaN(rate) || Number.isNaN(base)) return;
-    const computed = ((base * rate) / 100).toFixed(2);
-    setForm((f) => (f.irpfAmount === computed ? f : { ...f, irpfAmount: computed }));
-  }, [form.amount, form.irpfRate]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -150,7 +152,7 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       // An OCR-extracted retention amount is authoritative (it's read off the vendor's own
       // printed figure), so stop the rate×amount auto-compute effect from overwriting it later.
       if (extracted?.irpfAmount != null && !form.irpfAmount) {
-        irpfAutoManaged.current = false;
+        setIrpfAutoManaged(false);
       }
 
       setForm((f) => ({
@@ -213,7 +215,7 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
       deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
       irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
-      irpfAmount: form.irpfAmount.trim() ? Number(form.irpfAmount) : null,
+      irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
       receiptFilePath: form.receiptFilePath,
       paymentProofFilePath: form.paymentProofFilePath,
     };
@@ -336,9 +338,9 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
             type="number"
             step="0.01"
             mono
-            value={form.irpfAmount}
+            value={irpfAmountDisplay}
             onChange={(e) => {
-              irpfAutoManaged.current = e.target.value === "";
+              setIrpfAutoManaged(e.target.value === "");
               set("irpfAmount", e.target.value);
             }}
           />
