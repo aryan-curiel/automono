@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { ErrorText, TextArea, TextInput } from "../components/ui/Field";
+import { ErrorText, Select, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { PageHeader } from "../components/PageHeader";
 import {
   attachExpenseFile,
+  attachExpensePaymentProof,
   createExpense,
   extractReceiptFields,
   getExpense,
@@ -14,6 +15,8 @@ import {
   updateExpense,
 } from "../db/expenses";
 import type { ExpenseRecord, NewExpense } from "../db/expenses";
+import { listExpenseCategories } from "../db/expenseCategories";
+import type { ExpenseCategoryRecord } from "../db/expenseCategories";
 
 interface GastoFormProps {
   mode: "create" | "edit";
@@ -29,17 +32,11 @@ interface FormState {
   amount: string;
   ivaAmount: string;
   deductiblePct: string;
+  irpfRate: string;
+  irpfAmount: string;
   receiptFilePath: string | null;
+  paymentProofFilePath: string | null;
 }
-
-const CATEGORY_SUGGESTIONS = [
-  "Suministros",
-  "Material",
-  "Software",
-  "Alquiler",
-  "Transporte",
-  "Otros",
-];
 
 function emptyForm(): FormState {
   return {
@@ -49,7 +46,10 @@ function emptyForm(): FormState {
     amount: "",
     ivaAmount: "",
     deductiblePct: "100",
+    irpfRate: "",
+    irpfAmount: "",
     receiptFilePath: null,
+    paymentProofFilePath: null,
   };
 }
 
@@ -61,7 +61,10 @@ function toFormState(expense: ExpenseRecord): FormState {
     amount: String(expense.amount),
     ivaAmount: expense.ivaAmount !== null ? String(expense.ivaAmount) : "",
     deductiblePct: String(expense.deductiblePct),
+    irpfRate: expense.irpfRate !== null ? String(expense.irpfRate) : "",
+    irpfAmount: expense.irpfAmount !== null ? String(expense.irpfAmount) : "",
     receiptFilePath: expense.receiptFilePath,
+    paymentProofFilePath: expense.paymentProofFilePath,
   };
 }
 
@@ -78,8 +81,17 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [attaching, setAttaching] = useState(false);
+  const [attachingProof, setAttachingProof] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
+  // Tracks whether irpfAmount should keep auto-recomputing from rate × amount, or has been
+  // taken over by a manual/OCR-extracted value it shouldn't clobber.
+  const irpfAutoManaged = useRef(true);
+
+  useEffect(() => {
+    listExpenseCategories().then(setCategories);
+  }, []);
 
   useEffect(() => {
     if (mode !== "edit" || expenseId === undefined) return;
@@ -87,7 +99,10 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
     getExpense(expenseId)
       .then((expense) => {
         if (cancelled) return;
-        if (expense) setForm(toFormState(expense));
+        if (expense) {
+          irpfAutoManaged.current = expense.irpfAmount === null;
+          setForm(toFormState(expense));
+        }
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -99,6 +114,15 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       cancelled = true;
     };
   }, [mode, expenseId]);
+
+  useEffect(() => {
+    if (!irpfAutoManaged.current) return;
+    const rate = Number(form.irpfRate);
+    const base = Number(form.amount);
+    if (!form.irpfRate.trim() || Number.isNaN(rate) || Number.isNaN(base)) return;
+    const computed = ((base * rate) / 100).toFixed(2);
+    setForm((f) => (f.irpfAmount === computed ? f : { ...f, irpfAmount: computed }));
+  }, [form.amount, form.irpfRate]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -123,6 +147,12 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
         form.description.trim() || form.category.trim() || extracted?.vendorGuess || "gasto";
       const stored = await attachExpenseFile(source, date, note);
 
+      // An OCR-extracted retention amount is authoritative (it's read off the vendor's own
+      // printed figure), so stop the rate×amount auto-compute effect from overwriting it later.
+      if (extracted?.irpfAmount != null && !form.irpfAmount) {
+        irpfAutoManaged.current = false;
+      }
+
       setForm((f) => ({
         ...f,
         receiptFilePath: stored,
@@ -130,12 +160,34 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
         amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
         ivaAmount:
           f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
+        irpfRate:
+          f.irpfRate || (extracted?.irpfRate != null ? String(extracted.irpfRate) : f.irpfRate),
+        irpfAmount:
+          f.irpfAmount ||
+          (extracted?.irpfAmount != null ? String(extracted.irpfAmount) : f.irpfAmount),
         description: f.description || extracted?.vendorGuess || f.description,
       }));
     } catch {
       setSaveError(t("expenses.errors.attachFailed"));
     } finally {
       setAttaching(false);
+    }
+  }
+
+  async function handleAttachPaymentProof() {
+    const source = await pickExpenseFile();
+    if (!source) return;
+    setAttachingProof(true);
+    setSaveError(null);
+    try {
+      const date = form.date || new Date().toISOString().slice(0, 10);
+      const note = form.description.trim() || form.category.trim() || "gasto";
+      const stored = await attachExpensePaymentProof(source, date, note);
+      set("paymentProofFilePath", stored);
+    } catch {
+      setSaveError(t("expenses.errors.attachFailed"));
+    } finally {
+      setAttachingProof(false);
     }
   }
 
@@ -160,7 +212,10 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       amount: Number(form.amount),
       ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
       deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
+      irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
+      irpfAmount: form.irpfAmount.trim() ? Number(form.irpfAmount) : null,
       receiptFilePath: form.receiptFilePath,
+      paymentProofFilePath: form.paymentProofFilePath,
     };
 
     setSaving(true);
@@ -215,16 +270,14 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
         </FormRow>
 
         <FormRow label={t("expenses.fields.category")}>
-          <TextInput
-            list="expense-categories"
-            value={form.category}
-            onChange={(e) => set("category", e.target.value)}
-          />
-          <datalist id="expense-categories">
-            {CATEGORY_SUGGESTIONS.map((c) => (
-              <option key={c} value={c} />
+          <Select value={form.category} onChange={(e) => set("category", e.target.value)}>
+            <option value="">{t("expenses.fields.noCategory")}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
+              </option>
             ))}
-          </datalist>
+          </Select>
         </FormRow>
 
         <FormRow label={t("expenses.fields.description")}>
@@ -268,6 +321,29 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
           />
         </FormRow>
 
+        <FormRow label={t("expenses.fields.irpfRate")}>
+          <TextInput
+            type="number"
+            step="0.01"
+            mono
+            value={form.irpfRate}
+            onChange={(e) => set("irpfRate", e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label={t("expenses.fields.irpfAmount")}>
+          <TextInput
+            type="number"
+            step="0.01"
+            mono
+            value={form.irpfAmount}
+            onChange={(e) => {
+              irpfAutoManaged.current = e.target.value === "";
+              set("irpfAmount", e.target.value);
+            }}
+          />
+        </FormRow>
+
         <FormRow label={t("expenses.fields.file")}>
           <div className="flex items-center gap-2.5">
             <Button variant="secondary" onClick={handleAttachFile} disabled={attaching}>
@@ -276,6 +352,25 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
             {form.receiptFilePath && (
               <span className="text-[13px] text-ink-soft truncate">
                 {fileNameOf(form.receiptFilePath)}
+              </span>
+            )}
+          </div>
+        </FormRow>
+
+        <FormRow label={t("expenses.fields.paymentProof")}>
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="secondary"
+              onClick={handleAttachPaymentProof}
+              disabled={attachingProof}
+            >
+              {attachingProof
+                ? t("expenses.actions.attaching")
+                : t("expenses.actions.attachPaymentProof")}
+            </Button>
+            {form.paymentProofFilePath && (
+              <span className="text-[13px] text-ink-soft truncate">
+                {fileNameOf(form.paymentProofFilePath)}
               </span>
             )}
           </div>
