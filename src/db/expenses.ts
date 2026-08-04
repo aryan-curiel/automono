@@ -10,7 +10,10 @@ export interface ExpenseRecord {
   amount: number;
   ivaAmount: number | null;
   deductiblePct: number;
+  irpfRate: number | null;
+  irpfAmount: number | null;
   receiptFilePath: string | null;
+  paymentProofFilePath: string | null;
 }
 
 export type NewExpense = Omit<ExpenseRecord, "id">;
@@ -23,7 +26,10 @@ interface ExpenseRow {
   amount: number;
   iva_amount: number | null;
   deductible_pct: number;
+  irpf_rate: number | null;
+  irpf_amount: number | null;
   receipt_file_path: string | null;
+  payment_proof_file_path: string | null;
 }
 
 function mapRow(row: ExpenseRow): ExpenseRecord {
@@ -35,7 +41,10 @@ function mapRow(row: ExpenseRow): ExpenseRecord {
     amount: row.amount,
     ivaAmount: row.iva_amount,
     deductiblePct: row.deductible_pct,
+    irpfRate: row.irpf_rate,
+    irpfAmount: row.irpf_amount,
     receiptFilePath: row.receipt_file_path,
+    paymentProofFilePath: row.payment_proof_file_path,
   };
 }
 
@@ -73,8 +82,8 @@ export async function getExpense(id: number): Promise<ExpenseRecord | null> {
 export async function createExpense(input: NewExpense): Promise<ExpenseRecord> {
   const db = await getDb();
   const result = await db.execute(
-    `INSERT INTO expenses (date, category, description, amount, iva_amount, deductible_pct, receipt_file_path)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO expenses (date, category, description, amount, iva_amount, deductible_pct, irpf_rate, irpf_amount, receipt_file_path, payment_proof_file_path)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       input.date,
       input.category,
@@ -82,7 +91,10 @@ export async function createExpense(input: NewExpense): Promise<ExpenseRecord> {
       input.amount,
       input.ivaAmount,
       input.deductiblePct,
+      input.irpfRate,
+      input.irpfAmount,
       input.receiptFilePath,
+      input.paymentProofFilePath,
     ],
   );
   const created = await getExpense(result.lastInsertId!);
@@ -97,7 +109,10 @@ const COLUMN_BY_KEY: Record<keyof NewExpense, string> = {
   amount: "amount",
   ivaAmount: "iva_amount",
   deductiblePct: "deductible_pct",
+  irpfRate: "irpf_rate",
+  irpfAmount: "irpf_amount",
   receiptFilePath: "receipt_file_path",
+  paymentProofFilePath: "payment_proof_file_path",
 };
 
 export async function updateExpense(id: number, patch: Partial<NewExpense>): Promise<void> {
@@ -140,10 +155,21 @@ export async function openExpenseFile(filePath: string): Promise<void> {
   return invoke("open_expense_file_cmd", { filePath });
 }
 
+/** Copies the payment proof at `sourcePath` into the app data directory, named `<date>_<note>`. */
+export async function attachExpensePaymentProof(
+  sourcePath: string,
+  date: string,
+  note: string,
+): Promise<string> {
+  return invoke<string>("attach_expense_payment_proof_cmd", { sourcePath, date, note });
+}
+
 export interface ReceiptFields {
   date: string | null;
   amount: number | null;
   ivaAmount: number | null;
+  irpfRate: number | null;
+  irpfAmount: number | null;
   vendorGuess: string | null;
 }
 
@@ -151,6 +177,8 @@ interface ReceiptFieldsRow {
   date: string | null;
   amount: number | null;
   iva_amount: number | null;
+  irpf_rate: number | null;
+  irpf_amount: number | null;
   vendor_guess: string | null;
 }
 
@@ -161,6 +189,8 @@ export async function extractReceiptFields(filePath: string): Promise<ReceiptFie
     date: row.date,
     amount: row.amount,
     ivaAmount: row.iva_amount,
+    irpfRate: row.irpf_rate,
+    irpfAmount: row.irpf_amount,
     vendorGuess: row.vendor_guess,
   };
 }
