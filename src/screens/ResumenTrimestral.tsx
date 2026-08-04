@@ -206,7 +206,7 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
 
       {exportError && <div className="text-sm text-danger mb-4">{exportError}</div>}
 
-      <div className="grid grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-5 gap-3.5 mb-6">
         <KpiTile
           label="Total facturado (base)"
           value={formatEUR(invoicedBase)}
