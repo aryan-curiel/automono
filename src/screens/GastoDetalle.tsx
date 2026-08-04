@@ -49,11 +49,11 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
     onDeleted();
   }
 
-  async function handleOpenFile() {
-    if (!expense?.receiptFilePath) return;
+  async function handleOpenFile(filePath: string | null | undefined) {
+    if (!filePath) return;
     setOpenError(null);
     try {
-      await openExpenseFile(expense.receiptFilePath);
+      await openExpenseFile(filePath);
     } catch (err) {
       setOpenError(String(err));
     }
@@ -121,19 +121,43 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
           value={`${expense.deductiblePct}% (${formatEUR(deductibleIva)})`}
           mono
         />
+        {expense.irpfAmount !== null && (
+          <InfoRow
+            label={t("expenses.fields.irpfRate")}
+            value={`${expense.irpfRate ?? 0}% (${formatEUR(expense.irpfAmount)})`}
+            mono
+          />
+        )}
         <InfoRow
           label={t("expenses.fields.file")}
           value={
             <div className="flex items-center gap-2.5">
               <Button
                 variant="secondary"
-                onClick={handleOpenFile}
+                onClick={() => handleOpenFile(expense.receiptFilePath)}
                 disabled={!expense.receiptFilePath}
               >
                 {t("expenses.actions.openFile")}
               </Button>
               {!expense.receiptFilePath && (
                 <span className="text-xs text-ink-soft">{t("expenses.fields.noFile")}</span>
+              )}
+            </div>
+          }
+        />
+        <InfoRow
+          label={t("expenses.fields.paymentProof")}
+          value={
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="secondary"
+                onClick={() => handleOpenFile(expense.paymentProofFilePath)}
+                disabled={!expense.paymentProofFilePath}
+              >
+                {t("expenses.actions.openPaymentProof")}
+              </Button>
+              {!expense.paymentProofFilePath && (
+                <span className="text-xs text-ink-soft">{t("expenses.fields.noPaymentProof")}</span>
               )}
             </div>
           }
