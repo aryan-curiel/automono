@@ -136,6 +136,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0019_invoice_client_country_snapshot.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 22,
+            description: "expense_irpf_retention",
+            sql: include_str!("../migrations/0022_expense_irpf_retention.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
