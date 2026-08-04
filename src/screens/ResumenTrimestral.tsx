@@ -58,7 +58,9 @@ function buildExportCsv(invoices: InvoiceListItem[], expenses: ExpenseRecord[]):
   lines.push("");
 
   lines.push(csvRow(["Gastos"]));
-  lines.push(csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible"]));
+  lines.push(
+    csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible", "% IRPF", "IRPF"]),
+  );
   for (const e of expenses) {
     lines.push(
       csvRow([
@@ -68,6 +70,8 @@ function buildExportCsv(invoices: InvoiceListItem[], expenses: ExpenseRecord[]):
         e.amount,
         e.ivaAmount ?? 0,
         e.deductiblePct,
+        e.irpfRate ?? 0,
+        e.irpfAmount ?? 0,
       ]),
     );
   }
@@ -122,6 +126,7 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
     (s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100),
     0,
   );
+  const expensesIrpfWithheld = expenses.reduce((s, e) => s + (e.irpfAmount ?? 0), 0);
   const netIrpfIncome = invoicedBase - expensesDeductibleBase;
   const margin = netIrpfIncome - irpfWithheld;
 
@@ -208,7 +213,16 @@ export function ResumenTrimestral({ invoices }: ResumenTrimestralProps) {
           icon={TrendUp}
           subtitle={revenueDelta ?? undefined}
         />
-        <KpiTile label="IRPF retenido" value={formatEUR(irpfWithheld)} icon={Percent} />
+        <KpiTile
+          label="IRPF retenido (facturas)"
+          value={formatEUR(irpfWithheld)}
+          icon={Percent}
+        />
+        <KpiTile
+          label="IRPF retenido (gastos)"
+          value={formatEUR(expensesIrpfWithheld)}
+          icon={Percent}
+        />
         <KpiTile
           label="Ingreso neto estimado"
           value={formatEUR(netIrpfIncome)}
