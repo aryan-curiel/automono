@@ -10,6 +10,8 @@ pub struct ReceiptFields {
     pub date: Option<String>,
     pub amount: Option<f64>,
     pub iva_amount: Option<f64>,
+    pub irpf_rate: Option<f64>,
+    pub irpf_amount: Option<f64>,
     pub vendor_guess: Option<String>,
 }
 
@@ -58,6 +60,20 @@ fn last_number_on_line_containing(text: &str, keyword: &str) -> Option<f64> {
     })
 }
 
+/// Pulls a percentage rate (`7%`, `(7%)`, `-7%`) from the last line containing `keyword`, same
+/// bottom-up "last matching line wins" logic as `last_number_on_line_containing`, applied to the
+/// digits immediately preceding a `%` sign instead of the last number on the line.
+fn last_percent_on_line_containing(text: &str, keyword: &str) -> Option<f64> {
+    let keyword = keyword.to_lowercase();
+    text.lines().filter(|line| line.to_lowercase().contains(&keyword)).rev().find_map(|line| {
+        line.split('%').find_map(|before| {
+            let digits: String =
+                before.chars().rev().take_while(|c| c.is_ascii_digit() || *c == ',' || *c == '.').collect();
+            parse_amount(&digits.chars().rev().collect::<String>())
+        })
+    })
+}
+
 fn is_valid_date(year: &str, month: &str, day: &str) -> bool {
     let (Ok(y), Ok(m), Ok(d)) = (year.parse::<u32>(), month.parse::<u32>(), day.parse::<u32>()) else {
         return false;
@@ -94,7 +110,7 @@ fn find_date(text: &str) -> Option<String> {
     None
 }
 
-const NON_VENDOR_KEYWORDS: [&str; 5] = ["total", "iva", "fecha", "factura", "subtotal"];
+const NON_VENDOR_KEYWORDS: [&str; 7] = ["total", "iva", "fecha", "factura", "subtotal", "retenc", "irpf"];
 
 /// First short, non-blank line that isn't itself a date/total/IVA line — a cheap stand-in for a
 /// vendor name (receipts usually open with the business name), used as a category-field guess.
@@ -111,10 +127,16 @@ fn guess_vendor(text: &str) -> Option<String> {
 
 pub fn extract_receipt_fields(path: &Path) -> ReceiptFields {
     let text = extract_text(path);
+    let irpf_amount = last_number_on_line_containing(&text, "retenc")
+        .or_else(|| last_number_on_line_containing(&text, "irpf"));
+    let irpf_rate = last_percent_on_line_containing(&text, "retenc")
+        .or_else(|| last_percent_on_line_containing(&text, "irpf"));
     ReceiptFields {
         date: find_date(&text),
         amount: last_number_on_line_containing(&text, "total"),
         iva_amount: last_number_on_line_containing(&text, "iva"),
+        irpf_rate,
+        irpf_amount,
         vendor_guess: guess_vendor(&text),
     }
 }
@@ -144,6 +166,13 @@ mod tests {
     }
 
     #[test]
+    fn last_percent_on_line_containing_finds_the_rate() {
+        let text = "IVA (21%): 21,00\nRetencion IRPF (7%): -7,00";
+        assert_eq!(last_percent_on_line_containing(text, "retenc"), Some(7.0));
+        assert_eq!(last_percent_on_line_containing(text, "iva"), Some(21.0));
+    }
+
+    #[test]
     fn find_date_normalizes_spanish_and_iso_formats() {
         assert_eq!(find_date("Fecha: 02/08/2026"), Some("2026-08-02".to_string()));
         assert_eq!(find_date("Fecha: 02-08-2026"), Some("2026-08-02".to_string()));
@@ -168,6 +197,27 @@ mod tests {
         assert_eq!(fields.amount, Some(121.0));
         assert_eq!(fields.iva_amount, Some(21.0));
         assert_eq!(fields.vendor_guess.as_deref(), Some("Ferreteria Garcia SL"));
+
+        std::fs::remove_file(&out_path).ok();
+    }
+
+    #[test]
+    fn extract_receipt_fields_reads_irpf_retention_from_a_real_pdf() {
+        let out_path = std::env::temp_dir()
+            .join(format!("automono_receipt_extract_irpf_test_{}.pdf", std::process::id()));
+        let pdf = build_minimal_pdf(&[
+            "Gestoria Lopez SL",
+            "Fecha: 02/08/2026",
+            "Subtotal: 100,00",
+            "IVA (21%): 21,00",
+            "Retencion IRPF (7%): -7,00",
+            "Total: 114,00",
+        ]);
+        std::fs::write(&out_path, pdf).expect("write sample receipt pdf");
+
+        let fields = extract_receipt_fields(&out_path);
+        assert_eq!(fields.irpf_rate, Some(7.0));
+        assert_eq!(fields.irpf_amount, Some(7.0));
 
         std::fs::remove_file(&out_path).ok();
     }
