@@ -165,8 +165,13 @@
       "amount": "Amount",
       "ivaAmount": "VAT amount",
       "deductiblePct": "Deductible %",
-      "file": "Receipt",
-      "noFile": "No receipt attached."
+      "irpfRate": "IRPF retention %",
+      "irpfAmount": "Amount withheld",
+      "file": "Invoice / receipt",
+      "noFile": "No receipt attached.",
+      "paymentProof": "Payment proof",
+      "noPaymentProof": "No payment proof attached.",
+      "noCategory": "No category"
     },
     "summary": {
       "total": "Total expenses",
@@ -183,8 +188,10 @@
       "delete": "Delete",
       "edit": "Edit",
       "attachFile": "Attach receipt",
+      "attachPaymentProof": "Attach payment proof",
       "attaching": "Attaching…",
       "openFile": "Open receipt",
+      "openPaymentProof": "Open payment proof",
       "confirmDelete": "Delete this expense? This action cannot be undone."
     },
     "errors": {

@@ -165,8 +165,13 @@
       "amount": "Importe",
       "ivaAmount": "Importe IVA",
       "deductiblePct": "% deducible",
-      "file": "Recibo",
-      "noFile": "Sin recibo adjunto."
+      "irpfRate": "% Retención IRPF",
+      "irpfAmount": "Importe retenido",
+      "file": "Factura / recibo",
+      "noFile": "Sin recibo adjunto.",
+      "paymentProof": "Justificante de pago",
+      "noPaymentProof": "Sin justificante de pago adjunto.",
+      "noCategory": "Sin categoría"
     },
     "summary": {
       "total": "Total gastos",
@@ -183,8 +188,10 @@
       "delete": "Eliminar",
       "edit": "Editar",
       "attachFile": "Adjuntar recibo",
+      "attachPaymentProof": "Adjuntar justificante de pago",
       "attaching": "Adjuntando…",
       "openFile": "Abrir recibo",
+      "openPaymentProof": "Abrir justificante de pago",
       "confirmDelete": "¿Eliminar este gasto? Esta acción no se puede deshacer."
     },
     "errors": {
