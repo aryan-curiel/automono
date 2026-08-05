@@ -203,7 +203,10 @@ export function ContratoForm({
             value={form.clientId}
             error={!!errors.clientId}
             disabled={presetClientId !== undefined}
-            onChange={(e) => set("clientId", e.target.value)}
+            onChange={(e) => {
+              set("clientId", e.target.value);
+              if (e.target.value) setErrors((err) => ({ ...err, clientId: undefined }));
+            }}
           >
             <option value="">{t("contracts.fields.clientUnset")}</option>
             {clients.map((c) => (
@@ -273,7 +276,7 @@ export function ContratoForm({
           {t("contracts.actions.cancel")}
         </Button>
         <Button onClick={handleSubmit} disabled={saving}>
-          {t("contracts.actions.save")}
+          {saving ? t("contracts.actions.saving") : t("contracts.actions.save")}
         </Button>
       </div>
     </div>

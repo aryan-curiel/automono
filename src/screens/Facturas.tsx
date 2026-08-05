@@ -4,7 +4,9 @@ import { MagnifyingGlass, Receipt, DotsThreeVertical } from "@phosphor-icons/rea
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
+import { TextInput } from "../components/ui/Field";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { Sheet } from "../components/ui/Sheet";
 import { PageHeader } from "../components/PageHeader";
 import { formatDate, formatEUR } from "../lib/format";
 import { invoiceNumberLabel } from "../lib/invoice";
@@ -30,6 +32,7 @@ export function Facturas({
 }: FacturasProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
+  const [deletePending, setDeletePending] = useState<number | null>(null);
 
   const filtered = invoices.filter((inv) =>
     `${invoiceNumberLabel(inv)} ${inv.clientName}`.toLowerCase().includes(query.toLowerCase()),
@@ -47,13 +50,11 @@ export function Facturas({
                 size={14}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-soft"
               />
-              <input
+              <TextInput
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("invoices.searchPlaceholder")}
-                className="w-52 pl-8 pr-3 py-1.5 text-[13px] rounded-control bg-surface-alt border border-transparent
-                           focus:border-accent focus:bg-surface focus:outline-none focus:shadow-[0_0_0_3px_var(--color-focus-ring)]
-                           transition-[box-shadow,border-color,background-color] duration-150"
+                className="w-52 pl-8"
               />
             </div>
             <Button onClick={onNewInvoice}>+ {t("invoices.newInvoice")}</Button>
@@ -90,12 +91,11 @@ export function Facturas({
         </div>
       ) : (
         <Card className="overflow-hidden">
-          <div className="grid grid-cols-[.9fr_1.4fr_1fr_1fr_1fr_32px] py-3 px-5.5 bg-surface-alt font-semibold text-xs uppercase tracking-wide text-ink-soft">
+          <div className="grid grid-cols-[1.3fr_1.4fr_1fr_1fr_32px] py-3 px-5.5 bg-surface-alt font-medium text-xs uppercase tracking-wide text-ink-soft">
             <div>{t("invoices.columns.number")}</div>
             <div>{t("invoices.columns.client")}</div>
             <div>{t("invoices.columns.date")}</div>
-            <div>{t("invoices.columns.amount")}</div>
-            <div>{t("invoices.columns.status")}</div>
+            <div className="text-right">{t("invoices.columns.amount")}</div>
             <div />
           </div>
           {filtered.map((inv) => {
@@ -110,13 +110,25 @@ export function Facturas({
               <div
                 key={inv.id}
                 onClick={() => onOpenInvoice(inv.id)}
-                className="group grid grid-cols-[.9fr_1.4fr_1fr_1fr_1fr_32px] py-3 px-5.5
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    if (e.key === " ") e.preventDefault();
+                    onOpenInvoice(inv.id);
+                  }
+                }}
+                className="group grid grid-cols-[1.3fr_1.4fr_1fr_1fr_32px] py-3 px-5.5
                            border-t border-border items-center cursor-pointer
-                           transition-colors hover:bg-surface-alt"
+                           transition-colors hover:bg-surface-alt
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 <div>
-                  <div className="font-semibold text-[13.5px] font-mono text-accent">
-                    {invoiceNumberLabel(inv)}
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-[13.5px] font-mono text-accent">
+                      {invoiceNumberLabel(inv)}
+                    </span>
+                    <Badge tone={meta.tone}>{t(meta.labelKey)}</Badge>
                   </div>
                   {rectifies && (
                     <div className="font-medium text-[11px] text-ink-soft">
@@ -131,12 +143,11 @@ export function Facturas({
                 </div>
                 <div className="font-medium text-[13.5px]">{inv.clientName}</div>
                 <div className="text-[13px] text-ink-soft">{formatDate(inv.issueDate)}</div>
-                <div className="font-semibold text-[13.5px] font-mono">{formatEUR(inv.total)}</div>
-                <div>
-                  <Badge tone={meta.tone}>{meta.label}</Badge>
+                <div className="font-semibold text-[13.5px] font-mono text-right">
+                  {formatEUR(inv.total)}
                 </div>
                 <div
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Menu>
@@ -144,18 +155,12 @@ export function Facturas({
                       <DotsThreeVertical size={16} weight="bold" />
                     </MenuTrigger>
                     <MenuContent>
-                      <MenuItem onSelect={() => onOpenInvoice(inv.id)}>Ver detalle</MenuItem>
+                      <MenuItem onSelect={() => onOpenInvoice(inv.id)}>{t("common.viewDetail")}</MenuItem>
                       <MenuItem onSelect={() => onDuplicateInvoice(inv.id)}>
-                        Duplicar factura
+                        {t("invoices.detail.duplicateInvoice")}
                       </MenuItem>
                       {inv.status === "draft" && (
-                        <MenuItem
-                          danger
-                          onSelect={() => {
-                            if (!window.confirm(t("invoices.actions.confirmDelete"))) return;
-                            onDeleteInvoice(inv.id);
-                          }}
-                        >
+                        <MenuItem danger onSelect={() => setDeletePending(inv.id)}>
                           {t("invoices.actions.delete")}
                         </MenuItem>
                       )}
@@ -167,6 +172,28 @@ export function Facturas({
           })}
         </Card>
       )}
+
+      <Sheet
+        open={deletePending !== null}
+        onOpenChange={(open) => !open && setDeletePending(null)}
+        title={t("invoices.actions.delete")}
+      >
+        <p className="text-[13px] text-ink-soft mb-4">{t("invoices.actions.confirmDelete")}</p>
+        <div className="flex gap-2.5 justify-end">
+          <Button variant="secondary" onClick={() => setDeletePending(null)}>
+            {t("invoices.detail.cancel")}
+          </Button>
+          <Button
+            variant="ghost-danger"
+            onClick={() => {
+              if (deletePending !== null) onDeleteInvoice(deletePending);
+              setDeletePending(null);
+            }}
+          >
+            {t("invoices.actions.delete")}
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

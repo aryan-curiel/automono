@@ -46,7 +46,7 @@ function expense(overrides: Partial<ExpenseRecord>): ExpenseRecord {
     irpfRate: null,
     irpfAmount: null,
     receiptFilePath: null,
-    paymentProofFilePath: null,
+    declaredPeriod: null,
     ...overrides,
   };
 }

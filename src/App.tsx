@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Sidebar } from "./components/Sidebar";
 import { CommandPalette } from "./components/CommandPalette";
+import { DragDropOverlay } from "./components/DragDropOverlay";
+import { BackLink } from "./components/PageHeader";
 import { Toast } from "./components/ui/Toast";
 import { TooltipProvider } from "./components/ui/Tooltip";
 import { getDb } from "./db/client";
@@ -24,6 +27,7 @@ import { Gastos } from "./screens/Gastos";
 import { GastoDetalle } from "./screens/GastoDetalle";
 import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
+import { DeclaracionDetalle } from "./screens/DeclaracionDetalle";
 import { Ajustes } from "./screens/Ajustes";
 import { Onboarding } from "./screens/Onboarding";
 import {
@@ -42,6 +46,7 @@ import type { BusinessProfileRecord } from "./db/businessProfile";
 import { getPreferences, updatePreferences } from "./db/preferences";
 import type { PreferencesRecord } from "./db/preferences";
 import { checkAutoBackup } from "./db/backup";
+import { isSupportedExpenseFile } from "./db/expenses";
 import type { RectificationType, Screen } from "./types";
 
 export default function App() {
@@ -55,6 +60,16 @@ export default function App() {
   const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
   const [newContractClientId, setNewContractClientId] = useState<number | undefined>(undefined);
   const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
+  const [selectedDeclarationId, setSelectedDeclarationId] = useState<number | null>(null);
+  const [pendingDropPath, setPendingDropPath] = useState<string | null>(null);
+  const [dropToken, setDropToken] = useState(0);
+  const [declarationDropPaths, setDeclarationDropPaths] = useState<string[] | null>(null);
+  const [declarationDropToken, setDeclarationDropToken] = useState(0);
+  const [dragOver, setDragOver] = useState<{
+    supported: boolean;
+    context: "expense" | "declaration";
+  } | null>(null);
+  const screenRef = useRef(screen);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
@@ -90,6 +105,53 @@ export default function App() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    getCurrentWebview()
+      .onDragDropEvent((event) => {
+        const onDeclaration = screenRef.current === "declaracion-detalle";
+        if (event.payload.type === "enter") {
+          const path = event.payload.paths[0];
+          const supported = onDeclaration
+            ? !!path && path.toLowerCase().endsWith(".pdf")
+            : !!path && isSupportedExpenseFile(path);
+          setDragOver({ supported, context: onDeclaration ? "declaration" : "expense" });
+          return;
+        }
+        if (event.payload.type === "leave") {
+          setDragOver(null);
+          return;
+        }
+        if (event.payload.type !== "drop") return;
+        setDragOver(null);
+        if (onDeclaration) {
+          const pdfPaths = event.payload.paths.filter((p) => p.toLowerCase().endsWith(".pdf"));
+          if (pdfPaths.length === 0) return;
+          setDeclarationDropPaths(pdfPaths);
+          setDeclarationDropToken((n) => n + 1);
+          return;
+        }
+        const path = event.payload.paths[0];
+        if (!path || !isSupportedExpenseFile(path)) return;
+        setPendingDropPath(path);
+        setDropToken((n) => n + 1);
+        setScreen("gasto-nuevo");
+      })
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   // ponytail: re-fetches on every open (cheap local queries) instead of a shared store, so
@@ -145,21 +207,27 @@ export default function App() {
   }, [dbReady]);
 
   useEffect(() => {
-    if (selectedInvoiceId === null) {
-      setInvoiceDetail(null);
-      return;
-    }
-    setInvoiceDetailError(false);
+    // No clearing needed here on null: the only call site that nulls selectedInvoiceId
+    // (handleDeleteInvoice) already clears invoiceDetail itself.
+    if (selectedInvoiceId === null) return;
     getInvoiceWithLines(selectedInvoiceId)
-      .then(setInvoiceDetail)
+      .then((detail) => {
+        setInvoiceDetail(detail);
+        setInvoiceDetailError(false);
+      })
       .catch(() => setInvoiceDetailError(true));
   }, [selectedInvoiceId]);
 
-  // Clears the duplicate-target once the user leaves the new-invoice screen, so a later plain
-  // "+ Nueva factura" click (which doesn't go through handleDuplicateInvoice) starts blank.
-  useEffect(() => {
-    if (screen !== "factura-nueva") setEditInvoiceId(null);
-  }, [screen]);
+  // Screen transitions that should start a blank form clear their target/preset state directly
+  // at the point of navigation (below and in the render props), rather than reactively via an
+  // effect keyed on `screen` — every entry into "factura-nueva"/"gasto-nuevo" either sets its
+  // preset explicitly (duplicate/edit an invoice, drop a receipt) or clears it explicitly (plain
+  // "+ Nueva factura"/"+ Nuevo gasto"), so no stale value can leak through either path.
+  function navigateFromDashboard(next: Screen) {
+    if (next === "factura-nueva") setEditInvoiceId(null);
+    if (next === "gasto-nuevo") setPendingDropPath(null);
+    setScreen(next);
+  }
 
   const rectifyingInvoice = invoices.find((i) => i.id === rectifyingId) ?? null;
 
@@ -249,7 +317,7 @@ export default function App() {
           {screen === "dashboard" && (
             <Dashboard
               invoices={invoices}
-              onNavigate={setScreen}
+              onNavigate={navigateFromDashboard}
               onOpenInvoice={openInvoice}
               onDuplicateInvoice={handleDuplicateInvoice}
             />
@@ -314,7 +382,10 @@ export default function App() {
               invoices={invoices}
               loading={invoicesLoading}
               onOpenInvoice={openInvoice}
-              onNewInvoice={() => setScreen("factura-nueva")}
+              onNewInvoice={() => {
+                setEditInvoiceId(null);
+                setScreen("factura-nueva");
+              }}
               onDeleteInvoice={handleDeleteInvoice}
               onDuplicateInvoice={handleDuplicateInvoice}
             />
@@ -322,12 +393,14 @@ export default function App() {
 
           {screen === "factura-detalle" && invoiceDetailError && (
             <div className="px-8">
+              <BackLink label={t("invoices.title")} onClick={() => setScreen("facturas")} />
               <div className="text-sm text-danger">{t("invoices.errors.loadFailed")}</div>
             </div>
           )}
 
           {screen === "factura-detalle" && !invoiceDetail && !invoiceDetailError && (
             <div className="px-8">
+              <BackLink label={t("invoices.title")} onClick={() => setScreen("facturas")} />
               <div className="text-sm text-ink-soft">{t("invoices.loading")}</div>
             </div>
           )}
@@ -428,13 +501,18 @@ export default function App() {
                 setSelectedExpenseId(id);
                 setScreen("gasto-detalle");
               }}
-              onNewExpense={() => setScreen("gasto-nuevo")}
+              onNewExpense={() => {
+                setPendingDropPath(null);
+                setScreen("gasto-nuevo");
+              }}
             />
           )}
 
           {screen === "gasto-nuevo" && (
             <GastoForm
+              key={`gasto-nuevo-${dropToken}`}
               mode="create"
+              initialFilePath={pendingDropPath ?? undefined}
               onSaved={(expense) => {
                 setSelectedExpenseId(expense.id);
                 setScreen("gasto-detalle");
@@ -467,14 +545,33 @@ export default function App() {
             />
           )}
 
-          {screen === "resumen-trimestral" && <ResumenTrimestral invoices={invoices} />}
+          {screen === "resumen-trimestral" && (
+            <ResumenTrimestral
+              invoices={invoices}
+              onOpenDeclaration={(id) => {
+                setSelectedDeclarationId(id);
+                setScreen("declaracion-detalle");
+              }}
+            />
+          )}
+
+          {screen === "declaracion-detalle" && selectedDeclarationId !== null && (
+            <DeclaracionDetalle
+              declarationId={selectedDeclarationId}
+              onBack={() => setScreen("resumen-trimestral")}
+              dropPaths={declarationDropPaths}
+              dropToken={declarationDropToken}
+            />
+          )}
           {screen === "ajustes" && <Ajustes theme={theme} onToggleTheme={handleToggleTheme} />}
         </div>
 
-        {dbErrorToast && <Toast message={dbErrorToast} onDismiss={() => setDbErrorToast(null)} />}
-        {pdfErrorToast && (
-          <Toast message={pdfErrorToast} onDismiss={() => setPdfErrorToast(null)} />
-        )}
+        <Toast message={dbErrorToast} onDismiss={() => setDbErrorToast(null)} />
+        <Toast
+          message={pdfErrorToast}
+          onDismiss={() => setPdfErrorToast(null)}
+          offset={dbErrorToast ? 1 : 0}
+        />
 
         <CommandPalette
           open={paletteOpen}
@@ -483,6 +580,12 @@ export default function App() {
           invoices={invoices}
           contracts={paletteContracts}
           onSelect={handlePaletteSelect}
+        />
+
+        <DragDropOverlay
+          visible={dragOver !== null}
+          supported={dragOver?.supported ?? false}
+          context={dragOver?.context ?? "expense"}
         />
       </div>
     </TooltipProvider>

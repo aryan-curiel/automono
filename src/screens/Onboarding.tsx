@@ -14,6 +14,7 @@ import { updatePreferences } from "../db/preferences";
 import type { PreferencesRecord } from "../db/preferences";
 import { isValidNifCif, isValidVatNumber } from "../features/clients";
 import { isValidIban } from "../features/settings";
+import { EXIT_SPRING } from "../lib/motion";
 
 interface OnboardingProps {
   initialPreferences: PreferencesRecord;
@@ -36,10 +37,16 @@ type StepOneErrors = Partial<Record<"name" | "nifCif" | "vatNumber", string>>;
 
 const STEP_ICON = { 1: Buildings, 2: Bank, 3: SlidersHorizontal };
 
+type StepVariantCustom = { direction: number; reduceMotion: boolean };
+
 const stepVariants = {
-  enter: (direction: number) => ({ opacity: 0, x: direction * 24 }),
+  enter: ({ direction }: StepVariantCustom) => ({ opacity: 0, x: direction * 24 }),
   center: { opacity: 1, x: 0 },
-  exit: (direction: number) => ({ opacity: 0, x: direction * -24 }),
+  exit: ({ direction, reduceMotion }: StepVariantCustom) => ({
+    opacity: 0,
+    x: direction * -24,
+    transition: reduceMotion ? { duration: 0 } : EXIT_SPRING,
+  }),
 };
 
 export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) {
@@ -72,9 +79,28 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
     }));
   }
 
+  async function saveBusiness() {
+    await updateBusinessProfile({
+      name: business.name.trim(),
+      nifCif: business.nifCif.trim().toUpperCase(),
+      vatNumber: business.vatNumber.trim().toUpperCase(),
+      address: business.address.trim(),
+      bankName: business.bankName.trim(),
+      iban: business.iban.trim().toUpperCase(),
+      bic: business.bic.trim().toUpperCase(),
+      logoPath: business.logoPath,
+    });
+  }
+
   async function skip() {
-    await updatePreferences({ onboardingCompleted: true });
-    onComplete({ ...prefs, onboardingCompleted: true });
+    setFinishing(true);
+    try {
+      await saveBusiness();
+      await updatePreferences({ onboardingCompleted: true });
+      onComplete({ ...prefs, onboardingCompleted: true });
+    } finally {
+      setFinishing(false);
+    }
   }
 
   function continueFromStepOne() {
@@ -117,16 +143,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
   async function finish() {
     setFinishing(true);
     try {
-      await updateBusinessProfile({
-        name: business.name.trim(),
-        nifCif: business.nifCif.trim().toUpperCase(),
-        vatNumber: business.vatNumber.trim().toUpperCase(),
-        address: business.address.trim(),
-        bankName: business.bankName.trim(),
-        iban: business.iban.trim().toUpperCase(),
-        bic: business.bic.trim().toUpperCase(),
-        logoPath: business.logoPath,
-      });
+      await saveBusiness();
       const finalPrefs: PreferencesRecord = { ...prefs, onboardingCompleted: true };
       await updatePreferences(finalPrefs);
       onComplete(finalPrefs);
@@ -164,10 +181,10 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
             />
           </div>
 
-          <AnimatePresence mode="wait" custom={direction} initial={false}>
+          <AnimatePresence mode="wait" custom={{ direction, reduceMotion }} initial={false}>
             <motion.div
               key={step}
-              custom={direction}
+              custom={{ direction, reduceMotion }}
               variants={stepVariants}
               initial="enter"
               animate="center"
@@ -176,7 +193,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
             >
               <div className="flex items-center gap-2 mb-0.5">
                 <StepIcon size={18} weight="bold" className="text-accent" />
-                <div className="font-bold text-lg">
+                <div className="font-bold text-[17px]">
                   {step === 1 && "Bienvenido a AutoMono"}
                   {step === 2 && "Cuenta bancaria"}
                   {step === 3 && "Preferencias"}
@@ -184,7 +201,12 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
               </div>
 
               {step === 1 && (
-                <>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    continueFromStepOne();
+                  }}
+                >
                   <div className="text-[13px] text-ink-soft mb-4">
                     Empecemos con los datos de tu negocio.
                   </div>
@@ -192,7 +214,10 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                     <TextInput
                       value={business.name}
                       error={!!stepOneErrors.name}
-                      onChange={(e) => set("name", e.target.value)}
+                      onChange={(e) => {
+                        set("name", e.target.value);
+                        setStepOneErrors((err) => ({ ...err, name: undefined }));
+                      }}
                     />
                   </FormRow>
                   <FormRow label="NIF" error={stepOneErrors.nifCif}>
@@ -200,7 +225,10 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                       mono
                       value={business.nifCif}
                       error={!!stepOneErrors.nifCif}
-                      onChange={(e) => handleNifChange(e.target.value)}
+                      onChange={(e) => {
+                        handleNifChange(e.target.value);
+                        setStepOneErrors((err) => ({ ...err, nifCif: undefined }));
+                      }}
                     />
                   </FormRow>
                   <FormRow label="Número de IVA" error={stepOneErrors.vatNumber}>
@@ -211,6 +239,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                       onChange={(e) => {
                         setVatNumberEdited(true);
                         set("vatNumber", e.target.value);
+                        setStepOneErrors((err) => ({ ...err, vatNumber: undefined }));
                       }}
                     />
                   </FormRow>
@@ -221,7 +250,12 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                     />
                   </FormRow>
                   <FormRow label="Logo">
-                    <Button variant="secondary" onClick={handlePickLogo} disabled={logoUploading}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handlePickLogo}
+                      disabled={logoUploading}
+                    >
                       {logoUploading
                         ? "Subiendo…"
                         : business.logoPath
@@ -231,16 +265,21 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button variant="secondary" onClick={skip}>
+                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
                       Saltar por ahora
                     </Button>
-                    <Button onClick={continueFromStepOne}>Continuar</Button>
+                    <Button type="submit">Continuar</Button>
                   </div>
-                </>
+                </form>
               )}
 
               {step === 2 && (
-                <>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    continueFromStepTwo();
+                  }}
+                >
                   <div className="text-[13px] text-ink-soft mb-4">
                     Se usará para mostrar los datos de pago en tus facturas.
                   </div>
@@ -255,7 +294,10 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                       mono
                       value={business.iban}
                       error={!!ibanError}
-                      onChange={(e) => set("iban", e.target.value)}
+                      onChange={(e) => {
+                        set("iban", e.target.value);
+                        setIbanError(undefined);
+                      }}
                     />
                   </FormRow>
                   <FormRow label="BIC / SWIFT">
@@ -267,34 +309,40 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button variant="secondary" onClick={skip}>
+                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
-                      <Button variant="secondary" onClick={() => goTo(1)}>
+                      <Button type="button" variant="secondary" onClick={() => goTo(1)}>
                         Atrás
                       </Button>
-                      <Button onClick={continueFromStepTwo}>Continuar</Button>
+                      <Button type="submit">Continuar</Button>
                     </div>
                   </div>
-                </>
+                </form>
               )}
 
               {step === 3 && (
-                <>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void finish();
+                  }}
+                >
                   <div className="text-[13px] text-ink-soft mb-4">
                     Puedes cambiar esto más adelante en Ajustes.
                   </div>
                   <FormRow label="Modo oscuro">
                     <div className="flex items-center gap-2.5">
                       <Switch.Root
+                        type="button"
                         checked={prefs.theme === "dark"}
                         onCheckedChange={(checked) =>
                           setPrefs((p) => ({ ...p, theme: checked ? "dark" : "light" }))
                         }
-                        className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                        className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors ease-[var(--ease-out)] outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                       >
-                        <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
+                        <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform ease-[var(--ease-out)] data-[state=checked]:translate-x-[18px]" />
                       </Switch.Root>
                       <span className="text-[13px] text-ink-soft">
                         {prefs.theme === "dark" ? "Activado" : "Desactivado"}
@@ -333,19 +381,19 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button variant="secondary" onClick={skip}>
+                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
-                      <Button variant="secondary" onClick={() => goTo(2)}>
+                      <Button type="button" variant="secondary" onClick={() => goTo(2)}>
                         Atrás
                       </Button>
-                      <Button onClick={finish} disabled={finishing}>
+                      <Button type="submit" disabled={finishing}>
                         {finishing ? "Guardando…" : "Finalizar"}
                       </Button>
                     </div>
                   </div>
-                </>
+                </form>
               )}
             </motion.div>
           </AnimatePresence>

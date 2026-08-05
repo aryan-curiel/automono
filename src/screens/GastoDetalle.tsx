@@ -6,8 +6,9 @@ import { Button } from "../components/ui/Button";
 import { ErrorText } from "../components/ui/Field";
 import { InfoRow } from "../components/ui/InfoRow";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { Sheet } from "../components/ui/Sheet";
 import { BackLink, PageHeader } from "../components/PageHeader";
-import { deleteExpense, getExpense, openExpenseFile } from "../db/expenses";
+import { deleteExpense, deleteExpenseFiles, getExpense, openExpenseFile } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { formatDate, formatEUR } from "../lib/format";
 
@@ -24,13 +25,28 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
   const [loadedId, setLoadedId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
   const loading = loadedId !== expenseId && !loadError;
+
+  // Clears a stale error from a previous expenseId as soon as the id changes, so the error
+  // screen doesn't flash while the fresh fetch below is in flight — done during render (not in
+  // the effect) since it's purely reacting to a changed prop, matching the pattern already used
+  // for ModeloReviewModal's per-batch reset.
+  const [lastAttemptedId, setLastAttemptedId] = useState(expenseId);
+  if (lastAttemptedId !== expenseId) {
+    setLastAttemptedId(expenseId);
+    setLoadError(false);
+  }
 
   useEffect(() => {
     let cancelled = false;
     getExpense(expenseId)
       .then((e) => {
-        if (cancelled || !e) return;
+        if (cancelled) return;
+        if (!e) {
+          setLoadError(true);
+          return;
+        }
         setExpense(e);
         setLoadedId(expenseId);
       })
@@ -42,9 +58,10 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
     };
   }, [expenseId]);
 
-  async function handleDelete() {
+  async function confirmDelete() {
     if (!expense) return;
-    if (!window.confirm(t("expenses.actions.confirmDelete"))) return;
+    const filePaths = [expense.receiptFilePath].filter((p): p is string => !!p);
+    await deleteExpenseFiles(filePaths);
     await deleteExpense(expense.id);
     onDeleted();
   }
@@ -62,6 +79,7 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
   if (loading) {
     return (
       <div className="px-8 pb-15">
+        <BackLink label={t("expenses.title")} onClick={onBack} />
         <div className="text-sm text-ink-soft">{t("expenses.loading")}</div>
       </div>
     );
@@ -70,6 +88,7 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
   if (loadError) {
     return (
       <div className="px-8 pb-15">
+        <BackLink label={t("expenses.title")} onClick={onBack} />
         <div className="text-sm text-danger">{t("expenses.errors.loadFailed")}</div>
       </div>
     );
@@ -92,11 +111,14 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
               {t("expenses.actions.edit")}
             </Button>
             <Menu>
-              <MenuTrigger className="p-2 rounded-control hover:bg-surface-alt cursor-pointer">
+              <MenuTrigger
+                className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
+                aria-label={t("expenses.detail.moreActions")}
+              >
                 <DotsThreeVertical size={16} weight="bold" />
               </MenuTrigger>
               <MenuContent>
-                <MenuItem danger onSelect={handleDelete}>
+                <MenuItem danger onSelect={() => setDeletePending(true)}>
                   {t("expenses.actions.delete")}
                 </MenuItem>
               </MenuContent>
@@ -109,7 +131,10 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
         <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide pt-4 pb-2">
           {t("expenses.detail.dataTitle")}
         </div>
-        <InfoRow label={t("expenses.fields.category")} value={expense.category || "—"} />
+        <InfoRow
+          label={t("expenses.fields.category")}
+          value={expense.category || t("expenses.fields.noCategory")}
+        />
         <InfoRow label={t("expenses.fields.amount")} value={formatEUR(expense.amount)} mono />
         <InfoRow
           label={t("expenses.fields.ivaAmount")}
@@ -145,25 +170,24 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
             </div>
           }
         />
-        <InfoRow
-          label={t("expenses.fields.paymentProof")}
-          value={
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="secondary"
-                onClick={() => handleOpenFile(expense.paymentProofFilePath)}
-                disabled={!expense.paymentProofFilePath}
-              >
-                {t("expenses.actions.openPaymentProof")}
-              </Button>
-              {!expense.paymentProofFilePath && (
-                <span className="text-xs text-ink-soft">{t("expenses.fields.noPaymentProof")}</span>
-              )}
-            </div>
-          }
-        />
       </Card>
       {openError && <ErrorText>{openError}</ErrorText>}
+
+      <Sheet
+        open={deletePending}
+        onOpenChange={setDeletePending}
+        title={t("expenses.actions.delete")}
+      >
+        <p className="text-[13px] text-ink-soft mb-4">{t("expenses.actions.confirmDelete")}</p>
+        <div className="flex gap-2.5 justify-end">
+          <Button variant="secondary" onClick={() => setDeletePending(false)}>
+            {t("expenses.actions.cancel")}
+          </Button>
+          <Button variant="ghost-danger" onClick={confirmDelete}>
+            {t("expenses.actions.delete")}
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

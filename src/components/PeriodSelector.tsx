@@ -3,11 +3,11 @@ import { Select } from "./ui/Field";
 import { SegmentedControl } from "./ui/SegmentedControl";
 import { monthRange, quarterRange, yearRange, type Period } from "../lib/dateRange";
 
-type Kind = "month" | "quarter" | "year";
+export type Kind = "month" | "quarter" | "year";
 type Quarter = 1 | 2 | 3 | 4;
 
 interface PeriodSelectorProps {
-  onChange: (period: Period) => void;
+  onChange: (period: Period, kind: Kind) => void;
   defaultKind?: Kind;
 }
 
@@ -67,7 +67,7 @@ export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelect
         value={kind}
         onChange={(next: Kind) => {
           setKind(next);
-          onChange(computePeriod(next, year, month, quarter));
+          onChange(computePeriod(next, year, month, quarter), next);
         }}
         options={[
           { value: "month", label: "Mes" },
@@ -84,7 +84,7 @@ export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelect
               const [y, m] = e.target.value.split("-").map(Number);
               setYear(y);
               setMonth(m);
-              onChange(computePeriod(kind, y, m, quarter));
+              onChange(computePeriod(kind, y, m, quarter), kind);
             }}
           >
             {monthOptions.map(({ year: y, month: m }) => (
@@ -102,7 +102,7 @@ export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelect
               const [y, q] = e.target.value.split("-").map(Number) as [number, Quarter];
               setYear(y);
               setQuarter(q);
-              onChange(computePeriod(kind, y, month, q));
+              onChange(computePeriod(kind, y, month, q), kind);
             }}
           >
             {quarterOptions.map(({ year: y, quarter: q }) => (
@@ -119,7 +119,7 @@ export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelect
             onChange={(e) => {
               const y = Number(e.target.value);
               setYear(y);
-              onChange(computePeriod(kind, y, month, quarter));
+              onChange(computePeriod(kind, y, month, quarter), kind);
             }}
           >
             {yearOptions.map((y) => (

@@ -5,9 +5,12 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 mod backup;
 mod branding;
 mod contracts;
+mod declarations;
 mod expenses;
 mod export;
 mod invoicing;
+mod llm;
+mod modelo_review;
 mod pdf;
 mod receipt_extract;
 
@@ -137,9 +140,39 @@ fn all_migrations() -> Vec<Migration> {
             kind: MigrationKind::Up,
         },
         Migration {
-            version: 22,
+            version: 20,
+            description: "expense_categories",
+            sql: include_str!("../migrations/0020_expense_categories.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 21,
             description: "expense_irpf_retention",
             sql: include_str!("../migrations/0022_expense_irpf_retention.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 22,
+            description: "expense_declared_period",
+            sql: include_str!("../migrations/0023_expense_declared_period.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 23,
+            description: "llm_settings",
+            sql: include_str!("../migrations/0024_llm_settings.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 24,
+            description: "llm_settings_providers",
+            sql: include_str!("../migrations/0025_llm_settings_providers.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 25,
+            description: "quarterly_declarations",
+            sql: include_str!("../migrations/0026_quarterly_declarations.sql"),
             kind: MigrationKind::Up,
         },
     ]
@@ -166,10 +199,17 @@ pub fn run() {
             contracts::open_contract_file_cmd,
             expenses::attach_expense_file_cmd,
             expenses::open_expense_file_cmd,
+            expenses::delete_expense_files_cmd,
             receipt_extract::extract_receipt_fields_cmd,
+            receipt_extract::extract_receipt_fields_llm_cmd,
             branding::attach_business_logo_cmd,
             export::write_text_file_cmd,
             export::export_gestor_bundle_cmd,
+            declarations::attach_declaration_file_cmd,
+            declarations::open_declaration_file_cmd,
+            declarations::export_declaration_zip_cmd,
+            modelo_review::detect_modelo_cmd,
+            modelo_review::extract_modelo_fields_cmd,
             backup::backup_now_cmd,
             backup::restore_backup_cmd,
             backup::list_backups_cmd,

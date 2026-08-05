@@ -34,3 +34,14 @@ pub async fn open_expense_file_cmd(app: AppHandle, file_path: String) -> Result<
         .open_path(file_path, None::<&str>)
         .map_err(|e| e.to_string())
 }
+
+/// Removes the file(s) backing a deleted expense. Best-effort per path — a file that's already
+/// missing (or fails to delete for some other reason) shouldn't block the user from finishing the
+/// delete; the DB row is the source of truth, not the file.
+#[tauri::command]
+pub async fn delete_expense_files_cmd(paths: Vec<String>) -> Result<(), String> {
+    for path in paths {
+        std::fs::remove_file(&path).ok();
+    }
+    Ok(())
+}

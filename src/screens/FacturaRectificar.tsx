@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { X } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -52,6 +53,7 @@ export function FacturaRectificar({
   onCancel,
   onEmit,
 }: FacturaRectificarProps) {
+  const { t } = useTranslation();
   const [client, setClient] = useState<ClientRecord | null>(null);
   const [originalLines, setOriginalLines] = useState<
     { description: string; quantity: number; unitPrice: number }[] | null
@@ -95,9 +97,7 @@ export function FacturaRectificar({
     ? `${client.seriesPrefix}-R${String(client.nextRectificationNumber).padStart(3, "0")}`
     : "";
   const helpText =
-    rectType === "full"
-      ? "La anulación completa generará líneas negativas que igualan y anulan el importe total de la factura original."
-      : "La corrección parcial empieza en blanco — añade solo las líneas que corrigen el importe original.";
+    rectType === "full" ? t("invoices.help.full") : t("invoices.help.partial");
 
   const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
   const iva = (subtotal * original.ivaRate) / 100;
@@ -119,12 +119,12 @@ export function FacturaRectificar({
   async function handleEmit() {
     setSubmitError(null);
     if (!reason.trim()) {
-      setSubmitError("El motivo es obligatorio.");
+      setSubmitError(t("invoices.errors.reasonRequired"));
       return;
     }
     const validLines = lines.filter((l) => l.description.trim());
     if (validLines.length === 0) {
-      setSubmitError("Añade al menos una línea.");
+      setSubmitError(t("invoices.errors.linesRequired"));
       return;
     }
     setSubmitting(true);
@@ -140,46 +140,51 @@ export function FacturaRectificar({
         })),
       );
       onEmit(created);
-    } catch (err) {
-      setSubmitError(String(err));
+    } catch {
+      setSubmitError(t("invoices.errors.rectificationFailed"));
     } finally {
       setSubmitting(false);
     }
   }
 
+  const reasonError =
+    submitError && !reason.trim() ? t("invoices.errors.reasonRequired") : undefined;
+
   return (
     <div className="px-8 pb-15">
       <PageHeader
-        title={`Rectificativa de ${origNumber}`}
+        title={t("invoices.rectificationOf", { number: origNumber })}
         backLabel={origNumber}
         onBack={onCancel}
         actions={
           <Button onClick={handleEmit} disabled={submitting}>
-            {submitting ? "Emitiendo…" : "Emitir rectificativa"}
+            {submitting ? t("invoices.actions.issuing") : t("invoices.actions.issueRectification")}
           </Button>
         }
       />
 
       <div className="grid grid-cols-[2fr_1fr] gap-5 items-start">
-        <Card className="px-5 py-1">
-          <FormRow label="Nº de rectificativa">
+        <Card className="px-5">
+          <FormRow label={t("invoices.fields.rectificationNumber")}>
             <TextInput mono readOnly value={numberPreview} />
           </FormRow>
-          <FormRow label="Tipo">
+          <FormRow label={t("invoices.fields.type")}>
             <SegmentedControl
               options={[
-                { value: "full" as RectificationType, label: "Anulación completa" },
-                { value: "partial" as RectificationType, label: "Corrección parcial" },
+                { value: "full" as RectificationType, label: t("invoices.rectType.full") },
+                { value: "partial" as RectificationType, label: t("invoices.rectType.partial") },
               ]}
               value={rectType}
               onChange={(v) => (v === "full" ? onSetFull() : onSetPartial())}
+              disabled={submitting}
             />
           </FormRow>
-          <FormRow label="Motivo (obligatorio)">
+          <FormRow label={t("invoices.fields.reason")} error={reasonError}>
             <TextArea
               value={reason}
+              error={!!reasonError}
               onChange={(e) => onReasonChange(e.target.value)}
-              placeholder="Ej. Error en el importe de la línea 2"
+              placeholder={t("invoices.fields.reasonPlaceholder")}
               className="h-18 font-sans"
               disabled={submitting}
             />
@@ -187,32 +192,32 @@ export function FacturaRectificar({
         </Card>
 
         <Card className="py-5.5 px-6 sticky top-5">
-          <div className="font-bold text-sm mb-4">Totales</div>
-          <div className="flex justify-between py-1.5 text-[13.5px] text-ink-soft">
-            <span>Base imponible</span>
-            <span className="font-medium font-mono text-[13.5px] text-ink">
+          <div className="font-bold text-sm mb-4">{t("invoices.totals.title")}</div>
+          <div className="flex justify-between py-1.5 text-[13px] text-ink-soft">
+            <span>{t("invoices.totals.subtotal")}</span>
+            <span className="font-medium font-mono text-[13px] text-ink">
               {formatEUR(subtotal)}
             </span>
           </div>
-          <div className="flex justify-between py-1.5 text-[13.5px] text-ink-soft">
-            <span>IVA ({original.ivaRate}%)</span>
-            <span className="font-medium font-mono text-[13.5px] text-ink">{formatEUR(iva)}</span>
+          <div className="flex justify-between py-1.5 text-[13px] text-ink-soft">
+            <span>{t("invoices.totals.ivaWithRate", { rate: original.ivaRate })}</span>
+            <span className="font-medium font-mono text-[13px] text-ink">{formatEUR(iva)}</span>
           </div>
-          <div className="flex justify-between pt-1.5 pb-3.5 text-[13.5px] text-ink-soft">
+          <div className="flex justify-between pt-1.5 pb-3.5 text-[13px] text-ink-soft">
             <span>
-              IRPF ({original.irpfRate}%){irpfForeignClient && " (cliente extranjero)"}
+              {t("invoices.totals.irpfWithRate", { rate: original.irpfRate })}
+              {irpfForeignClient && t("invoices.totals.foreignClientSuffix")}
             </span>
-            <span className="font-medium font-mono text-[13.5px] text-ink">
+            <span className="font-medium font-mono text-[13px] text-ink">
               -{formatEUR(irpf)}
             </span>
           </div>
           <div className="flex justify-between pt-3.5 border-t border-border font-bold text-[15px]">
-            <span>Total</span>
+            <span>{t("invoices.totals.total")}</span>
             <span className="font-bold text-[17px] font-mono">{formatEUR(total)}</span>
           </div>
           <div className="mt-4.5 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
-            El IVA/IRPF se hereda de la factura original y no es editable. La numeración se asigna
-            de forma atómica al emitir. Una vez emitida, la rectificativa queda bloqueada.
+            {t("invoices.totals.lockNoticeRectification")}
           </div>
         </Card>
       </div>
@@ -221,12 +226,12 @@ export function FacturaRectificar({
         <div className="mb-3.5 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
           {helpText}
         </div>
-        <div className="font-bold text-[13px] mb-2.5">Líneas</div>
+        <div className="font-bold text-[13px] mb-2.5">{t("invoices.lines.title")}</div>
         <div className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 font-semibold text-xs uppercase text-ink-soft pb-1.5">
-          <div>Descripción</div>
-          <div>Cant.</div>
-          <div>Precio</div>
-          <div>Total</div>
+          <div>{t("invoices.lines.description")}</div>
+          <div>{t("invoices.lines.quantity")}</div>
+          <div className="text-right">{t("invoices.lines.price")}</div>
+          <div className="text-right">{t("invoices.lines.total")}</div>
           <div />
         </div>
         {lines.map((l, idx) => (
@@ -247,31 +252,33 @@ export function FacturaRectificar({
             />
             <TextInput
               mono
+              className="text-right"
               value={l.unitPrice}
               onChange={(e) => updateLine(idx, "unitPrice", e.target.value)}
               disabled={submitting}
             />
-            <div className="font-semibold text-[13px] font-mono py-2">
+            <div className="font-semibold text-[13px] font-mono py-2 text-right">
               {formatEUR((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0))}
             </div>
             <button
               onClick={() => !submitting && removeLine(idx)}
-              className="p-1 rounded-control text-ink-soft hover:bg-border cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Eliminar línea"
+              className="p-1 rounded-control text-ink-soft hover:bg-border cursor-pointer opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              aria-label={t("invoices.lines.remove")}
             >
               <X size={14} weight="bold" />
             </button>
           </div>
         ))}
-        <button
+        <Button
+          variant="dashed"
+          className="mt-1.5"
           onClick={() => setLines((ls) => [...ls, mkLine("", 1, 0)])}
           disabled={submitting}
-          className="font-semibold text-[13px] bg-transparent border border-dashed border-border text-accent rounded-control px-3.5 py-2 mt-1.5 cursor-pointer disabled:opacity-50"
         >
-          + Añadir línea
-        </button>
+          {t("invoices.lines.add")}
+        </Button>
 
-        {submitError && <ErrorText>{submitError}</ErrorText>}
+        {submitError && !reasonError && <ErrorText>{submitError}</ErrorText>}
       </Card>
     </div>
   );

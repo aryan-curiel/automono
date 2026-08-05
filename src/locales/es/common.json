@@ -2,16 +2,38 @@
   "app": {
     "initializing": "Iniciando…"
   },
+  "common": {
+    "viewDetail": "Ver detalle",
+    "retry": "Reintentar"
+  },
+  "dragDrop": {
+    "title": "Agregar gasto",
+    "subtitle": "Suelta el archivo para crear un gasto con este comprobante",
+    "unsupportedTitle": "Archivo no compatible",
+    "unsupportedSubtitle": "Solo se admiten PDF, PNG y JPG",
+    "declarationTitle": "Adjuntar modelo",
+    "declarationSubtitle": "Suelta el PDF del modelo para revisarlo antes de adjuntarlo",
+    "declarationUnsupportedSubtitle": "Solo se admiten archivos PDF"
+  },
   "settings": {
+    "logoAlt": "Logotipo del negocio",
     "dbSectionTitle": "Estado de la base de datos",
     "dbChecking": "Comprobando conexión…",
-    "dbError": "Error de conexión"
+    "dbError": "Error de conexión",
+    "llmTitle": "Extracción de recibos con IA",
+    "llmHelp": "Se usa para autocompletar los datos del gasto (importe, fecha, categoría…) a partir de fotos y PDFs de recibos. Deja la clave en blanco para usar solo la extracción local (sin conexión) para PDFs.",
+    "llmProvider": "Proveedor",
+    "llmApiKey": "Clave API",
+    "llmModel": "Modelo",
+    "llmSave": "Guardar",
+    "llmSaved": "Guardado"
   },
   "clients": {
     "title": "Clientes",
     "subtitleCount": "{{count}} clientes activos",
     "newClient": "Nuevo cliente",
     "editClient": "Editar cliente",
+    "searchPlaceholder": "Buscar",
     "loading": "Cargando…",
     "empty": "No hay clientes todavía.",
     "columns": {
@@ -50,6 +72,7 @@
     },
     "actions": {
       "save": "Guardar",
+      "saving": "Guardando…",
       "cancel": "Cancelar",
       "delete": "Eliminar",
       "edit": "Editar",
@@ -75,14 +98,60 @@
       "outstanding": "Pendiente de cobro"
     }
   },
+  "dashboard": {
+    "title": "Inicio",
+    "addExpense": "Gasto",
+    "noData": "Sin datos todavía",
+    "kpis": {
+      "invoicedQuarter": "Facturado (trimestre)",
+      "pendingCollection": "Pendiente de cobro",
+      "activeClients": "Clientes activos",
+      "expensesQuarter": "Gastos (trimestre)"
+    },
+    "recurring": {
+      "title": "Facturas recurrentes",
+      "lastInvoiced": "Facturado el mes pasado: {{amount}}",
+      "generate": "Generar factura",
+      "generating": "Generando…"
+    },
+    "recentInvoices": {
+      "title": "Facturas recientes"
+    },
+    "upcomingDue": {
+      "title": "Próximos vencimientos",
+      "due": "Vence {{date}}"
+    },
+    "aging": {
+      "title": "Antigüedad de cobros",
+      "invoiceCount": "{{count}} facturas",
+      "buckets": {
+        "current": "Al día",
+        "0-30": "0-30 días",
+        "30-60": "30-60 días",
+        "60+": "60+ días"
+      }
+    },
+    "taxCalendar": {
+      "title": "Calendario fiscal"
+    },
+    "revenueByClient": {
+      "title": "Ingresos por cliente ({{year}})"
+    },
+    "expensesByCategory": {
+      "title": "Gastos por categoría ({{period}})"
+    }
+  },
   "invoices": {
     "title": "Facturas",
     "subtitleCount": "{{count}} facturas",
     "newInvoice": "Nueva factura",
+    "editInvoice": "Editar factura",
+    "rectificationOf": "Rectificativa de {{number}}",
     "searchPlaceholder": "Buscar",
     "loading": "Cargando…",
     "empty": "Aún no hay facturas",
     "noResults": "Sin resultados",
+    "noClients": "Da de alta un cliente antes de crear una factura.",
     "columns": {
       "number": "Nº Factura",
       "client": "Cliente",
@@ -90,14 +159,109 @@
       "amount": "Importe",
       "status": "Estado"
     },
+    "status": {
+      "paid": "Pagada",
+      "draft": "Borrador",
+      "issued": "Emitida"
+    },
     "rectifies": "rectifica {{number}}",
     "rectifiedBy": "rectificada por {{number}}",
+    "fields": {
+      "client": "Cliente",
+      "number": "Nº de factura",
+      "issueDate": "Fecha de emisión",
+      "ivaRate": "Tipo de IVA",
+      "irpfRate": "Retención IRPF",
+      "language": "Idioma de la factura",
+      "rectificationNumber": "Nº de rectificativa",
+      "type": "Tipo",
+      "reason": "Motivo",
+      "reasonPlaceholder": "Ej. Error en el importe de la línea 2"
+    },
+    "ivaOptions": {
+      "standard": "21% — general",
+      "reduced": "10% — reducido",
+      "superReduced": "4% — superreducido",
+      "specialTreatment": "0% — tratamiento especial"
+    },
+    "irpfOptions": {
+      "standard": "15% — estándar",
+      "reduced": "7% — reducida (inicio actividad)",
+      "none": "0% — no aplica"
+    },
+    "rectType": {
+      "full": "Anulación completa",
+      "partial": "Corrección parcial"
+    },
+    "help": {
+      "full": "La anulación completa generará líneas negativas que igualan y anulan el importe total de la factura original.",
+      "partial": "La corrección parcial empieza en blanco — añade solo las líneas que corrigen el importe original."
+    },
+    "totals": {
+      "title": "Totales",
+      "subtotal": "Base imponible",
+      "iva": "IVA",
+      "ivaWithRate": "IVA ({{rate}}%)",
+      "irpf": "Retención IRPF",
+      "irpfWithRate": "IRPF ({{rate}}%)",
+      "foreignClientSuffix": " (cliente extranjero)",
+      "total": "Total",
+      "lockNoticeNew": "La numeración se asigna de forma atómica al emitir. Una vez emitida, la factura queda bloqueada.",
+      "lockNoticeRectification": "El IVA/IRPF se hereda de la factura original y no es editable. La numeración se asigna de forma atómica al emitir. Una vez emitida, la rectificativa queda bloqueada."
+    },
+    "lines": {
+      "title": "Líneas",
+      "description": "Descripción",
+      "quantity": "Cant.",
+      "price": "Precio",
+      "total": "Total",
+      "remove": "Eliminar línea",
+      "add": "+ Añadir línea"
+    },
     "actions": {
       "delete": "Eliminar borrador",
-      "confirmDelete": "¿Eliminar este borrador? Esta acción no se puede deshacer."
+      "confirmDelete": "¿Eliminar este borrador? Esta acción no se puede deshacer.",
+      "saveDraft": "Guardar borrador",
+      "savingDraft": "Guardando…",
+      "issue": "Emitir factura",
+      "issuing": "Emitiendo…",
+      "issueRectification": "Emitir rectificativa"
     },
     "errors": {
-      "loadFailed": "No se pudo cargar la factura."
+      "loadFailed": "No se pudo cargar la factura.",
+      "loadClientsFailed": "No se pudieron cargar los clientes.",
+      "saveDraftFailed": "No se pudo guardar el borrador.",
+      "issueFailed": "No se pudo emitir la factura.",
+      "rectificationFailed": "No se pudo emitir la rectificativa.",
+      "reasonRequired": "El motivo es obligatorio.",
+      "linesRequired": "Añade al menos una línea."
+    },
+    "detail": {
+      "subtitle": "{{client}} · emitida {{date}}",
+      "breakdownTitle": "Desglose",
+      "edit": "Editar",
+      "createRectification": "Crear rectificativa",
+      "markPaid": "Marcar como pagada",
+      "moreActions": "Más acciones",
+      "duplicateInvoice": "Duplicar factura",
+      "moreDownloadOptions": "Más opciones de descarga",
+      "downloadPdf": "Descargar PDF",
+      "generatingPdf": "Generando…",
+      "generateAndDownload": "Generar y descargar",
+      "markPaidTitle": "Marcar factura como pagada",
+      "markPaidConfirm": "¿Confirmas que esta factura ha sido pagada?",
+      "cancel": "Cancelar",
+      "confirmPayment": "Confirmar pago",
+      "rectifiesPrefix": "Rectifica a",
+      "fullCancellation": "anulación completa",
+      "partialCorrection": "corrección parcial",
+      "reasonPrefix": "Motivo",
+      "rectifiedByPrefix": "Esta factura ha sido rectificada por",
+      "lateInterestTitle": "Interés de demora (Ley 3/2004)",
+      "overdueDaysLabel": "{{days}} días de retraso sobre {{amount}}",
+      "annualLabel": "% anual",
+      "interestOwedLabel": "Interés adeudado",
+      "lateInterestDisclaimer": "Tipo orientativo — comprueba el vigente en el BOE (interés legal + 8 puntos) antes de reclamarlo."
     }
   },
   "contracts": {
@@ -124,6 +288,7 @@
     },
     "actions": {
       "save": "Guardar",
+      "saving": "Guardando…",
       "cancel": "Cancelar",
       "delete": "Eliminar",
       "edit": "Editar",
@@ -166,15 +331,16 @@
       "ivaAmount": "Importe IVA",
       "deductiblePct": "% deducible",
       "irpfRate": "% Retención IRPF",
-      "irpfAmount": "Importe retenido",
-      "file": "Factura / recibo",
-      "noFile": "Sin recibo adjunto.",
-      "paymentProof": "Justificante de pago",
-      "noPaymentProof": "Sin justificante de pago adjunto.",
-      "noCategory": "Sin categoría"
+      "irpfAmount": "Importe retenido (IRPF)",
+      "file": "Factura o recibo",
+      "noFile": "Sin archivo adjunto.",
+      "noCategory": "Sin categoría",
+      "declaredPeriod": "Declarar en",
+      "declaredPeriodAuto": "Automático ({{quarter}})"
     },
     "summary": {
       "total": "Total gastos",
+      "deductibleTotal": "Total deducible",
       "deductibleIva": "IVA deducible"
     },
     "period": {
@@ -184,14 +350,13 @@
     },
     "actions": {
       "save": "Guardar",
+      "saving": "Guardando…",
       "cancel": "Cancelar",
       "delete": "Eliminar",
       "edit": "Editar",
-      "attachFile": "Adjuntar recibo",
-      "attachPaymentProof": "Adjuntar justificante de pago",
+      "attachFile": "Adjuntar archivo",
       "attaching": "Adjuntando…",
-      "openFile": "Abrir recibo",
-      "openPaymentProof": "Abrir justificante de pago",
+      "openFile": "Abrir archivo",
       "confirmDelete": "¿Eliminar este gasto? Esta acción no se puede deshacer."
     },
     "errors": {
@@ -201,8 +366,120 @@
       "saveFailed": "No se pudo guardar el gasto. Inténtalo de nuevo.",
       "loadFailed": "No se pudo cargar el gasto."
     },
+    "extraction": {
+      "llm": "Datos rellenados automáticamente con IA. Revísalos antes de guardar.",
+      "fallback": "La extracción con IA falló; se usó la extracción básica. Revisa los campos.",
+      "basic": "Datos extraídos automáticamente. Revísalos antes de guardar.",
+      "none": "No se pudieron extraer los datos automáticamente. Completa los campos manualmente."
+    },
     "detail": {
-      "dataTitle": "Datos del gasto"
+      "dataTitle": "Datos del gasto",
+      "moreActions": "Más acciones"
     }
+  },
+  "declarations": {
+    "title": "Declaraciones trimestrales",
+    "newButton": "Nueva declaración",
+    "empty": "Todavía no hay declaraciones. Crea la primera con \"Nueva declaración\".",
+    "loading": "Cargando…",
+    "status": {
+      "in_progress": "En curso",
+      "completed": "Completada"
+    },
+    "table": {
+      "invoicesLabel": "facturas",
+      "expensesLabel": "gastos"
+    },
+    "errors": {
+      "loadFailed": "No se pudo cargar la declaración."
+    },
+    "wizard": {
+      "title": "Nueva declaración trimestral",
+      "step1": {
+        "title": "Selecciona el trimestre",
+        "year": "Año",
+        "quarter": "Trimestre"
+      },
+      "step2": {
+        "title": "Confirma las facturas cobradas",
+        "empty": "No hay facturas cobradas en este trimestre.",
+        "total": "Total cobrado"
+      },
+      "step3": {
+        "title": "Confirma los gastos",
+        "empty": "No hay gastos en este trimestre."
+      },
+      "step4": {
+        "title": "Resumen",
+        "invoices": "Facturas",
+        "expenses": "Gastos",
+        "irpfWithheld": "IRPF retenido",
+        "netIncome": "Ingreso neto estimado"
+      },
+      "actions": {
+        "back": "Atrás",
+        "continue": "Continuar",
+        "create": "Crear declaración",
+        "creating": "Creando…"
+      }
+    },
+    "detail": {
+      "downloadZip": "Descargar ZIP",
+      "downloading": "Generando…",
+      "dataTitle": "Resumen del trimestre",
+      "ivaByRateTitle": "IVA repercutido por tipo",
+      "ivaByRateEmpty": "No hay facturas en este período.",
+      "expensesQuarterTitle": "Gastos deducibles del trimestre",
+      "invoicedBase": "Total facturado (base)",
+      "irpfWithheld": "IRPF retenido (facturas)",
+      "expensesDeductibleBase": "Gastos deducibles",
+      "expensesIvaDeductible": "IVA deducible",
+      "expensesIrpfWithheld": "IRPF retenido (gastos)",
+      "netIrpfIncome": "Ingreso neto estimado",
+      "margin": "Margen (tras IRPF)",
+      "invoicesTitle": "Facturas incluidas",
+      "noInvoices": "No hay facturas en esta declaración.",
+      "expensesTitle": "Gastos incluidos",
+      "noExpenses": "No hay gastos en esta declaración.",
+      "modelosTitle": "Documentación presentada",
+      "attachFile": "Adjuntar PDF",
+      "replaceFile": "Sustituir PDF",
+      "attaching": "Adjuntando…",
+      "attached": "Adjuntado",
+      "openFile": "Abrir PDF",
+      "markCompleted": "Marcar como completada",
+      "completing": "Guardando…"
+    },
+    "review": {
+      "title": "Revisar archivos de modelo",
+      "steps": {
+        "detect": "Detectando modelo",
+        "period": "Comprobando trimestre",
+        "extract": "Extrayendo valores",
+        "compare": "Comparando con los totales calculados"
+      },
+      "errors": {
+        "unrecognized": "Este PDF no se reconoce como Modelo 303, 130 o 111.",
+        "generic": "No se pudo procesar este archivo."
+      },
+      "reportTitle": "Informe de comparación",
+      "columnCalculated": "Calculado",
+      "columnFile": "En el archivo",
+      "status": {
+        "match": "Coincide",
+        "mismatch": "No coincide",
+        "missing": "No encontrado"
+      },
+      "approve": "Aprobar y adjuntar",
+      "approving": "Adjuntando…",
+      "cancel": "Cancelar",
+      "removeTab": "Quitar"
+    }
+  },
+  "resumenTrimestral": {
+    "title": "Resumen trimestral",
+    "subtitle": "ayuda informativa para Modelo 130/303",
+    "exportCsv": "Exportar CSV",
+    "exportingCsv": "Exportando…"
   }
 }

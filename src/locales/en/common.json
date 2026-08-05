@@ -2,16 +2,38 @@
   "app": {
     "initializing": "Starting…"
   },
+  "common": {
+    "viewDetail": "View detail",
+    "retry": "Retry"
+  },
+  "dragDrop": {
+    "title": "Add expense",
+    "subtitle": "Drop the file to create an expense with this receipt",
+    "unsupportedTitle": "Unsupported file",
+    "unsupportedSubtitle": "Only PDF, PNG and JPG are supported",
+    "declarationTitle": "Attach modelo",
+    "declarationSubtitle": "Drop the modelo PDF to review it before attaching",
+    "declarationUnsupportedSubtitle": "Only PDF files are supported"
+  },
   "settings": {
+    "logoAlt": "Business logo",
     "dbSectionTitle": "Database status",
     "dbChecking": "Checking connection…",
-    "dbError": "Connection error"
+    "dbError": "Connection error",
+    "llmTitle": "Receipt AI extraction",
+    "llmHelp": "Used to auto-fill expense fields (amount, date, category…) from receipt photos and PDFs. Leave the key blank to use the built-in offline extraction for PDFs only.",
+    "llmProvider": "Provider",
+    "llmApiKey": "API key",
+    "llmModel": "Model",
+    "llmSave": "Save",
+    "llmSaved": "Saved"
   },
   "clients": {
     "title": "Clients",
     "subtitleCount": "{{count}} active clients",
     "newClient": "New client",
     "editClient": "Edit client",
+    "searchPlaceholder": "Search",
     "loading": "Loading…",
     "empty": "No clients yet.",
     "columns": {
@@ -50,6 +72,7 @@
     },
     "actions": {
       "save": "Save",
+      "saving": "Saving…",
       "cancel": "Cancel",
       "delete": "Delete",
       "edit": "Edit",
@@ -75,14 +98,60 @@
       "outstanding": "Outstanding"
     }
   },
+  "dashboard": {
+    "title": "Home",
+    "addExpense": "Expense",
+    "noData": "No data yet",
+    "kpis": {
+      "invoicedQuarter": "Invoiced (quarter)",
+      "pendingCollection": "Pending collection",
+      "activeClients": "Active clients",
+      "expensesQuarter": "Expenses (quarter)"
+    },
+    "recurring": {
+      "title": "Recurring invoices",
+      "lastInvoiced": "Invoiced last month: {{amount}}",
+      "generate": "Generate invoice",
+      "generating": "Generating…"
+    },
+    "recentInvoices": {
+      "title": "Recent invoices"
+    },
+    "upcomingDue": {
+      "title": "Upcoming due dates",
+      "due": "Due {{date}}"
+    },
+    "aging": {
+      "title": "Aging receivables",
+      "invoiceCount": "{{count}} invoices",
+      "buckets": {
+        "current": "Current",
+        "0-30": "0-30 days",
+        "30-60": "30-60 days",
+        "60+": "60+ days"
+      }
+    },
+    "taxCalendar": {
+      "title": "Tax calendar"
+    },
+    "revenueByClient": {
+      "title": "Revenue by client ({{year}})"
+    },
+    "expensesByCategory": {
+      "title": "Expenses by category ({{period}})"
+    }
+  },
   "invoices": {
     "title": "Invoices",
     "subtitleCount": "{{count}} invoices",
     "newInvoice": "New invoice",
+    "editInvoice": "Edit invoice",
+    "rectificationOf": "Rectification of {{number}}",
     "searchPlaceholder": "Search",
     "loading": "Loading…",
     "empty": "No invoices yet",
     "noResults": "No results",
+    "noClients": "Add a client before creating an invoice.",
     "columns": {
       "number": "Invoice #",
       "client": "Client",
@@ -90,14 +159,109 @@
       "amount": "Amount",
       "status": "Status"
     },
+    "status": {
+      "paid": "Paid",
+      "draft": "Draft",
+      "issued": "Issued"
+    },
     "rectifies": "rectifies {{number}}",
     "rectifiedBy": "rectified by {{number}}",
+    "fields": {
+      "client": "Client",
+      "number": "Invoice #",
+      "issueDate": "Issue date",
+      "ivaRate": "VAT rate",
+      "irpfRate": "IRPF withholding",
+      "language": "Invoice language",
+      "rectificationNumber": "Rectification #",
+      "type": "Type",
+      "reason": "Reason",
+      "reasonPlaceholder": "E.g. Error in line 2's amount"
+    },
+    "ivaOptions": {
+      "standard": "21% — standard",
+      "reduced": "10% — reduced",
+      "superReduced": "4% — super-reduced",
+      "specialTreatment": "0% — special treatment"
+    },
+    "irpfOptions": {
+      "standard": "15% — standard",
+      "reduced": "7% — reduced (new activity)",
+      "none": "0% — not applicable"
+    },
+    "rectType": {
+      "full": "Full cancellation",
+      "partial": "Partial correction"
+    },
+    "help": {
+      "full": "Full cancellation will generate negative lines that match and cancel out the original invoice's total.",
+      "partial": "Partial correction starts blank — add only the lines that correct the original amount."
+    },
+    "totals": {
+      "title": "Totals",
+      "subtotal": "Taxable base",
+      "iva": "VAT",
+      "ivaWithRate": "VAT ({{rate}}%)",
+      "irpf": "IRPF withholding",
+      "irpfWithRate": "IRPF ({{rate}}%)",
+      "foreignClientSuffix": " (foreign client)",
+      "total": "Total",
+      "lockNoticeNew": "Numbering is assigned atomically on issue. Once issued, the invoice becomes locked.",
+      "lockNoticeRectification": "VAT/IRPF are inherited from the original invoice and can't be edited. Numbering is assigned atomically on issue. Once issued, the rectification becomes locked."
+    },
+    "lines": {
+      "title": "Lines",
+      "description": "Description",
+      "quantity": "Qty.",
+      "price": "Price",
+      "total": "Total",
+      "remove": "Remove line",
+      "add": "+ Add line"
+    },
     "actions": {
       "delete": "Delete draft",
-      "confirmDelete": "Delete this draft? This action cannot be undone."
+      "confirmDelete": "Delete this draft? This action cannot be undone.",
+      "saveDraft": "Save draft",
+      "savingDraft": "Saving…",
+      "issue": "Issue invoice",
+      "issuing": "Issuing…",
+      "issueRectification": "Issue rectification"
     },
     "errors": {
-      "loadFailed": "Couldn't load the invoice."
+      "loadFailed": "Couldn't load the invoice.",
+      "loadClientsFailed": "Couldn't load clients.",
+      "saveDraftFailed": "Couldn't save the draft.",
+      "issueFailed": "Couldn't issue the invoice.",
+      "rectificationFailed": "Couldn't issue the rectification.",
+      "reasonRequired": "The reason is required.",
+      "linesRequired": "Add at least one line."
+    },
+    "detail": {
+      "subtitle": "{{client}} · issued {{date}}",
+      "breakdownTitle": "Breakdown",
+      "edit": "Edit",
+      "createRectification": "Create rectification",
+      "markPaid": "Mark as paid",
+      "moreActions": "More actions",
+      "duplicateInvoice": "Duplicate invoice",
+      "moreDownloadOptions": "More download options",
+      "downloadPdf": "Download PDF",
+      "generatingPdf": "Generating…",
+      "generateAndDownload": "Generate and download",
+      "markPaidTitle": "Mark invoice as paid",
+      "markPaidConfirm": "Confirm this invoice has been paid?",
+      "cancel": "Cancel",
+      "confirmPayment": "Confirm payment",
+      "rectifiesPrefix": "Rectifies",
+      "fullCancellation": "full cancellation",
+      "partialCorrection": "partial correction",
+      "reasonPrefix": "Reason",
+      "rectifiedByPrefix": "This invoice has been rectified by",
+      "lateInterestTitle": "Late payment interest (Ley 3/2004)",
+      "overdueDaysLabel": "{{days}} days overdue on {{amount}}",
+      "annualLabel": "% annual",
+      "interestOwedLabel": "Interest owed",
+      "lateInterestDisclaimer": "Indicative rate — check the one currently published in the BOE (legal interest + 8 points) before claiming it."
     }
   },
   "contracts": {
@@ -124,6 +288,7 @@
     },
     "actions": {
       "save": "Save",
+      "saving": "Saving…",
       "cancel": "Cancel",
       "delete": "Delete",
       "edit": "Edit",
@@ -166,15 +331,16 @@
       "ivaAmount": "VAT amount",
       "deductiblePct": "Deductible %",
       "irpfRate": "IRPF retention %",
-      "irpfAmount": "Amount withheld",
-      "file": "Invoice / receipt",
-      "noFile": "No receipt attached.",
-      "paymentProof": "Payment proof",
-      "noPaymentProof": "No payment proof attached.",
-      "noCategory": "No category"
+      "irpfAmount": "Amount withheld (IRPF)",
+      "file": "Invoice or receipt",
+      "noFile": "No file attached.",
+      "noCategory": "No category",
+      "declaredPeriod": "Declare in",
+      "declaredPeriodAuto": "Automatic ({{quarter}})"
     },
     "summary": {
       "total": "Total expenses",
+      "deductibleTotal": "Deductible total",
       "deductibleIva": "Deductible VAT"
     },
     "period": {
@@ -184,14 +350,13 @@
     },
     "actions": {
       "save": "Save",
+      "saving": "Saving…",
       "cancel": "Cancel",
       "delete": "Delete",
       "edit": "Edit",
-      "attachFile": "Attach receipt",
-      "attachPaymentProof": "Attach payment proof",
+      "attachFile": "Attach file",
       "attaching": "Attaching…",
-      "openFile": "Open receipt",
-      "openPaymentProof": "Open payment proof",
+      "openFile": "Open file",
       "confirmDelete": "Delete this expense? This action cannot be undone."
     },
     "errors": {
@@ -201,8 +366,120 @@
       "saveFailed": "Failed to save the expense. Please try again.",
       "loadFailed": "Failed to load the expense."
     },
+    "extraction": {
+      "llm": "Details auto-filled by AI. Please review before saving.",
+      "fallback": "AI extraction failed; used basic extraction instead. Please review the fields.",
+      "basic": "Details extracted automatically. Please review before saving.",
+      "none": "Couldn't extract details automatically. Please fill in the fields manually."
+    },
     "detail": {
-      "dataTitle": "Expense details"
+      "dataTitle": "Expense details",
+      "moreActions": "More actions"
     }
+  },
+  "declarations": {
+    "title": "Quarterly declarations",
+    "newButton": "New declaration",
+    "empty": "No declarations yet. Create the first one with \"New declaration\".",
+    "loading": "Loading…",
+    "status": {
+      "in_progress": "In progress",
+      "completed": "Completed"
+    },
+    "table": {
+      "invoicesLabel": "invoices",
+      "expensesLabel": "expenses"
+    },
+    "errors": {
+      "loadFailed": "Failed to load the declaration."
+    },
+    "wizard": {
+      "title": "New quarterly declaration",
+      "step1": {
+        "title": "Select the quarter",
+        "year": "Year",
+        "quarter": "Quarter"
+      },
+      "step2": {
+        "title": "Confirm the paid invoices",
+        "empty": "No paid invoices in this quarter.",
+        "total": "Total collected"
+      },
+      "step3": {
+        "title": "Confirm the expenses",
+        "empty": "No expenses in this quarter."
+      },
+      "step4": {
+        "title": "Summary",
+        "invoices": "Invoices",
+        "expenses": "Expenses",
+        "irpfWithheld": "IRPF withheld",
+        "netIncome": "Estimated net income"
+      },
+      "actions": {
+        "back": "Back",
+        "continue": "Continue",
+        "create": "Create declaration",
+        "creating": "Creating…"
+      }
+    },
+    "detail": {
+      "downloadZip": "Download ZIP",
+      "downloading": "Generating…",
+      "dataTitle": "Quarter summary",
+      "ivaByRateTitle": "VAT charged by rate",
+      "ivaByRateEmpty": "No invoices in this period.",
+      "expensesQuarterTitle": "Deductible expenses this quarter",
+      "invoicedBase": "Total invoiced (base)",
+      "irpfWithheld": "IRPF withheld (invoices)",
+      "expensesDeductibleBase": "Deductible expenses",
+      "expensesIvaDeductible": "Deductible VAT",
+      "expensesIrpfWithheld": "IRPF withheld (expenses)",
+      "netIrpfIncome": "Estimated net income",
+      "margin": "Margin (after IRPF)",
+      "invoicesTitle": "Included invoices",
+      "noInvoices": "No invoices in this declaration.",
+      "expensesTitle": "Included expenses",
+      "noExpenses": "No expenses in this declaration.",
+      "modelosTitle": "Filed documentation",
+      "attachFile": "Attach PDF",
+      "replaceFile": "Replace PDF",
+      "attaching": "Attaching…",
+      "attached": "Attached",
+      "openFile": "Open PDF",
+      "markCompleted": "Mark as completed",
+      "completing": "Saving…"
+    },
+    "review": {
+      "title": "Review modelo files",
+      "steps": {
+        "detect": "Detecting modelo",
+        "period": "Checking quarter",
+        "extract": "Extracting values",
+        "compare": "Comparing with calculated totals"
+      },
+      "errors": {
+        "unrecognized": "This PDF isn't recognized as Modelo 303, 130 or 111.",
+        "generic": "Couldn't process this file."
+      },
+      "reportTitle": "Comparison report",
+      "columnCalculated": "Calculated",
+      "columnFile": "In file",
+      "status": {
+        "match": "Match",
+        "mismatch": "Mismatch",
+        "missing": "Not found"
+      },
+      "approve": "Approve & attach",
+      "approving": "Attaching…",
+      "cancel": "Cancel",
+      "removeTab": "Remove"
+    }
+  },
+  "resumenTrimestral": {
+    "title": "Quarterly summary",
+    "subtitle": "informational aid for Modelo 130/303",
+    "exportCsv": "Export CSV",
+    "exportingCsv": "Exporting…"
   }
 }

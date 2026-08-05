@@ -71,4 +71,30 @@ describe("expenses", () => {
       .count;
     expect(count).toBe(0);
   });
+
+  it("declared_period override moves an expense to a different quarter's declaration", () => {
+    const db = freshDb();
+    // Dated in Q2 but declared in Q3 (the late-rent scenario).
+    db.exec(
+      `INSERT INTO expenses (date, amount, declared_period) VALUES ('2026-06-30', 10, '2026-Q3')`,
+    );
+    // A normal, undeclared-override expense dated in Q3.
+    db.exec(`INSERT INTO expenses (date, amount) VALUES ('2026-07-15', 20)`);
+
+    // Mirrors the WHERE clause listExpenses builds when a quarterKeys filter is set.
+    const forQuarter = (from: string, to: string, quarterKeys: string[]) =>
+      (
+        db
+          .prepare(
+            `SELECT amount FROM expenses
+             WHERE (declared_period IS NULL AND date >= ? AND date <= ?)
+                OR declared_period IN (${quarterKeys.map(() => "?").join(", ")})
+             ORDER BY amount`,
+          )
+          .all(from, to, ...quarterKeys) as { amount: number }[]
+      ).map((r) => r.amount);
+
+    expect(forQuarter("2026-07-01", "2026-09-30", ["2026-Q3"])).toEqual([10, 20]);
+    expect(forQuarter("2026-04-01", "2026-06-30", ["2026-Q2"])).toEqual([]);
+  });
 });

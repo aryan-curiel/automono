@@ -74,6 +74,7 @@ export function ContratoDetalle({
   if (loading) {
     return (
       <div className="px-8 pb-15">
+        <BackLink label={t("contracts.title")} onClick={onBack} />
         <div className="text-sm text-ink-soft">{t("contracts.loading")}</div>
       </div>
     );
@@ -82,6 +83,7 @@ export function ContratoDetalle({
   if (loadError) {
     return (
       <div className="px-8 pb-15">
+        <BackLink label={t("contracts.title")} onClick={onBack} />
         <div className="text-sm text-danger">{t("contracts.errors.loadFailed")}</div>
       </div>
     );
@@ -122,11 +124,14 @@ export function ContratoDetalle({
           <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide">
             {t("contracts.detail.dataTitle")}
           </div>
-          <Badge tone={meta.tone}>{meta.label}</Badge>
+          <Badge tone={meta.tone}>{t(meta.labelKey)}</Badge>
         </div>
         <InfoRow label={t("contracts.fields.startDate")} value={formatDate(contract.startDate)} />
         <InfoRow label={t("contracts.fields.endDate")} value={formatDate(contract.endDate)} />
-        <InfoRow label={t("contracts.fields.notes")} value={contract.notes || "—"} />
+        <InfoRow
+          label={t("contracts.fields.notes")}
+          value={<span className="whitespace-pre-wrap">{contract.notes || "—"}</span>}
+        />
         <InfoRow
           label={t("contracts.fields.file")}
           value={

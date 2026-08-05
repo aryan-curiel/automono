@@ -1,26 +1,30 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ErrorText, Select, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { PageHeader } from "../components/PageHeader";
+import { Toast, type ToastTone } from "../components/ui/Toast";
 import {
   attachExpenseFile,
-  attachExpensePaymentProof,
   createExpense,
   extractReceiptFields,
+  extractReceiptFieldsLlm,
   getExpense,
   pickExpenseFile,
   updateExpense,
 } from "../db/expenses";
-import type { ExpenseRecord, NewExpense } from "../db/expenses";
+import type { ExpenseRecord, NewExpense, ReceiptFields } from "../db/expenses";
 import { listExpenseCategories } from "../db/expenseCategories";
 import type { ExpenseCategoryRecord } from "../db/expenseCategories";
+import { activeApiKey, getLlmSettings } from "../db/llmSettings";
+import { nextQuarterKey, quarterKeyLabel, quarterKeyOf } from "../lib/dateRange";
 
 interface GastoFormProps {
   mode: "create" | "edit";
   expenseId?: number;
+  initialFilePath?: string;
   onSaved: (expense: ExpenseRecord) => void;
   onCancel: () => void;
 }
@@ -35,7 +39,8 @@ interface FormState {
   irpfRate: string;
   irpfAmount: string;
   receiptFilePath: string | null;
-  paymentProofFilePath: string | null;
+  /** "" means declare in the natural quarter of `date`; otherwise a "YYYY-QN" override. */
+  declaredPeriod: string;
 }
 
 function emptyForm(): FormState {
@@ -49,7 +54,7 @@ function emptyForm(): FormState {
     irpfRate: "",
     irpfAmount: "",
     receiptFilePath: null,
-    paymentProofFilePath: null,
+    declaredPeriod: "",
   };
 }
 
@@ -64,12 +69,31 @@ function toFormState(expense: ExpenseRecord): FormState {
     irpfRate: expense.irpfRate !== null ? String(expense.irpfRate) : "",
     irpfAmount: expense.irpfAmount !== null ? String(expense.irpfAmount) : "",
     receiptFilePath: expense.receiptFilePath,
-    paymentProofFilePath: expense.paymentProofFilePath,
+    declaredPeriod: expense.declaredPeriod ?? "",
   };
+}
+
+/** The natural quarter of `date` plus the next three, for the "declare in" override select. */
+function declarationQuarterOptions(date: string): string[] {
+  const natural = quarterKeyOf(date || new Date().toISOString().slice(0, 10));
+  const options: string[] = [];
+  let q = nextQuarterKey(natural);
+  for (let i = 0; i < 3; i++) {
+    options.push(q);
+    q = nextQuarterKey(q);
+  }
+  return options;
 }
 
 function fileNameOf(path: string): string {
   return path.split(/[/\\]/).pop() ?? path;
+}
+
+/** Placeholder shown in place of an extractable field's input while extraction is running, so
+ * the form doesn't look empty/broken during the 1-3s it takes — it reads as "loading," not
+ * "nothing found." */
+function FieldSkeleton({ className = "h-9" }: { className?: string }) {
+  return <div className={`${className} rounded-control bg-surface-alt animate-pulse`} />;
 }
 
 function computedIrpfAmount(form: FormState, autoManaged: boolean): string {
@@ -82,14 +106,13 @@ function computedIrpfAmount(form: FormState, autoManaged: boolean): string {
 
 type FieldErrors = Partial<Record<"date" | "amount", string>>;
 
-export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps) {
+export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel }: GastoFormProps) {
   const { t } = useTranslation();
   const [form, setForm] = useState<FormState>(emptyForm());
   const [loading, setLoading] = useState(mode === "edit");
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [attaching, setAttaching] = useState(false);
-  const [attachingProof, setAttachingProof] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
@@ -99,9 +122,14 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
   // read during render.
   const [irpfAutoManaged, setIrpfAutoManaged] = useState(true);
   const irpfAmountDisplay = computedIrpfAmount(form, irpfAutoManaged);
+  const [extractionToast, setExtractionToast] = useState<{ tone: ToastTone; message: string } | null>(
+    null,
+  );
 
   useEffect(() => {
-    listExpenseCategories().then(setCategories);
+    listExpenseCategories()
+      .then(setCategories)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -130,68 +158,113 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  const attachFromPath = useCallback(
+    async (source: string) => {
+      setAttaching(true);
+      setSaveError(null);
+      try {
+        // Best-effort field extraction, run before attaching so a real receipt date (not today's
+        // fallback) is available for the attach-time filename below. Prefer the LLM-based
+        // extractor when the configured provider has an API key set — it works for images too,
+        // and also matches a category. Fall back to the regex PDF extractor if no key is set, or
+        // the LLM call fails.
+        const llmSettings = await getLlmSettings().catch(() => null);
+        const apiKey = llmSettings ? activeApiKey(llmSettings) : null;
+        let extracted: (ReceiptFields & { category?: string | null }) | null = null;
+        let llmFailed = false;
+        if (llmSettings && apiKey) {
+          // Fetched fresh here rather than reading the `categories` state: this can run from the
+          // initial-file-attach effect on mount (drag-and-drop), which races the effect that
+          // populates `categories` — a stale empty array would tell the LLM there's nothing to
+          // match against, so every extraction would come back with no category.
+          const categoryNames = (await listExpenseCategories()).map((c) => c.name);
+          extracted = await extractReceiptFieldsLlm(
+            source,
+            llmSettings.provider,
+            apiKey,
+            llmSettings.openrouterModel,
+            categoryNames,
+          ).catch((err) => {
+            // Falls back to the regex extractor below, which has no concept of category at all
+            // — so a silent LLM failure here would otherwise look identical to "the model
+            // couldn't determine a category." Logged instead of shown inline since this is a
+            // best-effort enhancement, not a blocking error.
+            console.error("LLM receipt extraction failed, falling back to regex extraction:", err);
+            llmFailed = true;
+            return null;
+          });
+        }
+        if (!extracted && source.toLowerCase().endsWith(".pdf")) {
+          extracted = await extractReceiptFields(source).catch(() => null);
+        }
+
+        // Tells the user what actually happened, since the form auto-fills silently otherwise
+        // and a bad or missing extraction would look identical to "nothing to check."
+        if (llmFailed) {
+          setExtractionToast({
+            tone: "warning",
+            message: extracted ? t("expenses.extraction.fallback") : t("expenses.extraction.none"),
+          });
+        } else if (llmSettings && apiKey) {
+          setExtractionToast({ tone: "success", message: t("expenses.extraction.llm") });
+        } else if (extracted) {
+          setExtractionToast({ tone: "info", message: t("expenses.extraction.basic") });
+        } else {
+          setExtractionToast({ tone: "warning", message: t("expenses.extraction.none") });
+        }
+
+        // ponytail: falls back to today's date and a generic note when the form has nothing
+        // typed yet and extraction found nothing either.
+        const date = form.date || extracted?.date || new Date().toISOString().slice(0, 10);
+        const note =
+          form.description.trim() || form.category.trim() || extracted?.vendorGuess || "gasto";
+        const stored = await attachExpenseFile(source, date, note);
+
+        // An OCR-extracted retention amount is authoritative (it's read off the vendor's own
+        // printed figure), so stop the rate×amount auto-compute effect from overwriting it later.
+        if (extracted?.irpfAmount != null && !form.irpfAmount) {
+          setIrpfAutoManaged(false);
+        }
+
+        setForm((f) => ({
+          ...f,
+          receiptFilePath: stored,
+          date: f.date || extracted?.date || f.date,
+          amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
+          ivaAmount:
+            f.ivaAmount ||
+            (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
+          irpfRate:
+            f.irpfRate || (extracted?.irpfRate != null ? String(extracted.irpfRate) : f.irpfRate),
+          irpfAmount:
+            f.irpfAmount ||
+            (extracted?.irpfAmount != null ? String(extracted.irpfAmount) : f.irpfAmount),
+          description: f.description || extracted?.vendorGuess || f.description,
+          category: f.category || extracted?.category || f.category,
+        }));
+      } catch {
+        setSaveError(t("expenses.errors.attachFailed"));
+      } finally {
+        setAttaching(false);
+      }
+    },
+    [form, t],
+  );
+
   async function handleAttachFile() {
     const source = await pickExpenseFile();
     if (!source) return;
-    setAttaching(true);
-    setSaveError(null);
-    try {
-      // Best-effort PDF text extraction, run before attaching so a real receipt date (not
-      // today's fallback) is available for the attach-time filename below.
-      const extracted = source.toLowerCase().endsWith(".pdf")
-        ? await extractReceiptFields(source).catch(() => null)
-        : null;
-
-      // ponytail: falls back to today's date and a generic note when the form has nothing
-      // typed yet and extraction found nothing either.
-      const date = form.date || extracted?.date || new Date().toISOString().slice(0, 10);
-      const note =
-        form.description.trim() || form.category.trim() || extracted?.vendorGuess || "gasto";
-      const stored = await attachExpenseFile(source, date, note);
-
-      // An OCR-extracted retention amount is authoritative (it's read off the vendor's own
-      // printed figure), so stop the rate×amount auto-compute effect from overwriting it later.
-      if (extracted?.irpfAmount != null && !form.irpfAmount) {
-        setIrpfAutoManaged(false);
-      }
-
-      setForm((f) => ({
-        ...f,
-        receiptFilePath: stored,
-        date: f.date || extracted?.date || f.date,
-        amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
-        ivaAmount:
-          f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
-        irpfRate:
-          f.irpfRate || (extracted?.irpfRate != null ? String(extracted.irpfRate) : f.irpfRate),
-        irpfAmount:
-          f.irpfAmount ||
-          (extracted?.irpfAmount != null ? String(extracted.irpfAmount) : f.irpfAmount),
-        description: f.description || extracted?.vendorGuess || f.description,
-      }));
-    } catch {
-      setSaveError(t("expenses.errors.attachFailed"));
-    } finally {
-      setAttaching(false);
-    }
+    await attachFromPath(source);
   }
 
-  async function handleAttachPaymentProof() {
-    const source = await pickExpenseFile();
-    if (!source) return;
-    setAttachingProof(true);
-    setSaveError(null);
-    try {
-      const date = form.date || new Date().toISOString().slice(0, 10);
-      const note = form.description.trim() || form.category.trim() || "gasto";
-      const stored = await attachExpensePaymentProof(source, date, note);
-      set("paymentProofFilePath", stored);
-    } catch {
-      setSaveError(t("expenses.errors.attachFailed"));
-    } finally {
-      setAttachingProof(false);
-    }
-  }
+  // Guards against React StrictMode's dev-only double-invoke re-running the file copy twice;
+  // a ref survives the double-mount because it's the same component instance.
+  const initialFileHandledRef = useRef(false);
+  useEffect(() => {
+    if (!initialFilePath || initialFileHandledRef.current) return;
+    initialFileHandledRef.current = true;
+    void attachFromPath(initialFilePath);
+  }, [initialFilePath, attachFromPath]);
 
   function validate(): boolean {
     const next: FieldErrors = {};
@@ -217,7 +290,7 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
       irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
       irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
       receiptFilePath: form.receiptFilePath,
-      paymentProofFilePath: form.paymentProofFilePath,
+      declaredPeriod: form.declaredPeriod || null,
     };
 
     setSaving(true);
@@ -263,52 +336,92 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
 
       <Card className="px-5 max-w-[640px]">
         <FormRow label={t("expenses.fields.date")} error={errors.date}>
-          <TextInput
-            type="date"
-            value={form.date}
-            error={!!errors.date}
-            onChange={(e) => set("date", e.target.value)}
-          />
+          {attaching ? (
+            <FieldSkeleton />
+          ) : (
+            <TextInput
+              type="date"
+              value={form.date}
+              error={!!errors.date}
+              onChange={(e) => set("date", e.target.value)}
+            />
+          )}
         </FormRow>
 
-        <FormRow label={t("expenses.fields.category")}>
-          <Select value={form.category} onChange={(e) => set("category", e.target.value)}>
-            <option value="">{t("expenses.fields.noCategory")}</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
+        <FormRow label={t("expenses.fields.declaredPeriod")}>
+          <Select
+            value={form.declaredPeriod}
+            onChange={(e) => set("declaredPeriod", e.target.value)}
+          >
+            <option value="">
+              {t("expenses.fields.declaredPeriodAuto", {
+                quarter: quarterKeyLabel(
+                  quarterKeyOf(form.date || new Date().toISOString().slice(0, 10)),
+                ),
+              })}
+            </option>
+            {declarationQuarterOptions(form.date).map((key) => (
+              <option key={key} value={key}>
+                {quarterKeyLabel(key)}
               </option>
             ))}
           </Select>
         </FormRow>
 
+        <FormRow label={t("expenses.fields.category")}>
+          {attaching ? (
+            <FieldSkeleton />
+          ) : (
+            <Select value={form.category} onChange={(e) => set("category", e.target.value)}>
+              <option value="">{t("expenses.fields.noCategory")}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        </FormRow>
+
         <FormRow label={t("expenses.fields.description")}>
-          <TextArea
-            rows={2}
-            value={form.description}
-            onChange={(e) => set("description", e.target.value)}
-          />
+          {attaching ? (
+            <FieldSkeleton className="h-[60px]" />
+          ) : (
+            <TextArea
+              rows={2}
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+            />
+          )}
         </FormRow>
 
         <FormRow label={t("expenses.fields.amount")} error={errors.amount}>
-          <TextInput
-            type="number"
-            step="0.01"
-            mono
-            value={form.amount}
-            error={!!errors.amount}
-            onChange={(e) => set("amount", e.target.value)}
-          />
+          {attaching ? (
+            <FieldSkeleton />
+          ) : (
+            <TextInput
+              type="number"
+              step="0.01"
+              mono
+              value={form.amount}
+              error={!!errors.amount}
+              onChange={(e) => set("amount", e.target.value)}
+            />
+          )}
         </FormRow>
 
         <FormRow label={t("expenses.fields.ivaAmount")}>
-          <TextInput
-            type="number"
-            step="0.01"
-            mono
-            value={form.ivaAmount}
-            onChange={(e) => set("ivaAmount", e.target.value)}
-          />
+          {attaching ? (
+            <FieldSkeleton />
+          ) : (
+            <TextInput
+              type="number"
+              step="0.01"
+              mono
+              value={form.ivaAmount}
+              onChange={(e) => set("ivaAmount", e.target.value)}
+            />
+          )}
         </FormRow>
 
         <FormRow label={t("expenses.fields.deductiblePct")}>
@@ -324,26 +437,34 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
         </FormRow>
 
         <FormRow label={t("expenses.fields.irpfRate")}>
-          <TextInput
-            type="number"
-            step="0.01"
-            mono
-            value={form.irpfRate}
-            onChange={(e) => set("irpfRate", e.target.value)}
-          />
+          {attaching ? (
+            <FieldSkeleton />
+          ) : (
+            <TextInput
+              type="number"
+              step="0.01"
+              mono
+              value={form.irpfRate}
+              onChange={(e) => set("irpfRate", e.target.value)}
+            />
+          )}
         </FormRow>
 
         <FormRow label={t("expenses.fields.irpfAmount")}>
-          <TextInput
-            type="number"
-            step="0.01"
-            mono
-            value={irpfAmountDisplay}
-            onChange={(e) => {
-              setIrpfAutoManaged(e.target.value === "");
-              set("irpfAmount", e.target.value);
-            }}
-          />
+          {attaching ? (
+            <FieldSkeleton />
+          ) : (
+            <TextInput
+              type="number"
+              step="0.01"
+              mono
+              value={irpfAmountDisplay}
+              onChange={(e) => {
+                setIrpfAutoManaged(e.target.value === "");
+                set("irpfAmount", e.target.value);
+              }}
+            />
+          )}
         </FormRow>
 
         <FormRow label={t("expenses.fields.file")}>
@@ -358,34 +479,20 @@ export function GastoForm({ mode, expenseId, onSaved, onCancel }: GastoFormProps
             )}
           </div>
         </FormRow>
-
-        <FormRow label={t("expenses.fields.paymentProof")}>
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="secondary"
-              onClick={handleAttachPaymentProof}
-              disabled={attachingProof}
-            >
-              {attachingProof
-                ? t("expenses.actions.attaching")
-                : t("expenses.actions.attachPaymentProof")}
-            </Button>
-            {form.paymentProofFilePath && (
-              <span className="text-[13px] text-ink-soft truncate">
-                {fileNameOf(form.paymentProofFilePath)}
-              </span>
-            )}
-          </div>
-        </FormRow>
       </Card>
 
       {saveError && <ErrorText>{saveError}</ErrorText>}
+      <Toast
+        message={extractionToast?.message ?? null}
+        tone={extractionToast?.tone}
+        onDismiss={() => setExtractionToast(null)}
+      />
       <div className="flex gap-2.5 justify-end mt-5">
-        <Button variant="secondary" onClick={onCancel} disabled={saving}>
+        <Button variant="secondary" onClick={onCancel} disabled={saving || attaching}>
           {t("expenses.actions.cancel")}
         </Button>
-        <Button onClick={handleSubmit} disabled={saving}>
-          {t("expenses.actions.save")}
+        <Button onClick={handleSubmit} disabled={saving || attaching}>
+          {saving ? t("expenses.actions.saving") : t("expenses.actions.save")}
         </Button>
       </div>
     </div>

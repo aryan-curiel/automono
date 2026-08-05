@@ -84,6 +84,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [vatNumberEdited, setVatNumberEdited] = useState(false);
+  const [vatTreatmentEdited, setVatTreatmentEdited] = useState(false);
   const [seriesList, setSeriesList] = useState<SeriesRecord[]>([]);
 
   useEffect(() => {
@@ -101,6 +102,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
         if (client) {
           setForm(toFormState(client));
           setVatNumberEdited(!!(client.vatNumber ?? "").trim());
+          setVatTreatmentEdited(true);
         }
       })
       .catch(() => {
@@ -122,7 +124,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
     setForm((f) => ({
       ...f,
       country,
-      vatTreatment: suggestVatTreatment(country || null),
+      vatTreatment: vatTreatmentEdited ? f.vatTreatment : suggestVatTreatment(country || null),
       vatNumber: !vatNumberEdited && country ? `${country}${f.nifCif.toUpperCase()}` : f.vatNumber,
     }));
   }
@@ -296,7 +298,10 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
         <FormRow label={t("clients.fields.vatTreatment")}>
           <Select
             value={form.vatTreatment}
-            onChange={(e) => set("vatTreatment", e.target.value as VatTreatment)}
+            onChange={(e) => {
+              setVatTreatmentEdited(true);
+              set("vatTreatment", e.target.value as VatTreatment);
+            }}
           >
             <option value="standard">{t("clients.vatTreatment.standard")}</option>
             <option value="reverse_charge_eu">{t("clients.vatTreatment.reverse_charge_eu")}</option>
@@ -327,7 +332,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
           {t("clients.actions.cancel")}
         </Button>
         <Button onClick={handleSubmit} disabled={saving}>
-          {t("clients.actions.save")}
+          {saving ? t("clients.actions.saving") : t("clients.actions.save")}
         </Button>
       </div>
     </div>

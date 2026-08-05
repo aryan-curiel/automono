@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CaretDown, DotsThreeVertical, Warning, Info } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
@@ -109,6 +110,7 @@ export function FacturaDetalle({
   onDuplicate,
   onEdit,
 }: FacturaDetalleProps) {
+  const { t } = useTranslation();
   const amounts =
     invoice.total != null
       ? {
@@ -121,7 +123,7 @@ export function FacturaDetalle({
   const meta = invoiceStatusMeta(invoice.status);
   const irpfForeignClient = !irpfApplicable(invoice.clientCountry);
   const irpfRateShown = invoice.irpfRate ?? 0;
-  const t = PREVIEW_LABELS[invoice.language === "en" ? "en" : "es"];
+  const previewLabels = PREVIEW_LABELS[invoice.language === "en" ? "en" : "es"];
 
   const rectifies = invoice.rectifiesInvoiceId
     ? invoices.find((i) => i.id === invoice.rectifiesInvoiceId)
@@ -139,52 +141,52 @@ export function FacturaDetalle({
     invoice.status === "issued" && invoice.dueDate ? daysOverdue(invoice.dueDate, todayIso) : 0;
   const lateInterest = lateInterestOwed(amounts.total, lateRatePct, overdueDays);
 
-  function handleDelete() {
-    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
-    onDelete();
-  }
+  const [deletePending, setDeletePending] = useState(false);
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label="Facturas" onClick={onBack} />
+      <BackLink label={t("invoices.title")} onClick={onBack} />
 
       <PageHeader
         title={
           <span className="flex items-center gap-3">
             <span className="font-mono">{invoiceNumberLabel(invoice)}</span>
-            <Badge tone={meta.tone}>{meta.label}</Badge>
+            <Badge tone={meta.tone}>{t(meta.labelKey)}</Badge>
           </span>
         }
-        subtitle={`${invoice.clientName} · emitida ${formatDate(invoice.issueDate)}`}
+        subtitle={t("invoices.detail.subtitle", {
+          client: invoice.clientName,
+          date: formatDate(invoice.issueDate),
+        })}
         actions={
           <>
             {invoice.status === "draft" && (
               <Button variant="secondary" onClick={onEdit}>
-                Editar
+                {t("invoices.detail.edit")}
               </Button>
             )}
             {canRectify && (
               <Button variant="secondary" onClick={onStartRectification}>
-                Crear rectificativa
+                {t("invoices.detail.createRectification")}
               </Button>
             )}
             {canMarkPaid && (
               <Button variant="secondary" onClick={onOpenMarkPaid}>
-                Marcar como pagada
+                {t("invoices.detail.markPaid")}
               </Button>
             )}
             <Menu>
               <MenuTrigger
                 className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
-                aria-label="Más acciones"
+                aria-label={t("invoices.detail.moreActions")}
               >
                 <DotsThreeVertical size={16} weight="bold" />
               </MenuTrigger>
               <MenuContent>
-                <MenuItem onSelect={onDuplicate}>Duplicar factura</MenuItem>
+                <MenuItem onSelect={onDuplicate}>{t("invoices.detail.duplicateInvoice")}</MenuItem>
                 {invoice.status === "draft" && (
-                  <MenuItem danger onSelect={handleDelete}>
-                    Eliminar borrador
+                  <MenuItem danger onSelect={() => setDeletePending(true)}>
+                    {t("invoices.actions.delete")}
                   </MenuItem>
                 )}
               </MenuContent>
@@ -197,13 +199,13 @@ export function FacturaDetalle({
                     disabled={generatingPdf}
                     className="rounded-r-none"
                   >
-                    {generatingPdf ? "Generando…" : "Descargar PDF"}
+                    {generatingPdf ? t("invoices.detail.generatingPdf") : t("invoices.detail.downloadPdf")}
                   </Button>
                   <MenuTrigger asChild>
                     <Button
                       disabled={generatingPdf}
                       className="rounded-l-none border-l border-l-white/25 !px-2.5"
-                      aria-label="Más opciones de descarga"
+                      aria-label={t("invoices.detail.moreDownloadOptions")}
                     >
                       <CaretDown size={12} weight="bold" />
                     </Button>
@@ -211,7 +213,7 @@ export function FacturaDetalle({
                 </div>
                 <MenuContent>
                   <MenuItem onSelect={() => onDownloadPdf(true)} disabled={generatingPdf}>
-                    Generar y descargar
+                    {t("invoices.detail.generateAndDownload")}
                   </MenuItem>
                 </MenuContent>
               </Menu>
@@ -223,16 +225,30 @@ export function FacturaDetalle({
       <Sheet
         open={markingPaid}
         onOpenChange={(open) => !open && onCancelMarkPaid()}
-        title="Marcar factura como pagada"
+        title={t("invoices.detail.markPaidTitle")}
       >
-        <p className="text-[13px] text-ink-soft mb-4">
-          ¿Confirmas que esta factura ha sido pagada?
-        </p>
+        <p className="text-[13px] text-ink-soft mb-4">{t("invoices.detail.markPaidConfirm")}</p>
         <div className="flex gap-2.5 justify-end">
           <Button variant="secondary" onClick={onCancelMarkPaid}>
-            Cancelar
+            {t("invoices.detail.cancel")}
           </Button>
-          <Button onClick={onConfirmMarkPaid}>Confirmar pago</Button>
+          <Button onClick={onConfirmMarkPaid}>{t("invoices.detail.confirmPayment")}</Button>
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={deletePending}
+        onOpenChange={setDeletePending}
+        title={t("invoices.actions.delete")}
+      >
+        <p className="text-[13px] text-ink-soft mb-4">{t("invoices.actions.confirmDelete")}</p>
+        <div className="flex gap-2.5 justify-end">
+          <Button variant="secondary" onClick={() => setDeletePending(false)}>
+            {t("invoices.detail.cancel")}
+          </Button>
+          <Button variant="ghost-danger" onClick={onDelete}>
+            {t("invoices.actions.delete")}
+          </Button>
         </div>
       </Sheet>
 
@@ -240,10 +256,12 @@ export function FacturaDetalle({
         <div className="flex items-start gap-2.5 bg-danger-soft text-danger rounded-card py-3 px-4 font-medium text-[13px] mb-6">
           <Warning size={16} weight="fill" className="shrink-0 mt-0.5" />
           <span>
-            Rectifica a{" "}
+            {t("invoices.detail.rectifiesPrefix")}{" "}
             <b className="font-mono">{rectifies ? invoiceNumberLabel(rectifies) : ""}</b> —{" "}
-            {invoice.rectificationType === "full" ? "anulación completa" : "corrección parcial"}.
-            Motivo: {invoice.rectificationReason}
+            {invoice.rectificationType === "full"
+              ? t("invoices.detail.fullCancellation")
+              : t("invoices.detail.partialCorrection")}
+            . {t("invoices.detail.reasonPrefix")}: {invoice.rectificationReason}
           </span>
         </div>
       )}
@@ -252,7 +270,7 @@ export function FacturaDetalle({
         <div className="flex items-start gap-2.5 bg-surface-alt text-ink-soft rounded-card py-3 px-4 font-medium text-[13px] mb-6">
           <Info size={16} weight="fill" className="shrink-0 mt-0.5" />
           <span>
-            Esta factura ha sido rectificada por{" "}
+            {t("invoices.detail.rectifiedByPrefix")}{" "}
             <b className="font-mono">{invoiceNumberLabel(rectifiedBy)}</b>.
           </span>
         </div>
@@ -261,7 +279,7 @@ export function FacturaDetalle({
       <div className="grid grid-cols-2 gap-6 items-start">
         <Card className="py-5 px-6">
           <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-3.5">
-            Desglose
+            {t("invoices.detail.breakdownTitle")}
           </div>
           {lines.map((l) => (
             <div
@@ -273,27 +291,28 @@ export function FacturaDetalle({
             </div>
           ))}
           <div className="flex justify-between pt-2.5 pb-1 text-[13.5px] text-ink-soft">
-            <span>Base imponible</span>
+            <span>{t("invoices.totals.subtotal")}</span>
             <span className="font-medium font-mono text-[13.5px]">
               {formatEUR(amounts.subtotal)}
             </span>
           </div>
           <div className="flex justify-between py-1 text-[13.5px] text-ink-soft">
-            <span>IVA ({invoice.ivaRate ?? 0}%)</span>
+            <span>{t("invoices.totals.ivaWithRate", { rate: invoice.ivaRate ?? 0 })}</span>
             <span className="font-medium font-mono text-[13.5px]">
               {formatEUR(amounts.ivaAmount)}
             </span>
           </div>
           <div className="flex justify-between pt-1 pb-2.5 text-[13.5px] text-ink-soft">
             <span>
-              IRPF ({irpfRateShown}%){irpfForeignClient && " (cliente extranjero)"}
+              {t("invoices.totals.irpfWithRate", { rate: irpfRateShown })}
+              {irpfForeignClient && t("invoices.totals.foreignClientSuffix")}
             </span>
             <span className="font-medium font-mono text-[13.5px]">
               -{formatEUR(amounts.irpfAmount)}
             </span>
           </div>
           <div className="flex justify-between pt-2.5 border-t border-border font-bold text-[15px]">
-            <span>Total</span>
+            <span>{t("invoices.totals.total")}</span>
             <span className="font-bold text-base font-mono">{formatEUR(amounts.total)}</span>
           </div>
           {invoice.vatNoteText && (
@@ -312,32 +331,32 @@ export function FacturaDetalle({
           </div>
 
           <div className="text-[11.5px] text-[#5b6472] leading-relaxed">
-            {t.invoiceNumber}: {invoiceNumberLabel(invoice)}
+            {previewLabels.invoiceNumber}: {invoiceNumberLabel(invoice)}
             <br />
-            {t.issuedOn}: {formatDate(invoice.issueDate)}
+            {previewLabels.issuedOn}: {formatDate(invoice.issueDate)}
             {invoice.dueDate && (
               <>
                 <br />
-                {t.dueDate}: {formatDate(invoice.dueDate)}
+                {previewLabels.dueDate}: {formatDate(invoice.dueDate)}
               </>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-6 mt-5 mb-6">
             <div>
-              <div className="font-bold text-[13px] mb-2">{t.billTo}</div>
+              <div className="font-bold text-[13px] mb-2">{previewLabels.billTo}</div>
               <div className="text-[11.5px] text-[#5b6472] leading-relaxed">
                 {invoice.clientName}
                 <br />
                 {(invoice.vatTreatment === "standard" || !invoice.vatTreatment) && (
                   <>
-                    {t.taxId}: {invoice.clientNif}
+                    {previewLabels.taxId}: {invoice.clientNif}
                     <br />
                   </>
                 )}
                 {invoice.clientVatNumber && (
                   <>
-                    {t.vatNumber}: {invoice.clientVatNumber}
+                    {previewLabels.vatNumber}: {invoice.clientVatNumber}
                     <br />
                   </>
                 )}
@@ -345,15 +364,15 @@ export function FacturaDetalle({
               </div>
             </div>
             <div>
-              <div className="font-bold text-[13px] mb-2">{t.from}</div>
+              <div className="font-bold text-[13px] mb-2">{previewLabels.from}</div>
               <div className="text-[11.5px] text-[#5b6472] leading-relaxed">
                 {business.name}
                 <br />
-                {t.taxId}: {business.nifCif}
+                {previewLabels.taxId}: {business.nifCif}
                 <br />
                 {business.vatNumber && (
                   <>
-                    {t.vatNumber}: {business.vatNumber}
+                    {previewLabels.vatNumber}: {business.vatNumber}
                     <br />
                   </>
                 )}
@@ -362,14 +381,14 @@ export function FacturaDetalle({
             </div>
           </div>
 
-          <div className="font-bold text-sm mb-2">{t.items}</div>
+          <div className="font-bold text-sm mb-2">{previewLabels.items}</div>
           <div className="border-t-[1.5px] border-[#1c2430]">
             <div className="grid grid-cols-[2.2fr_.9fr_.5fr_.8fr_.9fr] py-2 font-semibold text-[10.5px] uppercase tracking-wide text-[#5b6472] border-b border-[#e2ddd3]">
-              <div>{t.description}</div>
-              <div>{t.price}</div>
-              <div>{t.qty}</div>
-              <div>{t.taxRate}</div>
-              <div className="text-right">{t.amount}</div>
+              <div>{previewLabels.description}</div>
+              <div className="text-right">{previewLabels.price}</div>
+              <div>{previewLabels.qty}</div>
+              <div>{previewLabels.taxRate}</div>
+              <div className="text-right">{previewLabels.amount}</div>
             </div>
             {lines.map((l) => (
               <div
@@ -377,7 +396,7 @@ export function FacturaDetalle({
                 className="grid grid-cols-[2.2fr_.9fr_.5fr_.8fr_.9fr] py-2 text-xs border-b border-[#f0ede7]"
               >
                 <div>{l.description}</div>
-                <div>{formatEUR(l.unitPrice)}</div>
+                <div className="text-right">{formatEUR(l.unitPrice)}</div>
                 <div>{l.quantity}</div>
                 <div>{invoice.ivaRate ? `${invoice.ivaRate}%` : "-"}</div>
                 <div className="text-right">{formatEUR(lineTotal(l))}</div>
@@ -387,23 +406,23 @@ export function FacturaDetalle({
 
           <div className="mt-3 ml-auto w-[220px]">
             <div className="flex justify-between text-xs py-1.5 border-t border-[#1c2430]">
-              <span>{t.subtotal}</span>
+              <span>{previewLabels.subtotal}</span>
               <span>{formatEUR(amounts.subtotal)}</span>
             </div>
             <div className="flex justify-between text-xs py-1.5">
               <span>
-                {t.iva} {invoice.ivaRate ?? 0}%
+                {previewLabels.iva} {invoice.ivaRate ?? 0}%
               </span>
               <span>{formatEUR(amounts.ivaAmount)}</span>
             </div>
             <div className="flex justify-between text-xs py-1.5">
               <span>
-                {t.irpf} {irpfRateShown}%{irpfForeignClient && ` (${t.foreignClient})`}
+                {previewLabels.irpf} {irpfRateShown}%{irpfForeignClient && ` (${previewLabels.foreignClient})`}
               </span>
               <span>-{formatEUR(amounts.irpfAmount)}</span>
             </div>
             <div className="flex justify-between font-bold text-sm py-1.5 border-t border-[#1c2430]">
-              <span>{t.total}</span>
+              <span>{previewLabels.total}</span>
               <span>{formatEUR(amounts.total)}</span>
             </div>
           </div>
@@ -415,13 +434,13 @@ export function FacturaDetalle({
           )}
 
           <div className="mt-6 bg-[#f1f2f4] rounded-control p-5">
-            <div className="font-bold text-base mb-3">{t.payByBankTransfer}</div>
+            <div className="font-bold text-base mb-3">{previewLabels.payByBankTransfer}</div>
             <div className="text-[11.5px] text-[#5b6472] leading-relaxed grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 w-fit">
-              <span>{t.reference}</span>
+              <span>{previewLabels.reference}</span>
               <span>{invoiceNumberLabel(invoice)}</span>
               {business.bankName && (
                 <>
-                  <span>{t.bank}</span>
+                  <span>{previewLabels.bank}</span>
                   <span>{business.bankName}</span>
                 </>
               )}
@@ -430,7 +449,7 @@ export function FacturaDetalle({
               <span>BIC</span>
               <span>{business.bic}</span>
             </div>
-            <div className="text-[10.5px] text-[#5b6472] mt-6">{t.pageOneOfOne}</div>
+            <div className="text-[10.5px] text-[#5b6472] mt-6">{previewLabels.pageOneOfOne}</div>
           </div>
         </div>
       </div>
@@ -438,11 +457,14 @@ export function FacturaDetalle({
       {overdueDays > 0 && (
         <Card className="py-5 px-6 mt-4">
           <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-3.5">
-            Interés de demora (Ley 3/2004)
+            {t("invoices.detail.lateInterestTitle")}
           </div>
           <div className="flex items-end gap-5">
             <div className="text-[13.5px] text-ink-soft">
-              {overdueDays} días de retraso sobre {formatEUR(amounts.total)}
+              {t("invoices.detail.overdueDaysLabel", {
+                days: overdueDays,
+                amount: formatEUR(amounts.total),
+              })}
             </div>
             <div className="flex items-center gap-2">
               <TextInput
@@ -454,16 +476,17 @@ export function FacturaDetalle({
                 onChange={(e) => setLateRatePct(Number(e.target.value))}
                 className="w-20"
               />
-              <span className="text-[13px] text-ink-soft">% anual</span>
+              <span className="text-[13px] text-ink-soft">{t("invoices.detail.annualLabel")}</span>
             </div>
             <div className="ml-auto text-right">
-              <div className="text-xs text-ink-soft mb-0.5">Interés adeudado</div>
+              <div className="text-xs text-ink-soft mb-0.5">
+                {t("invoices.detail.interestOwedLabel")}
+              </div>
               <div className="font-bold text-base font-mono">{formatEUR(lateInterest)}</div>
             </div>
           </div>
           <div className="text-[11px] text-ink-soft mt-3">
-            Tipo orientativo — comprueba el vigente en el BOE (interés legal + 8 puntos) antes de
-            reclamarlo.
+            {t("invoices.detail.lateInterestDisclaimer")}
           </div>
         </Card>
       )}

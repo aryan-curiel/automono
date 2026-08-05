@@ -414,7 +414,7 @@ impl<E: Element> Element for FooterBand<E> {
         let mut y = Mm::from(0.0);
         while y < self.height {
             area.draw_line(vec![Position::new(0, y), Position::new(width, y)], fill_style);
-            y = y + step;
+            y += step;
         }
         area.add_margins(self.padding);
         let result = self.inner.render(context, area, style)?;

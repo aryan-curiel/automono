@@ -1,8 +1,21 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import type { ReactNode } from "react";
 
-export const Menu = DropdownMenu.Root;
-export const MenuTrigger = DropdownMenu.Trigger;
+export function Menu(props: React.ComponentProps<typeof DropdownMenu.Root>) {
+  return <DropdownMenu.Root {...props} />;
+}
+
+export function MenuTrigger({
+  className = "",
+  ...props
+}: React.ComponentProps<typeof DropdownMenu.Trigger>) {
+  return (
+    <DropdownMenu.Trigger
+      className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${className}`}
+      {...props}
+    />
+  );
+}
 
 export function MenuContent({ children }: { children: ReactNode }) {
   return (

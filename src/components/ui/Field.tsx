@@ -11,10 +11,15 @@ export function Label({ children }: { children: ReactNode }) {
 }
 
 const fieldBase =
-  "w-full box-border text-[13px] px-3 py-2 rounded-control bg-surface text-ink " +
+  "w-full box-border text-[13px] px-3 py-2 rounded-control text-ink " +
   "border shadow-[inset_0_1px_1px_rgb(0,0,0,0.03)] " +
-  "transition-[box-shadow,border-color] duration-150 " +
-  "focus:shadow-[0_0_0_3px_var(--color-focus-ring)] focus:outline-none";
+  "transition-[box-shadow,border-color] duration-150";
+
+// Focus glow + editable background — shared by Select/TextArea and by TextInput when it isn't
+// read-only. Kept separate (rather than baked into fieldBase) so a read-only TextInput can opt
+// out of both without fighting a conflicting class already present in fieldBase.
+const interactiveClass =
+  "bg-surface focus:shadow-[0_0_0_3px_var(--color-focus-ring)] focus:outline-none";
 
 function borderClass(error?: boolean) {
   return error ? "border-danger focus:border-danger" : "border-border focus:border-accent";
@@ -26,9 +31,10 @@ interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function TextInput({ mono, error, className = "", ...props }: TextInputProps) {
+  const stateClass = props.readOnly ? "bg-surface-alt cursor-default" : interactiveClass;
   return (
     <input
-      className={`${fieldBase} ${borderClass(error)} ${mono ? "font-mono font-medium" : ""} ${className}`}
+      className={`${fieldBase} ${stateClass} ${borderClass(error)} ${mono ? "font-mono font-medium" : ""} ${className}`}
       {...props}
     />
   );
@@ -43,7 +49,7 @@ export function Select({ error, className = "", children, ...props }: SelectProp
   return (
     <div className="relative">
       <select
-        className={`${fieldBase} ${borderClass(error)} appearance-none pr-8 cursor-default
+        className={`${fieldBase} ${interactiveClass} ${borderClass(error)} appearance-none pr-8 cursor-default
                     disabled:opacity-50 disabled:cursor-default ${className}`}
         {...props}
       >
@@ -64,7 +70,10 @@ interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 export function TextArea({ error, className = "", ...props }: TextAreaProps) {
   return (
-    <textarea className={`${fieldBase} ${borderClass(error)} resize-y ${className}`} {...props} />
+    <textarea
+      className={`${fieldBase} ${interactiveClass} ${borderClass(error)} resize-y ${className}`}
+      {...props}
+    />
   );
 }
 

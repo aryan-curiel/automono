@@ -34,7 +34,7 @@ export function expenseByCategory(expenses: ExpenseRecord[]): CategoryExpense[] 
   const byCategory = new Map<string, number>();
   for (const e of expenses) {
     const key = e.category?.trim() || "Sin categoría";
-    byCategory.set(key, (byCategory.get(key) ?? 0) + e.amount);
+    byCategory.set(key, (byCategory.get(key) ?? 0) + e.amount * (e.deductiblePct / 100));
   }
   return [...byCategory.entries()]
     .map(([category, total]) => ({ category, total }))

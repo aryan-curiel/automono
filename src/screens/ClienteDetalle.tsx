@@ -4,8 +4,10 @@ import { DotsThreeVertical } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
+import { ErrorText } from "../components/ui/Field";
 import { InfoRow } from "../components/ui/InfoRow";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { Sheet } from "../components/ui/Sheet";
 import { BackLink, PageHeader } from "../components/PageHeader";
 import { deleteClient, getClient } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
@@ -40,6 +42,8 @@ export function ClienteDetalle({
   const [loadedId, setLoadedId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [contracts, setContracts] = useState<ContractRecord[]>([]);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const loading = loadedId !== clientId && !loadError;
 
   useEffect(() => {
@@ -62,20 +66,21 @@ export function ClienteDetalle({
     listContracts({ clientId }).then(setContracts);
   }, [clientId]);
 
-  async function handleDelete() {
+  async function confirmDelete() {
     if (!client) return;
-    if (!window.confirm(t("clients.actions.confirmDelete", { name: client.name }))) return;
+    setDeleteError(null);
     try {
       await deleteClient(client.id);
       onDeleted();
     } catch {
-      window.alert(t("clients.errors.deleteRestricted"));
+      setDeleteError(t("clients.errors.deleteRestricted"));
     }
   }
 
   if (loading) {
     return (
       <div className="px-8 pb-15">
+        <BackLink label={t("clients.title")} onClick={onBack} />
         <div className="text-sm text-ink-soft">{t("clients.loading")}</div>
       </div>
     );
@@ -84,6 +89,7 @@ export function ClienteDetalle({
   if (loadError) {
     return (
       <div className="px-8 pb-15">
+        <BackLink label={t("clients.title")} onClick={onBack} />
         <div className="text-sm text-danger">{t("clients.errors.loadFailed")}</div>
       </div>
     );
@@ -114,7 +120,13 @@ export function ClienteDetalle({
                 <DotsThreeVertical size={16} weight="bold" />
               </MenuTrigger>
               <MenuContent>
-                <MenuItem danger onSelect={handleDelete}>
+                <MenuItem
+                  danger
+                  onSelect={() => {
+                    setDeleteError(null);
+                    setDeletePending(true);
+                  }}
+                >
                   {t("clients.actions.delete")}
                 </MenuItem>
               </MenuContent>
@@ -162,7 +174,11 @@ export function ClienteDetalle({
           </div>
           <div>
             <div className="text-xs text-ink-soft mb-1">{t("clients.detail.outstanding")}</div>
-            <div className="font-bold text-[15px] font-mono">{formatEUR(balance.outstanding)}</div>
+            <div
+              className={`font-bold text-[15px] font-mono ${balance.outstanding > 0 ? "text-warn" : ""}`}
+            >
+              {formatEUR(balance.outstanding)}
+            </div>
           </div>
         </div>
       </Card>
@@ -185,22 +201,50 @@ export function ClienteDetalle({
               <div
                 key={contract.id}
                 onClick={() => onOpenContract(contract.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    if (e.key === " ") e.preventDefault();
+                    onOpenContract(contract.id);
+                  }
+                }}
                 className="group flex items-center justify-between py-2.5 px-2 -mx-2 rounded-control
                            border-t border-border first:border-t-0 cursor-pointer
-                           transition-colors hover:bg-surface-alt"
+                           transition-colors hover:bg-surface-alt
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
-                <div>
-                  <div className="font-semibold text-sm">{contract.title}</div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm truncate">{contract.title}</div>
                   <div className="text-xs text-ink-soft">
                     {formatDate(contract.startDate)} – {formatDate(contract.endDate)}
                   </div>
                 </div>
-                <Badge tone={meta.tone}>{meta.label}</Badge>
+                <Badge tone={meta.tone}>{t(meta.labelKey)}</Badge>
               </div>
             );
           })
         )}
       </Card>
+
+      <Sheet
+        open={deletePending}
+        onOpenChange={setDeletePending}
+        title={t("clients.actions.delete")}
+      >
+        <p className="text-[13px] text-ink-soft mb-4">
+          {t("clients.actions.confirmDelete", { name: client.name })}
+        </p>
+        {deleteError && <ErrorText>{deleteError}</ErrorText>}
+        <div className="flex gap-2.5 justify-end mt-4">
+          <Button variant="secondary" onClick={() => setDeletePending(false)}>
+            {t("clients.actions.cancel")}
+          </Button>
+          <Button variant="ghost-danger" onClick={confirmDelete}>
+            {t("clients.actions.delete")}
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

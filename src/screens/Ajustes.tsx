@@ -5,6 +5,7 @@ import * as Switch from "@radix-ui/react-switch";
 import { Card } from "../components/ui/Card";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/ui/Button";
+import { Sheet } from "../components/ui/Sheet";
 import { ErrorText, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
@@ -19,6 +20,14 @@ import { isValidNifCif, isValidVatNumber } from "../features/clients";
 import { isValidIban } from "../features/settings";
 import { runHealthcheck } from "../db/healthcheck";
 import {
+  CategoryInUseError,
+  createExpenseCategory,
+  deleteExpenseCategory,
+  listExpenseCategories,
+  renameExpenseCategory,
+} from "../db/expenseCategories";
+import type { ExpenseCategoryRecord } from "../db/expenseCategories";
+import {
   getBackupSettings,
   updateBackupSettings,
   pickBackupFolder,
@@ -28,6 +37,22 @@ import {
   openBackupFolder,
 } from "../db/backup";
 import type { BackupSettingsRecord, BackupEntry } from "../db/backup";
+import { getLlmSettings, updateLlmSettings } from "../db/llmSettings";
+import type { LlmProvider, LlmSettingsRecord } from "../db/llmSettings";
+
+const EMPTY_LLM_SETTINGS: LlmSettingsRecord = {
+  provider: "anthropic",
+  anthropicApiKey: null,
+  openaiApiKey: null,
+  openrouterApiKey: null,
+  openrouterModel: null,
+};
+
+const LLM_PROVIDER_OPTIONS: { value: LlmProvider; label: string }[] = [
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openai", label: "OpenAI" },
+  { value: "openrouter", label: "OpenRouter" },
+];
 
 const EMPTY_FORM: BusinessProfileRecord = {
   name: "",
@@ -41,11 +66,12 @@ const EMPTY_FORM: BusinessProfileRecord = {
 };
 
 type FieldErrors = Partial<Record<"name" | "nifCif" | "vatNumber" | "iban", string>>;
-type Tab = "general" | "datos" | "backup";
+type Tab = "general" | "datos" | "categorias" | "backup";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "general", label: "General" },
   { value: "datos", label: "Datos" },
+  { value: "categorias", label: "Categorías" },
   { value: "backup", label: "Copia de seguridad" },
 ];
 
@@ -74,10 +100,96 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [backupError, setBackupError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [restoreCandidates, setRestoreCandidates] = useState<BackupEntry[] | null>(null);
+  const [restorePendingEntry, setRestorePendingEntry] = useState<BackupEntry | null>(null);
+
+  const [llmSettings, setLlmSettings] = useState<LlmSettingsRecord>(EMPTY_LLM_SETTINGS);
+  const [llmSaving, setLlmSaving] = useState(false);
+  const [llmSaved, setLlmSaved] = useState(false);
+
+  const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [categoryPendingDelete, setCategoryPendingDelete] = useState<ExpenseCategoryRecord | null>(
+    null,
+  );
 
   useEffect(() => {
     getBackupSettings().then(setBackupSettings);
   }, []);
+
+  useEffect(() => {
+    listExpenseCategories().then(setCategories);
+  }, []);
+
+  useEffect(() => {
+    getLlmSettings().then(setLlmSettings);
+  }, []);
+
+  function setLlmField<K extends keyof LlmSettingsRecord>(key: K, value: LlmSettingsRecord[K]) {
+    setLlmSettings((s) => ({ ...s, [key]: value }));
+    setLlmSaved(false);
+  }
+
+  async function handleSaveLlmSettings() {
+    setLlmSaving(true);
+    setLlmSaved(false);
+    try {
+      await updateLlmSettings(llmSettings);
+      setLlmSaved(true);
+    } finally {
+      setLlmSaving(false);
+    }
+  }
+
+  async function handleAddCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setCategoryError(null);
+    try {
+      await createExpenseCategory(name);
+      setCategories(await listExpenseCategories());
+      setNewCategoryName("");
+    } catch {
+      setCategoryError("Ya existe una categoría con ese nombre.");
+    }
+  }
+
+  async function handleRenameCategory(id: number) {
+    const name = editingCategoryName.trim();
+    if (!name) return;
+    setCategoryError(null);
+    try {
+      await renameExpenseCategory(id, name);
+      setCategories(await listExpenseCategories());
+      setEditingCategoryId(null);
+    } catch {
+      setCategoryError("Ya existe una categoría con ese nombre.");
+    }
+  }
+
+  function handleDeleteCategory(category: ExpenseCategoryRecord) {
+    setCategoryPendingDelete(category);
+  }
+
+  async function confirmDeleteCategory() {
+    const category = categoryPendingDelete;
+    if (!category) return;
+    setCategoryError(null);
+    try {
+      await deleteExpenseCategory(category.id);
+      setCategories(await listExpenseCategories());
+    } catch (e) {
+      setCategoryError(
+        e instanceof CategoryInUseError
+          ? `Esta categoría se usa en ${e.count} gasto(s). Cambia esos gastos de categoría antes de eliminarla.`
+          : "No se pudo eliminar la categoría.",
+      );
+    } finally {
+      setCategoryPendingDelete(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -225,13 +337,13 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     }
   }
 
-  async function handleRestoreSelect(entry: BackupEntry) {
-    if (
-      !window.confirm(
-        "Esto sobrescribirá tus datos actuales con los de la copia seleccionada. ¿Continuar?",
-      )
-    )
-      return;
+  function handleRestoreSelect(entry: BackupEntry) {
+    setRestorePendingEntry(entry);
+  }
+
+  async function confirmRestore() {
+    const entry = restorePendingEntry;
+    if (!entry) return;
     setRestoring(true);
     setBackupError(null);
     try {
@@ -240,6 +352,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     } catch (e) {
       setBackupError(`No se pudo restaurar: ${String(e)}`);
       setRestoring(false);
+    } finally {
+      setRestorePendingEntry(null);
     }
   }
 
@@ -252,34 +366,98 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       </div>
 
       {tab === "general" && (
-        <>
-          <Card className="px-5 max-w-[640px] mb-5">
-            <div className="pt-4 pb-4">
-              <div className="font-bold text-sm mb-1.5">Apariencia</div>
-              <FormRow label="Modo oscuro">
-                <div className="flex items-center gap-2.5">
-                  <Switch.Root
-                    checked={theme === "dark"}
-                    onCheckedChange={onToggleTheme}
-                    className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                  >
-                    <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
-                  </Switch.Root>
-                  <span className="text-[13px] text-ink-soft">
-                    {theme === "dark" ? "Activado" : "Desactivado"}
-                  </span>
-                </div>
-              </FormRow>
+        <Card className="px-5 max-w-[640px] mb-5">
+          <div className="pt-4 pb-3">
+            <div className="font-bold text-sm mb-1.5">Apariencia</div>
+          </div>
+          <FormRow label="Modo oscuro">
+            <div className="flex items-center gap-2.5">
+              <Switch.Root
+                checked={theme === "dark"}
+                onCheckedChange={onToggleTheme}
+                className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors ease-[var(--ease-out)] outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform ease-[var(--ease-out)] data-[state=checked]:translate-x-[18px]" />
+              </Switch.Root>
+              <span className="text-[13px] text-ink-soft">
+                {theme === "dark" ? "Activado" : "Desactivado"}
+              </span>
             </div>
-          </Card>
+          </FormRow>
 
-          <Card className="px-5 max-w-[640px]">
-            <div className="pt-4 pb-4">
-              <div className="font-bold text-sm mb-1.5">{t("settings.dbSectionTitle")}</div>
-              <div className="text-[13px] text-ink-soft">{dbStatus}</div>
-            </div>
-          </Card>
-        </>
+          <div className="pt-4 pb-3 border-t border-border mt-1">
+            <div className="font-bold text-sm mb-1.5">{t("settings.llmTitle")}</div>
+            <div className="text-[13px] text-ink-soft">{t("settings.llmHelp")}</div>
+          </div>
+
+          <FormRow label={t("settings.llmProvider")}>
+            <SegmentedControl
+              options={LLM_PROVIDER_OPTIONS}
+              value={llmSettings.provider}
+              onChange={(provider) => setLlmField("provider", provider)}
+            />
+          </FormRow>
+
+          {llmSettings.provider === "anthropic" && (
+            <FormRow label={t("settings.llmApiKey")}>
+              <TextInput
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={llmSettings.anthropicApiKey ?? ""}
+                onChange={(e) => setLlmField("anthropicApiKey", e.target.value || null)}
+                placeholder="sk-ant-..."
+              />
+            </FormRow>
+          )}
+
+          {llmSettings.provider === "openai" && (
+            <FormRow label={t("settings.llmApiKey")}>
+              <TextInput
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={llmSettings.openaiApiKey ?? ""}
+                onChange={(e) => setLlmField("openaiApiKey", e.target.value || null)}
+                placeholder="sk-..."
+              />
+            </FormRow>
+          )}
+
+          {llmSettings.provider === "openrouter" && (
+            <>
+              <FormRow label={t("settings.llmApiKey")}>
+                <TextInput
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={llmSettings.openrouterApiKey ?? ""}
+                  onChange={(e) => setLlmField("openrouterApiKey", e.target.value || null)}
+                  placeholder="sk-or-..."
+                />
+              </FormRow>
+              <FormRow label={t("settings.llmModel")}>
+                <TextInput
+                  value={llmSettings.openrouterModel ?? ""}
+                  onChange={(e) => setLlmField("openrouterModel", e.target.value || null)}
+                  placeholder="anthropic/claude-sonnet-4.5"
+                />
+              </FormRow>
+            </>
+          )}
+
+          <div className="flex items-center gap-2.5 py-3 border-t border-border">
+            <Button onClick={handleSaveLlmSettings} disabled={llmSaving}>
+              {t("settings.llmSave")}
+            </Button>
+            {llmSaved && <div className="text-[13px] text-accent">{t("settings.llmSaved")}</div>}
+          </div>
+
+          <div className="pt-4 pb-1 border-t border-border mt-1">
+            <div className="font-bold text-sm mb-1.5">{t("settings.dbSectionTitle")}</div>
+            <div className="text-[13px] text-ink-soft pb-4">{dbStatus}</div>
+          </div>
+        </Card>
       )}
 
       {tab === "datos" &&
@@ -292,7 +470,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         ) : (
           <>
             <Card className="px-5 max-w-[640px] mb-5">
-              <div className="font-bold text-sm pt-4 pb-1">Datos del negocio</div>
+              <div className="pt-4 pb-3">
+                <div className="font-bold text-sm mb-1.5">Datos del negocio</div>
+              </div>
               <FormRow label="Nombre / Razón social" error={errors.name}>
                 <TextInput
                   value={form.name}
@@ -324,7 +504,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   {form.logoPath && (
                     <img
                       src={convertFileSrc(form.logoPath)}
-                      alt=""
+                      alt={t("settings.logoAlt")}
                       className="w-8 h-8 rounded-control object-contain bg-surface-alt shrink-0"
                     />
                   )}
@@ -339,7 +519,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             </Card>
 
             <Card className="px-5 max-w-[640px] mb-5">
-              <div className="font-bold text-sm pt-4 pb-1">Datos bancarios</div>
+              <div className="pt-4 pb-3">
+                <div className="font-bold text-sm mb-1.5">Datos bancarios</div>
+              </div>
               <FormRow label="Nombre del banco">
                 <TextInput
                   value={form.bankName}
@@ -368,6 +550,66 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             </div>
           </>
         ))}
+
+      {tab === "categorias" && (
+        <Card className="px-5 max-w-[640px]">
+          <div className="pt-4 pb-3">
+            <div className="font-bold text-sm mb-1.5">Categorías de gastos</div>
+            <div className="text-[13px] text-ink-soft">
+              Estas son las opciones disponibles al registrar un gasto.
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-0.5 mb-3">
+            {categories.map((category) => (
+              <div key={category.id} className="flex items-center gap-2.5 py-1.5">
+                {editingCategoryId === category.id ? (
+                  <>
+                    <TextInput
+                      value={editingCategoryName}
+                      onChange={(e) => setEditingCategoryName(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={() => handleRenameCategory(category.id)}>Guardar</Button>
+                    <Button variant="secondary" onClick={() => setEditingCategoryId(null)}>
+                      Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-[13px]">{category.name}</span>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setEditingCategoryId(category.id);
+                        setEditingCategoryName(category.name);
+                        setCategoryError(null);
+                      }}
+                    >
+                      Renombrar
+                    </Button>
+                    <Button variant="secondary" onClick={() => handleDeleteCategory(category)}>
+                      Eliminar
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {categoryError && <ErrorText>{categoryError}</ErrorText>}
+
+          <div className="flex items-center gap-2.5 pt-3 pb-4 border-t border-border mt-1">
+            <TextInput
+              placeholder="Nueva categoría"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={handleAddCategory}>Añadir</Button>
+          </div>
+        </Card>
+      )}
 
       {tab === "backup" && (
         <Card className="px-5 max-w-[640px]">
@@ -422,9 +664,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                     autoBackupEnabled: checked,
                   })
                 }
-                className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors ease-[var(--ease-out)] outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
-                <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform data-[state=checked]:translate-x-[18px]" />
+                <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform ease-[var(--ease-out)] data-[state=checked]:translate-x-[18px]" />
               </Switch.Root>
               <span className="text-[13px] text-ink-soft">Al abrir la app</span>
             </div>
@@ -490,6 +732,46 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           </div>
         </Card>
       )}
+
+      <Sheet
+        open={categoryPendingDelete !== null}
+        onOpenChange={(open) => !open && setCategoryPendingDelete(null)}
+        title="Eliminar categoría"
+      >
+        <p className="text-[13px] text-ink-soft mb-4">
+          ¿Eliminar la categoría "{categoryPendingDelete?.name}"?
+        </p>
+        <div className="flex gap-2.5 justify-end">
+          <Button variant="secondary" onClick={() => setCategoryPendingDelete(null)}>
+            Cancelar
+          </Button>
+          <Button variant="ghost-danger" onClick={confirmDeleteCategory}>
+            Eliminar
+          </Button>
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={restorePendingEntry !== null}
+        onOpenChange={(open) => !open && setRestorePendingEntry(null)}
+        title="Restaurar copia de seguridad"
+      >
+        <p className="text-[13px] text-ink-soft mb-4">
+          Esto sobrescribirá tus datos actuales con los de la copia seleccionada. ¿Continuar?
+        </p>
+        <div className="flex gap-2.5 justify-end">
+          <Button
+            variant="secondary"
+            onClick={() => setRestorePendingEntry(null)}
+            disabled={restoring}
+          >
+            Cancelar
+          </Button>
+          <Button variant="ghost-danger" onClick={confirmRestore} disabled={restoring}>
+            {restoring ? "Restaurando…" : "Restaurar"}
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

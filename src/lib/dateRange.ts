@@ -58,6 +58,39 @@ export function defaultQuarterPeriod(): Period {
   return quarterRange(now.getFullYear(), quarter);
 }
 
+/** The quarter key ("YYYY-QN") containing `dateIso`. */
+export function quarterKeyOf(dateIso: string): string {
+  const [year, month] = dateIso.split("-").map(Number);
+  return `${year}-Q${Math.floor((month - 1) / 3) + 1}`;
+}
+
+/** The quarter key ("YYYY-QN") immediately after `key`. */
+export function nextQuarterKey(key: string): string {
+  const [yearStr, q] = key.split("-Q");
+  const year = Number(yearStr);
+  const quarter = Number(q);
+  return quarter === 4 ? `${year + 1}-Q1` : `${year}-Q${quarter + 1}`;
+}
+
+/** Human-readable label for a quarter key, e.g. "2026-Q3" -> "Q3 2026". */
+export function quarterKeyLabel(key: string): string {
+  const [year, q] = key.split("-Q");
+  return `Q${q} ${year}`;
+}
+
+/** Quarter keys ("YYYY-QN") overlapping [from, to], inclusive. */
+export function quartersInRange(from: string, to: string): string[] {
+  const [fy, fm] = from.split("-").map(Number);
+  const [ty, tm] = to.split("-").map(Number);
+  const start = fy * 4 + Math.floor((fm - 1) / 3);
+  const end = ty * 4 + Math.floor((tm - 1) / 3);
+  const keys: string[] = [];
+  for (let q = start; q <= end; q++) {
+    keys.push(`${Math.floor(q / 4)}-Q${(q % 4) + 1}`);
+  }
+  return keys;
+}
+
 function shiftYear(dateIso: string, deltaYears: number): string {
   const [year, month, day] = dateIso.split("-").map(Number);
   const newYear = year + deltaYears;

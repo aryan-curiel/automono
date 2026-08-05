@@ -27,6 +27,10 @@ tauri-plugin-sql = { version = "2.4.0", features = ["sqlite"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 genpdf = { version = "0.2.0", features = ["images"] }
 pdf-extract = "0.7"
+rig = { version = "0.41", features = ["derive", "image", "pdf"] }
+schemars = "1.0"
+base64 = "0.22"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

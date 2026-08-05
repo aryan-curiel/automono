@@ -1,7 +1,9 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type { ReactNode } from "react";
 
-export const TooltipProvider = TooltipPrimitive.Provider;
+export function TooltipProvider(props: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+  return <TooltipPrimitive.Provider {...props} />;
+}
 
 export function Tooltip({ label, children }: { label: string; children: ReactNode }) {
   return (
