@@ -118,9 +118,15 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
 
       <PageHeader
         title={
-          <span className="flex items-center gap-2">
-            {expense.description || expense.category || formatDate(expense.date)}
-            {expense.declared && <Badge tone="success">{t("expenses.declaredBadge")}</Badge>}
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="truncate min-w-0">
+              {expense.description || expense.category || formatDate(expense.date)}
+            </span>
+            {expense.declared && (
+              <span className="shrink-0">
+                <Badge tone="success">{t("expenses.declaredBadge")}</Badge>
+              </span>
+            )}
           </span>
         }
         subtitle={formatDate(expense.date)}
