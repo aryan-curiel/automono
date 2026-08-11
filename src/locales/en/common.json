@@ -313,6 +313,7 @@
     "subtitleCount": "{{count}} expenses",
     "newExpense": "New expense",
     "editExpense": "Edit expense",
+    "declaredBadge": "Declared",
     "loading": "Loading…",
     "empty": "No expenses in this period.",
     "columns": {
@@ -357,6 +358,8 @@
       "attachFile": "Attach file",
       "attaching": "Attaching…",
       "openFile": "Open file",
+      "markDeclared": "Mark as declared",
+      "unmarkDeclared": "Mark as not declared",
       "confirmDelete": "Delete this expense? This action cannot be undone."
     },
     "errors": {

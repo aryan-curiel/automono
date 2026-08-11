@@ -313,6 +313,7 @@
     "subtitleCount": "{{count}} gastos",
     "newExpense": "Nuevo gasto",
     "editExpense": "Editar gasto",
+    "declaredBadge": "Declarada",
     "loading": "Cargando…",
     "empty": "No hay gastos en este período.",
     "columns": {
@@ -357,6 +358,8 @@
       "attachFile": "Adjuntar archivo",
       "attaching": "Adjuntando…",
       "openFile": "Abrir archivo",
+      "markDeclared": "Marcar como declarada",
+      "unmarkDeclared": "Marcar como no declarada",
       "confirmDelete": "¿Eliminar este gasto? Esta acción no se puede deshacer."
     },
     "errors": {
