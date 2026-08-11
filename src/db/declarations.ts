@@ -134,8 +134,8 @@ export async function markDeclarationCompleted(id: number): Promise<void> {
   }
   const db = await getDb();
   await db.execute(
-    "UPDATE quarterly_declarations SET status = 'completed', completed_at = datetime('now') WHERE id = $1",
-    [id],
+    "UPDATE quarterly_declarations SET status = 'completed', completed_at = datetime('now'), snapshot_json = $2 WHERE id = $1",
+    [id, JSON.stringify(declaration.snapshot)],
   );
   const expenseIds = declaration.snapshot.expenses.map((e) => e.id);
   if (expenseIds.length > 0) {
