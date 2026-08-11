@@ -1,8 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getDb } from "./client";
-import { buildDeclarationCsv, type DeclarationSnapshot } from "../lib/quarterlyDeclaration";
+import {
+  buildDeclarationCsv,
+  buildDeclarationSnapshot,
+  paidInvoicesInPeriod,
+  type DeclarationSnapshot,
+} from "../lib/quarterlyDeclaration";
 import type { ModeloFields } from "../lib/modeloReport";
+import { listInvoices } from "./invoices";
+import { listExpenses } from "./expenses";
+import { quarterRange, quartersInRange } from "../lib/dateRange";
 
 export type DeclarationStatus = "in_progress" | "completed";
 export type Modelo = "303" | "130" | "111";
@@ -59,24 +67,46 @@ const MODELO_COLUMN: Record<Modelo, string> = {
   "111": "modelo_111_path",
 };
 
+/** A `completed` declaration's snapshot is the frozen record of what was actually filed and is
+ * returned as-is. An `in_progress` one is still being reconciled, so its snapshot is recomputed
+ * from the current invoices/expenses every time — otherwise edits made after the declaration was
+ * created (e.g. fixing an expense amount, adding a missed receipt) would silently never show up
+ * in the Modelo Review comparison or the detail screen's/list's KPIs. */
+async function currentSnapshot(row: DeclarationRow): Promise<DeclarationSnapshot> {
+  if (row.status === "completed") return JSON.parse(row.snapshot_json) as DeclarationSnapshot;
+
+  const period = quarterRange(row.year, row.quarter as 1 | 2 | 3 | 4);
+  const [invoices, expenses] = await Promise.all([
+    listInvoices(),
+    listExpenses({
+      from: period.from,
+      to: period.to,
+      quarterKeys: quartersInRange(period.from, period.to),
+    }),
+  ]);
+  return buildDeclarationSnapshot(paidInvoicesInPeriod(invoices, period), expenses);
+}
+
 export async function listDeclarations(): Promise<DeclarationListItem[]> {
   const db = await getDb();
   const rows = await db.select<DeclarationRow[]>(
     "SELECT * FROM quarterly_declarations ORDER BY year DESC, quarter DESC",
   );
-  return rows.map((row) => {
-    const snapshot = JSON.parse(row.snapshot_json) as DeclarationSnapshot;
-    return {
-      id: row.id,
-      year: row.year,
-      quarter: row.quarter,
-      status: row.status,
-      invoiceCount: snapshot.invoices.length,
-      expenseCount: snapshot.expenses.length,
-      invoicedTotal: snapshot.totals.invoicedBase,
-      expensesTotal: snapshot.totals.expensesDeductibleBase,
-    };
-  });
+  return Promise.all(
+    rows.map(async (row) => {
+      const snapshot = await currentSnapshot(row);
+      return {
+        id: row.id,
+        year: row.year,
+        quarter: row.quarter,
+        status: row.status,
+        invoiceCount: snapshot.invoices.length,
+        expenseCount: snapshot.expenses.length,
+        invoicedTotal: snapshot.totals.invoicedBase,
+        expensesTotal: snapshot.totals.expensesDeductibleBase,
+      };
+    }),
+  );
 }
 
 export async function getDeclaration(id: number): Promise<DeclarationDetail | null> {
@@ -85,7 +115,10 @@ export async function getDeclaration(id: number): Promise<DeclarationDetail | nu
     "SELECT * FROM quarterly_declarations WHERE id = $1",
     [id],
   );
-  return rows.length === 1 ? mapRow(rows[0]) : null;
+  if (rows.length !== 1) return null;
+  const row = rows[0];
+  const snapshot = await currentSnapshot(row);
+  return { ...mapRow(row), snapshot };
 }
 
 export async function createDeclaration(
@@ -99,6 +132,16 @@ export async function createDeclaration(
     [year, quarter, JSON.stringify(snapshot)],
   );
   return result.lastInsertId!;
+}
+
+/** Deletes an in-progress declaration outright — a `completed` one is a filed record and can't
+ * be removed this way, guarded here (not just in the UI) since its snapshot is the frozen source
+ * of truth for what was actually declared. */
+export async function deleteDeclaration(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM quarterly_declarations WHERE id = $1 AND status = 'in_progress'", [
+    id,
+  ]);
 }
 
 /** Copies the filed Modelo PDF into app storage and records its path on the declaration. */
@@ -116,10 +159,10 @@ export async function attachDeclarationFile(
     sourcePath,
   });
   const db = await getDb();
-  await db.execute(`UPDATE quarterly_declarations SET ${MODELO_COLUMN[modelo]} = $1 WHERE id = $2`, [
-    storedPath,
-    id,
-  ]);
+  await db.execute(
+    `UPDATE quarterly_declarations SET ${MODELO_COLUMN[modelo]} = $1 WHERE id = $2`,
+    [storedPath, id],
+  );
   return storedPath;
 }
 

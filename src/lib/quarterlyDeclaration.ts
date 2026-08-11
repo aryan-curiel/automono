@@ -17,7 +17,10 @@ export function invoicesInPeriod(invoices: InvoiceListItem[], period: Period): I
 
 /** Invoices actually paid (collected), with an issue date inside `period` — narrower than
  * `invoicesInPeriod`, used for the declaration wizard where only money received counts. */
-export function paidInvoicesInPeriod(invoices: InvoiceListItem[], period: Period): InvoiceListItem[] {
+export function paidInvoicesInPeriod(
+  invoices: InvoiceListItem[],
+  period: Period,
+): InvoiceListItem[] {
   return invoices.filter(
     (inv) =>
       inv.status === "paid" &&
@@ -91,7 +94,10 @@ export function buildDeclarationSnapshot(
 
   const invoicedBase = invoices.reduce((s, inv) => s + inv.subtotal, 0);
   const irpfWithheld = invoices.reduce((s, inv) => s + inv.irpfAmount, 0);
-  const expensesDeductibleBase = expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
+  const expensesDeductibleBase = expenses.reduce(
+    (s, e) => s + e.amount * (e.deductiblePct / 100),
+    0,
+  );
   const expensesIvaDeductible = expenses.reduce(
     (s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100),
     0,
@@ -103,7 +109,8 @@ export function buildDeclarationSnapshot(
   return {
     invoices: invoices.map((inv) => ({
       id: inv.id,
-      number: inv.seriesPrefix && inv.invoiceNumber ? `${inv.seriesPrefix}-${inv.invoiceNumber}` : "",
+      number:
+        inv.seriesPrefix && inv.invoiceNumber ? `${inv.seriesPrefix}-${inv.invoiceNumber}` : "",
       clientName: inv.clientName,
       issueDate: inv.issueDate ?? "",
       base: inv.subtotal,
@@ -168,7 +175,16 @@ export function buildDeclarationCsv(snapshot: DeclarationSnapshot): string {
 
   lines.push(csvRow(["Gastos"]));
   lines.push(
-    csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible", "% IRPF", "IRPF"]),
+    csvRow([
+      "Fecha",
+      "Categoría",
+      "Descripción",
+      "Importe",
+      "IVA",
+      "% deducible",
+      "% IRPF",
+      "IRPF",
+    ]),
   );
   for (const e of snapshot.expenses) {
     lines.push(

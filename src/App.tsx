@@ -559,6 +559,7 @@ export default function App() {
             <DeclaracionDetalle
               declarationId={selectedDeclarationId}
               onBack={() => setScreen("resumen-trimestral")}
+              onDeleted={() => setScreen("resumen-trimestral")}
               dropPaths={declarationDropPaths}
               dropToken={declarationDropToken}
             />

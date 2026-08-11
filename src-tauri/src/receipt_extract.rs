@@ -138,7 +138,14 @@ pub fn extract_receipt_fields(path: &Path) -> ReceiptFields {
         .or_else(|| last_percent_on_line_containing(&text, "irpf"));
     ReceiptFields {
         date: find_date(&text),
-        amount: last_number_on_line_containing(&text, "total"),
+        // `amount` feeds the IRPF-retention auto-calc and the deductible-base total downstream
+        // (GastoForm, quarterlyDeclaration.ts) as the pre-VAT/pre-retention *base*, not the total
+        // charged — so on an itemized invoice ("Base Imponible: 53,07 / IVA: 11,14 / Retención:
+        // 3,71 / Total: 60,50") this must read the base line, not "Total". Plain receipts with no
+        // breakdown at all only ever print one figure, which "total" still catches.
+        amount: last_number_on_line_containing(&text, "base imponible")
+            .or_else(|| last_number_on_line_containing(&text, "subtotal"))
+            .or_else(|| last_number_on_line_containing(&text, "total")),
         iva_amount: last_number_on_line_containing(&text, "iva"),
         irpf_rate,
         irpf_amount,
@@ -189,7 +196,9 @@ pub struct ReceiptFieldsLlm {
     /// The receipt date, normalized to ISO 8601 (YYYY-MM-DD).
     #[schemars(required)]
     pub date: Option<String>,
-    /// The total amount charged, in the receipt's currency, as a plain number.
+    /// The base amount before VAT/IRPF (the "base imponible"), in the receipt's currency, as a
+    /// plain number — not the final total charged. On a plain receipt with no VAT/IRPF breakdown
+    /// at all, this is just the one amount shown.
     #[schemars(required)]
     #[serde(default, deserialize_with = "lenient_f64_option")]
     pub amount: Option<f64>,
@@ -221,9 +230,11 @@ fn extension_of(file_path: &str) -> String {
 fn build_extraction_preamble(categories: &[String]) -> String {
     format!(
         "You are extracting structured data from a Spanish business expense receipt (a photo or \
-         PDF of a receipt/invoice). Extract the date, total amount, IVA (VAT) amount, IRPF \
-         withholding rate and amount (most receipts have none), a short vendor name guess, and the \
-         best-matching expense category. For category, pick exactly one name from this list, \
+         PDF of a receipt/invoice). Extract the date, the base amount before VAT/IRPF (\"base \
+         imponible\" — not the final total charged; if the receipt shows no VAT/IRPF breakdown at \
+         all, use the one amount shown), IVA (VAT) amount, IRPF withholding rate and amount (most \
+         receipts have none), a short vendor name guess, and the best-matching expense category. \
+         For category, pick exactly one name from this list, \
          matching it exactly, or leave it null if none clearly fit: {}. Leave any other field null \
          if it cannot be determined confidently from the receipt.",
         categories.join(", ")
@@ -333,7 +344,9 @@ mod tests {
 
         let fields = extract_receipt_fields(&out_path);
         assert_eq!(fields.date.as_deref(), Some("2026-08-02"));
-        assert_eq!(fields.amount, Some(121.0));
+        // Sample itemizes a "Subtotal" (base) as well as "Total" — amount must read the base,
+        // since that's what the IRPF/deductible-base math downstream assumes it is.
+        assert_eq!(fields.amount, Some(100.0));
         assert_eq!(fields.iva_amount, Some(21.0));
         assert_eq!(fields.vendor_guess.as_deref(), Some("Ferreteria Garcia SL"));
 
@@ -355,8 +368,31 @@ mod tests {
         std::fs::write(&out_path, pdf).expect("write sample receipt pdf");
 
         let fields = extract_receipt_fields(&out_path);
+        // The base (100), not the total after IVA and retention (114) — same reasoning as above.
+        assert_eq!(fields.amount, Some(100.0));
         assert_eq!(fields.irpf_rate, Some(7.0));
         assert_eq!(fields.irpf_amount, Some(7.0));
+
+        std::fs::remove_file(&out_path).ok();
+    }
+
+    #[test]
+    fn extract_receipt_fields_reads_amount_from_a_base_imponible_line() {
+        // Real-world wording (a gestor's invoice): "Base Imponible" rather than "Subtotal".
+        let out_path = std::env::temp_dir()
+            .join(format!("automono_receipt_extract_base_test_{}.pdf", std::process::id()));
+        let pdf = build_minimal_pdf(&[
+            "Pablo Gallardo Carreno",
+            "Fecha: 29/06/2026",
+            "Base Imponible: 53,07",
+            "I.V.A (+21%): 11,14",
+            "Retencion (-7%): 3,71",
+            "Total: 60,50",
+        ]);
+        std::fs::write(&out_path, pdf).expect("write sample receipt pdf");
+
+        let fields = extract_receipt_fields(&out_path);
+        assert_eq!(fields.amount, Some(53.07));
 
         std::fs::remove_file(&out_path).ok();
     }

@@ -91,6 +91,14 @@ export function quartersInRange(from: string, to: string): string[] {
   return keys;
 }
 
+/** Count of calendar months overlapping [from, to], inclusive — e.g. a full quarter is always 3.
+ * Used to scale flat monthly amounts (like the RETA self-employment quota) to a viewed period. */
+export function monthsInRange(from: string, to: string): number {
+  const [fy, fm] = from.split("-").map(Number);
+  const [ty, tm] = to.split("-").map(Number);
+  return (ty - fy) * 12 + (tm - fm) + 1;
+}
+
 function shiftYear(dateIso: string, deltaYears: number): string {
   const [year, month, day] = dateIso.split("-").map(Number);
   const newYear = year + deltaYears;

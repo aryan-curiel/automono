@@ -451,7 +451,11 @@
       "attached": "Adjuntado",
       "openFile": "Abrir PDF",
       "markCompleted": "Marcar como completada",
-      "completing": "Guardando…"
+      "completing": "Guardando…",
+      "moreActions": "Más acciones",
+      "delete": "Eliminar declaración",
+      "confirmDelete": "Se eliminará esta declaración en curso. Las facturas y gastos incluidos no se ven afectados.",
+      "cancel": "Cancelar"
     },
     "review": {
       "title": "Revisar archivos de modelo",

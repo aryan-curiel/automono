@@ -1,16 +1,26 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { save } from "@tauri-apps/plugin-dialog";
-import { DownloadSimple, TrendUp, Percent, ChartLineUp, Scales } from "@phosphor-icons/react";
+import {
+  DotsThreeVertical,
+  DownloadSimple,
+  TrendUp,
+  Percent,
+  ChartLineUp,
+  Scales,
+} from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { KpiTile } from "../components/ui/KpiTile";
 import { InfoRow } from "../components/ui/InfoRow";
 import { ErrorText } from "../components/ui/Field";
+import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { Sheet } from "../components/ui/Sheet";
 import { BackLink, PageHeader } from "../components/PageHeader";
 import { ModeloReviewModal } from "../components/ModeloReviewModal";
 import {
+  deleteDeclaration,
   exportDeclarationZip,
   getDeclaration,
   markDeclarationCompleted,
@@ -24,6 +34,7 @@ import { formatEUR, formatDate } from "../lib/format";
 interface DeclaracionDetalleProps {
   declarationId: number;
   onBack: () => void;
+  onDeleted: () => void;
   dropPaths?: string[] | null;
   dropToken?: number;
 }
@@ -38,6 +49,7 @@ const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "model
 export function DeclaracionDetalle({
   declarationId,
   onBack,
+  onDeleted,
   dropPaths,
   dropToken,
 }: DeclaracionDetalleProps) {
@@ -46,6 +58,7 @@ export function DeclaracionDetalle({
   const [loadError, setLoadError] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [zipping, setZipping] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [reviewFiles, setReviewFiles] = useState<string[] | null>(null);
   const [lastDropToken, setLastDropToken] = useState(dropToken ?? 0);
@@ -104,6 +117,12 @@ export function DeclaracionDetalle({
     }
   }
 
+  async function confirmDelete() {
+    if (!declaration) return;
+    await deleteDeclaration(declaration.id);
+    onDeleted();
+  }
+
   async function handleDownloadZip() {
     if (!declaration) return;
     setActionError(null);
@@ -160,7 +179,9 @@ export function DeclaracionDetalle({
           <>
             <Button variant="secondary" onClick={handleDownloadZip} disabled={zipping}>
               <DownloadSimple size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
-              {zipping ? t("declarations.detail.downloading") : t("declarations.detail.downloadZip")}
+              {zipping
+                ? t("declarations.detail.downloading")
+                : t("declarations.detail.downloadZip")}
             </Button>
             {declaration.status === "in_progress" && (
               <Button onClick={handleMarkCompleted} disabled={!allModelosAttached || completing}>
@@ -168,6 +189,21 @@ export function DeclaracionDetalle({
                   ? t("declarations.detail.completing")
                   : t("declarations.detail.markCompleted")}
               </Button>
+            )}
+            {declaration.status === "in_progress" && (
+              <Menu>
+                <MenuTrigger
+                  className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
+                  aria-label={t("declarations.detail.moreActions")}
+                >
+                  <DotsThreeVertical size={16} weight="bold" />
+                </MenuTrigger>
+                <MenuContent>
+                  <MenuItem danger onSelect={() => setDeletePending(true)}>
+                    {t("declarations.detail.delete")}
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
             )}
           </>
         }
@@ -279,14 +315,20 @@ export function DeclaracionDetalle({
                 label={`Modelo ${modelo}`}
                 value={
                   declaration.status === "completed" ? (
-                    <Button variant="secondary" onClick={() => handleOpenFile(path)} disabled={!path}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleOpenFile(path)}
+                      disabled={!path}
+                    >
                       {t("declarations.detail.openFile")}
                     </Button>
                   ) : (
                     <div className="flex items-center gap-2.5 justify-end">
                       {path && <Badge tone="success">{t("declarations.detail.attached")}</Badge>}
                       <Button variant="secondary" onClick={handleAttach}>
-                        {path ? t("declarations.detail.replaceFile") : t("declarations.detail.attachFile")}
+                        {path
+                          ? t("declarations.detail.replaceFile")
+                          : t("declarations.detail.attachFile")}
                       </Button>
                     </div>
                   )
@@ -307,6 +349,22 @@ export function DeclaracionDetalle({
         snapshot={declaration.snapshot}
         onAttached={reload}
       />
+
+      <Sheet
+        open={deletePending}
+        onOpenChange={setDeletePending}
+        title={t("declarations.detail.delete")}
+      >
+        <p className="text-[13px] text-ink-soft mb-4">{t("declarations.detail.confirmDelete")}</p>
+        <div className="flex gap-2.5 justify-end">
+          <Button variant="secondary" onClick={() => setDeletePending(false)}>
+            {t("declarations.detail.cancel")}
+          </Button>
+          <Button variant="ghost-danger" onClick={confirmDelete}>
+            {t("declarations.detail.delete")}
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

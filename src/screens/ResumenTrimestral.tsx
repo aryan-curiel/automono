@@ -72,7 +72,8 @@ export function ResumenTrimestral({ invoices, onOpenDeclaration }: ResumenTrimes
     listExpenses({
       from: priorPeriod.from,
       to: priorPeriod.to,
-      quarterKeys: kind === "quarter" ? quartersInRange(priorPeriod.from, priorPeriod.to) : undefined,
+      quarterKeys:
+        kind === "quarter" ? quartersInRange(priorPeriod.from, priorPeriod.to) : undefined,
     }).then(setPriorExpenses);
   }, [priorPeriod.from, priorPeriod.to, kind]);
 
@@ -234,10 +235,18 @@ export function ResumenTrimestral({ invoices, onOpenDeclaration }: ResumenTrimes
           <p className="text-[13px] text-ink-soft py-3">{t("declarations.empty")}</p>
         )}
         {declarations.map((d) => (
-          <button
+          <div
             key={d.id}
+            role="button"
+            tabIndex={0}
             onClick={() => onOpenDeclaration(d.id)}
-            className="w-full flex items-center justify-between py-3 border-b border-border last:border-b-0 text-left cursor-pointer hover:bg-surface-alt -mx-6 px-6"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                if (e.key === " ") e.preventDefault();
+                onOpenDeclaration(d.id);
+              }
+            }}
+            className="flex items-center justify-between py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-surface-alt -mx-6 px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <div className="flex items-center gap-3">
               <span className="font-semibold text-[13.5px]">
@@ -257,7 +266,7 @@ export function ResumenTrimestral({ invoices, onOpenDeclaration }: ResumenTrimes
                 <span className="font-mono font-medium text-ink">{formatEUR(d.expensesTotal)}</span>
               </span>
             </div>
-          </button>
+          </div>
         ))}
       </Card>
 

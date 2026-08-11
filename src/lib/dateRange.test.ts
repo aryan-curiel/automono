@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthRange, priorYearPeriod, quarterRange, yearRange } from "./dateRange";
+import { monthRange, monthsInRange, priorYearPeriod, quarterRange, yearRange } from "./dateRange";
 
 describe("dateRange", () => {
   it("computes February bounds in a leap year", () => {
@@ -16,6 +16,23 @@ describe("dateRange", () => {
 
   it("computes a full year span", () => {
     expect(yearRange(2026)).toMatchObject({ from: "2026-01-01", to: "2026-12-31" });
+  });
+});
+
+describe("monthsInRange", () => {
+  it("counts a quarter as 3 months", () => {
+    const q = quarterRange(2026, 2);
+    expect(monthsInRange(q.from, q.to)).toBe(3);
+  });
+
+  it("counts a single month as 1", () => {
+    const m = monthRange(2026, 6);
+    expect(monthsInRange(m.from, m.to)).toBe(1);
+  });
+
+  it("counts a full year as 12", () => {
+    const y = yearRange(2026);
+    expect(monthsInRange(y.from, y.to)).toBe(12);
   });
 });
 

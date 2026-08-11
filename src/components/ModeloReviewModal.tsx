@@ -5,7 +5,12 @@ import { Sheet } from "./ui/Sheet";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
 import type { Tone } from "./ui/Badge";
-import { attachDeclarationFile, detectModelo, extractModeloFields, type Modelo } from "../db/declarations";
+import {
+  attachDeclarationFile,
+  detectModelo,
+  extractModeloFields,
+  type Modelo,
+} from "../db/declarations";
 import { activeApiKey, getLlmSettings } from "../db/llmSettings";
 import { buildModeloReport, type ModeloReportRow } from "../lib/modeloReport";
 import type { DeclarationSnapshot } from "../lib/quarterlyDeclaration";
@@ -132,14 +137,18 @@ export function ModeloReviewModal({
             detectedYear: detection.year,
             detectedQuarter: detection.quarter,
           });
-          setTabs((prev) => prev.map((tab, idx) => (idx === i ? { ...tab, step: "done", report } : tab)));
+          setTabs((prev) =>
+            prev.map((tab, idx) => (idx === i ? { ...tab, step: "done", report } : tab)),
+          );
         } catch (e) {
           if (cancelled) return;
           // The backend's hard-stop for an unrecognized PDF always throws this fixed Spanish
           // string (see modelo_review.rs's detect_modelo) — anything else is a generic failure.
           const unrecognized = String(e).toLowerCase().includes("no se reconoce");
           const error = t(
-            unrecognized ? "declarations.review.errors.unrecognized" : "declarations.review.errors.generic",
+            unrecognized
+              ? "declarations.review.errors.unrecognized"
+              : "declarations.review.errors.generic",
           );
           setTabs((prev) => prev.map((tab, idx) => (idx === i ? { ...tab, error } : tab)));
         }
@@ -181,112 +190,176 @@ export function ModeloReviewModal({
   const tab = tabs[Math.min(activeIndex, tabs.length - 1)];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={t("declarations.review.title")} maxWidthClassName="max-w-2xl">
-      {tabs.length > 1 && (
-        <div className="flex gap-1.5 mb-4 flex-wrap">
-          {tabs.map((tb, i) => {
-            const tone: Tone = tb.error
-              ? "danger"
-              : tb.step !== "done"
-                ? "neutral"
-                : tb.report?.some((r) => r.status === "mismatch")
-                  ? "warning"
-                  : "success";
-            return (
-              <button
-                key={tb.path}
-                onClick={() => setActiveIndex(i)}
-                className={`flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-control cursor-pointer transition-colors duration-150
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
-                  ${i === activeIndex ? "bg-surface-alt" : "hover:bg-surface-alt"}`}
-              >
-                {tb.step !== "done" && !tb.error && (
-                  <CircleNotch size={13} className="animate-spin text-ink-soft" />
-                )}
-                <span className="max-w-[160px] truncate">{tb.fileName}</span>
-                <Badge tone={tone}>{tb.modelo ? `Modelo ${tb.modelo}` : "?"}</Badge>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-[13px] font-semibold truncate min-w-0 flex-1">{tab.fileName}</div>
-        <button
-          onClick={() => removeTab(activeIndex)}
-          className="text-ink-soft hover:text-ink cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          aria-label={t("declarations.review.removeTab")}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-1.5 mb-4">
-        {STEP_KEYS.map((key, i) => {
-          const current = stepIndexOf(tab.step);
-          const status = tab.error && i === current ? "error" : i < current ? "done" : i === current ? "active" : "pending";
-          return (
-            <div key={key} className="flex items-center gap-2 text-[13px]">
-              {status === "done" && <CheckCircle size={15} weight="fill" className="text-success" />}
-              {status === "active" && <CircleNotch size={15} className="animate-spin text-accent" />}
-              {status === "error" && <WarningCircle size={15} weight="fill" className="text-danger" />}
-              {status === "pending" && <Circle size={15} className="text-ink-soft/40" />}
-              <span className={status === "pending" ? "text-ink-soft" : ""}>
-                {t(`declarations.review.steps.${key}`)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {tab.error && <div className="text-sm text-danger mb-4">{tab.error}</div>}
-
-      {tab.report && (
-        <>
-          <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-2">
-            {t("declarations.review.reportTitle")}
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t("declarations.review.title")}
+      maxWidthClassName="max-w-3xl"
+    >
+      <div className="flex gap-5">
+        {tabs.length > 1 && (
+          <div className="flex flex-col gap-1 w-52 shrink-0 max-h-[420px] overflow-y-auto pr-4 border-r border-border">
+            {tabs.map((tb, i) => {
+              const tone: Tone = tb.error
+                ? "danger"
+                : tb.step !== "done"
+                  ? "neutral"
+                  : tb.report?.some((r) => r.status === "mismatch")
+                    ? "warning"
+                    : "success";
+              return (
+                <div key={tb.path} className="group relative">
+                  <button
+                    onClick={() => setActiveIndex(i)}
+                    className={`w-full flex flex-col gap-1 text-left pl-2.5 pr-7 py-2 rounded-control cursor-pointer transition-colors duration-150
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
+                      ${i === activeIndex ? "bg-surface-alt" : "hover:bg-surface-alt"}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {tb.step !== "done" && !tb.error && (
+                        <CircleNotch size={13} className="animate-spin text-ink-soft shrink-0" />
+                      )}
+                      {tb.error && (
+                        <WarningCircle size={13} weight="fill" className="text-danger shrink-0" />
+                      )}
+                      {tb.step === "done" && !tb.error && (
+                        <CheckCircle
+                          size={13}
+                          weight="fill"
+                          className={`shrink-0 ${tone === "warning" ? "text-warn" : "text-success"}`}
+                        />
+                      )}
+                      <span className="truncate flex-1 text-[13px] font-medium">{tb.fileName}</span>
+                    </span>
+                    <span className="pl-[21px]">
+                      <Badge tone={tone}>{tb.modelo ? `Modelo ${tb.modelo}` : "?"}</Badge>
+                    </span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeTab(i);
+                    }}
+                    className="absolute right-1.5 top-2 text-ink-soft opacity-0 group-hover:opacity-100 hover:text-ink cursor-pointer transition-opacity duration-150 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    aria-label={t("declarations.review.removeTab")}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
-          <table className="w-full text-[13px] mb-4">
-            <thead>
-              <tr className="text-left text-ink-soft">
-                <th className="font-medium pb-1.5"> </th>
-                <th className="font-medium pb-1.5 text-right">{t("declarations.review.columnCalculated")}</th>
-                <th className="font-medium pb-1.5 text-right">{t("declarations.review.columnFile")}</th>
-                <th className="font-medium pb-1.5 text-right"> </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tab.report.map((row) => (
-                <tr key={row.key} className="border-t border-border">
-                  <td className="py-1.5">{row.label}</td>
-                  <td className="py-1.5 text-right font-mono">
-                    {row.key === "period" ? formatPeriodValue(row.expected) : formatEUR(row.expected ?? 0)}
-                  </td>
-                  <td className="py-1.5 text-right font-mono">
-                    {row.key === "period"
-                      ? formatPeriodValue(row.extracted)
-                      : row.extracted !== null
-                        ? formatEUR(row.extracted)
-                        : "—"}
-                  </td>
-                  <td className="py-1.5 text-right">
-                    <Badge tone={ROW_TONE[row.status]}>{t(`declarations.review.status.${row.status}`)}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
+        )}
 
-      <div className="flex justify-end gap-2.5">
-        <Button variant="secondary" onClick={() => removeTab(activeIndex)}>
-          {t("declarations.review.cancel")}
-        </Button>
-        <Button onClick={() => handleApprove(activeIndex)} disabled={!tab.report || tab.approving}>
-          {tab.approving ? t("declarations.review.approving") : t("declarations.review.approve")}
-        </Button>
+        <div className="flex-1 min-w-0">
+          {tabs.length <= 1 && (
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[13px] font-semibold truncate min-w-0 flex-1">
+                {tab.fileName}
+              </div>
+              <button
+                onClick={() => removeTab(activeIndex)}
+                className="text-ink-soft hover:text-ink cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                aria-label={t("declarations.review.removeTab")}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5 mb-4">
+            {STEP_KEYS.map((key, i) => {
+              const current = stepIndexOf(tab.step);
+              const status =
+                tab.error && i === current
+                  ? "error"
+                  : i < current
+                    ? "done"
+                    : i === current
+                      ? "active"
+                      : "pending";
+              return (
+                <div key={key} className="flex items-center gap-2 text-[13px]">
+                  {status === "done" && (
+                    <CheckCircle size={15} weight="fill" className="text-success" />
+                  )}
+                  {status === "active" && (
+                    <CircleNotch size={15} className="animate-spin text-accent" />
+                  )}
+                  {status === "error" && (
+                    <WarningCircle size={15} weight="fill" className="text-danger" />
+                  )}
+                  {status === "pending" && <Circle size={15} className="text-ink-soft/40" />}
+                  <span className={status === "pending" ? "text-ink-soft" : ""}>
+                    {t(`declarations.review.steps.${key}`)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {tab.error && <div className="text-sm text-danger mb-4">{tab.error}</div>}
+
+          {tab.report && (
+            <>
+              <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-2">
+                {t("declarations.review.reportTitle")}
+              </div>
+              <table className="w-full text-[13px] mb-4">
+                <thead>
+                  <tr className="text-left text-ink-soft">
+                    <th className="font-medium pb-1.5"> </th>
+                    <th className="font-medium pb-1.5 text-right">
+                      {t("declarations.review.columnCalculated")}
+                    </th>
+                    <th className="font-medium pb-1.5 text-right">
+                      {t("declarations.review.columnFile")}
+                    </th>
+                    <th className="font-medium pb-1.5 text-right"> </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tab.report.map((row) => (
+                    <tr key={row.key} className="border-t border-border">
+                      <td className="py-1.5">{row.label}</td>
+                      <td className="py-1.5 text-right font-mono">
+                        {row.key === "period"
+                          ? formatPeriodValue(row.expected)
+                          : formatEUR(row.expected ?? 0)}
+                      </td>
+                      <td className="py-1.5 text-right font-mono">
+                        {row.key === "period"
+                          ? formatPeriodValue(row.extracted)
+                          : row.extracted !== null
+                            ? formatEUR(row.extracted)
+                            : "—"}
+                      </td>
+                      <td className="py-1.5 text-right">
+                        <Badge tone={ROW_TONE[row.status]}>
+                          {t(`declarations.review.status.${row.status}`)}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          <div className="flex justify-end gap-2.5">
+            <Button variant="secondary" onClick={() => removeTab(activeIndex)}>
+              {t("declarations.review.cancel")}
+            </Button>
+            <Button
+              onClick={() => handleApprove(activeIndex)}
+              disabled={!tab.report || tab.approving}
+            >
+              {tab.approving
+                ? t("declarations.review.approving")
+                : t("declarations.review.approve")}
+            </Button>
+          </div>
+        </div>
       </div>
     </Sheet>
   );

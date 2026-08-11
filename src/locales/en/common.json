@@ -451,7 +451,11 @@
       "attached": "Attached",
       "openFile": "Open PDF",
       "markCompleted": "Mark as completed",
-      "completing": "Saving…"
+      "completing": "Saving…",
+      "moreActions": "More actions",
+      "delete": "Delete declaration",
+      "confirmDelete": "This in-progress declaration will be deleted. Its included invoices and expenses are unaffected.",
+      "cancel": "Cancel"
     },
     "review": {
       "title": "Review modelo files",

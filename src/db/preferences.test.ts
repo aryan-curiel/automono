@@ -29,12 +29,16 @@ describe("preferences", () => {
       default_iva_rate: number;
       default_irpf_rate: number;
       onboarding_completed: number;
+      reta_monthly_cuota: number;
+      reta_start_date: string;
     };
     expect(row.theme).toBe("light");
     expect(row.language).toBe("es");
     expect(row.default_iva_rate).toBe(21);
     expect(row.default_irpf_rate).toBe(7);
     expect(row.onboarding_completed).toBe(0);
+    expect(row.reta_monthly_cuota).toBe(80);
+    expect(row.reta_start_date).toBe("2026-06-01");
   });
 
   it("rejects a second row via the CHECK(id = 1) constraint", () => {
@@ -54,7 +58,7 @@ describe("preferences", () => {
       .filter((f: string) => f.endsWith(".sql"))
       .sort();
     for (const file of files) {
-      if (file === "0018_preferences.sql") continue;
+      if (file >= "0018_preferences.sql") break;
       db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
     }
     db.exec("UPDATE business_profile SET name = 'Acme Consulting' WHERE id = 1");
