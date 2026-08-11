@@ -8,7 +8,7 @@ import { KpiTile } from "../components/ui/KpiTile";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector, type Kind } from "../components/PeriodSelector";
-import { listExpenses } from "../db/expenses";
+import { listExpenses, updateExpense } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { defaultQuarterPeriod, quartersInRange, type Period } from "../lib/dateRange";
 import { formatDate, formatEUR } from "../lib/format";
@@ -31,6 +31,11 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
   function retry() {
     setLoading(true);
     setLoadError(false);
+    setReloadToken((n) => n + 1);
+  }
+
+  async function toggleDeclared(expense: ExpenseRecord) {
+    await updateExpense(expense.id, { declared: !expense.declared });
     setReloadToken((n) => n + 1);
   }
 
@@ -144,7 +149,10 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <div className="text-[13px] text-ink-soft">{formatDate(e.date)}</div>
-              <div>{e.category && <Badge tone="neutral">{e.category}</Badge>}</div>
+              <div className="flex items-center gap-1.5">
+                {e.category && <Badge tone="neutral">{e.category}</Badge>}
+                {e.declared && <Badge tone="success">{t("expenses.declaredBadge")}</Badge>}
+              </div>
               <div className="font-medium text-[13.5px]">{e.description}</div>
               <div className="font-medium text-[13px] font-mono text-right">
                 {formatEUR(e.amount * (e.deductiblePct / 100))}
@@ -165,6 +173,11 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
                   </MenuTrigger>
                   <MenuContent>
                     <MenuItem onSelect={() => onOpenExpense(e.id)}>{t("common.viewDetail")}</MenuItem>
+                    <MenuItem onSelect={() => toggleDeclared(e)}>
+                      {e.declared
+                        ? t("expenses.actions.unmarkDeclared")
+                        : t("expenses.actions.markDeclared")}
+                    </MenuItem>
                   </MenuContent>
                 </Menu>
               </div>
