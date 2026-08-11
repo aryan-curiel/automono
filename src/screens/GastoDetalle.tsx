@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DotsThreeVertical } from "@phosphor-icons/react";
+import { Badge } from "../components/ui/Badge";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ErrorText } from "../components/ui/Field";
@@ -8,7 +9,13 @@ import { InfoRow } from "../components/ui/InfoRow";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { Sheet } from "../components/ui/Sheet";
 import { BackLink, PageHeader } from "../components/PageHeader";
-import { deleteExpense, deleteExpenseFiles, getExpense, openExpenseFile } from "../db/expenses";
+import {
+  deleteExpense,
+  deleteExpenseFiles,
+  getExpense,
+  openExpenseFile,
+  updateExpense,
+} from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { formatDate, formatEUR } from "../lib/format";
 
@@ -66,6 +73,13 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
     onDeleted();
   }
 
+  async function toggleDeclared() {
+    if (!expense) return;
+    await updateExpense(expense.id, { declared: !expense.declared });
+    const updated = await getExpense(expense.id);
+    if (updated) setExpense(updated);
+  }
+
   async function handleOpenFile(filePath: string | null | undefined) {
     if (!filePath) return;
     setOpenError(null);
@@ -103,7 +117,12 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
       <BackLink label={t("expenses.title")} onClick={onBack} />
 
       <PageHeader
-        title={expense.description || expense.category || formatDate(expense.date)}
+        title={
+          <span className="flex items-center gap-2">
+            {expense.description || expense.category || formatDate(expense.date)}
+            {expense.declared && <Badge tone="success">{t("expenses.declaredBadge")}</Badge>}
+          </span>
+        }
         subtitle={formatDate(expense.date)}
         actions={
           <>
@@ -118,6 +137,11 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
                 <DotsThreeVertical size={16} weight="bold" />
               </MenuTrigger>
               <MenuContent>
+                <MenuItem onSelect={toggleDeclared}>
+                  {expense.declared
+                    ? t("expenses.actions.unmarkDeclared")
+                    : t("expenses.actions.markDeclared")}
+                </MenuItem>
                 <MenuItem danger onSelect={() => setDeletePending(true)}>
                   {t("expenses.actions.delete")}
                 </MenuItem>
