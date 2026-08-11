@@ -172,7 +172,9 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
                     <DotsThreeVertical size={16} weight="bold" />
                   </MenuTrigger>
                   <MenuContent>
-                    <MenuItem onSelect={() => onOpenExpense(e.id)}>{t("common.viewDetail")}</MenuItem>
+                    <MenuItem onSelect={() => onOpenExpense(e.id)}>
+                      {t("common.viewDetail")}
+                    </MenuItem>
                     <MenuItem onSelect={() => toggleDeclared(e)}>
                       {e.declared
                         ? t("expenses.actions.unmarkDeclared")

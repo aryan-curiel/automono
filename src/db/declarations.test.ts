@@ -22,12 +22,15 @@ function freshDb() {
 
 // Mirrors deleteDeclaration's guarded DELETE — run directly against the migrated schema since
 // getDb() needs the Tauri runtime and isn't available under vitest.
-const DELETE_IN_PROGRESS_SQL = "DELETE FROM quarterly_declarations WHERE id = ? AND status = 'in_progress'";
+const DELETE_IN_PROGRESS_SQL =
+  "DELETE FROM quarterly_declarations WHERE id = ? AND status = 'in_progress'";
 
 describe("deleteDeclaration guard", () => {
   it("deletes an in-progress declaration", () => {
     const db = freshDb();
-    db.exec(`INSERT INTO quarterly_declarations (year, quarter, snapshot_json) VALUES (2026, 2, '{}')`);
+    db.exec(
+      `INSERT INTO quarterly_declarations (year, quarter, snapshot_json) VALUES (2026, 2, '{}')`,
+    );
     db.prepare(DELETE_IN_PROGRESS_SQL).run(1);
     expect(db.prepare("SELECT * FROM quarterly_declarations").all()).toHaveLength(0);
   });

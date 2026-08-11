@@ -144,7 +144,10 @@ describe("buildModeloReport", () => {
       detectedYear: 2026,
       detectedQuarter: 3,
     });
-    expect(rows.find((r) => r.key === "ivaDevengado")).toMatchObject({ extracted: null, status: "missing" });
+    expect(rows.find((r) => r.key === "ivaDevengado")).toMatchObject({
+      extracted: null,
+      status: "missing",
+    });
   });
 
   it("flags a period mismatch without blocking the rest of the report", () => {
@@ -162,6 +165,9 @@ describe("buildModeloReport", () => {
       detectedYear: null,
       detectedQuarter: null,
     });
-    expect(rows.find((r) => r.key === "period")).toMatchObject({ extracted: null, status: "mismatch" });
+    expect(rows.find((r) => r.key === "period")).toMatchObject({
+      extracted: null,
+      status: "mismatch",
+    });
   });
 });

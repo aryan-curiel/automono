@@ -123,9 +123,10 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
   // read during render.
   const [irpfAutoManaged, setIrpfAutoManaged] = useState(true);
   const irpfAmountDisplay = computedIrpfAmount(form, irpfAutoManaged);
-  const [extractionToast, setExtractionToast] = useState<{ tone: ToastTone; message: string } | null>(
-    null,
-  );
+  const [extractionToast, setExtractionToast] = useState<{
+    tone: ToastTone;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     listExpenseCategories()
