@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildDeclarationSnapshot,
-  invoicesInPeriod,
-  paidInvoicesInPeriod,
-} from "./quarterlyDeclaration";
+import { buildDeclarationSnapshot, invoicesInPeriod, paidInvoicesInPeriod } from "./quarterlyDeclaration";
 import { quarterRange } from "./dateRange";
 import type { InvoiceListItem } from "../db/invoices";
 import type { ExpenseRecord } from "../db/expenses";
@@ -46,6 +42,7 @@ function expense(overrides: Partial<ExpenseRecord>): ExpenseRecord {
     irpfAmount: null,
     receiptFilePath: null,
     declaredPeriod: null,
+    declared: false,
     ...overrides,
   };
 }

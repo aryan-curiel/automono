@@ -116,6 +116,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
+  const [declared, setDeclared] = useState(false);
   // Tracks whether irpfAmount should keep auto-recomputing from rate × amount, or has been
   // taken over by a manual/OCR-extracted value it shouldn't clobber. State, not a ref: its
   // value feeds a render-time derived value (irpfAmountDisplay below), and refs can't be
@@ -140,6 +141,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
         if (cancelled) return;
         if (expense) {
           setIrpfAutoManaged(expense.irpfAmount === null);
+          setDeclared(expense.declared);
           setForm(toFormState(expense));
         }
       })
@@ -291,6 +293,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
       irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
       receiptFilePath: form.receiptFilePath,
       declaredPeriod: form.declaredPeriod || null,
+      declared,
     };
 
     setSaving(true);

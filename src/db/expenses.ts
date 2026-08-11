@@ -16,6 +16,10 @@ export interface ExpenseRecord {
   receiptFilePath: string | null;
   /** Quarter ("YYYY-QN") to declare this expense in, if different from the quarter of `date`. */
   declaredPeriod: string | null;
+  /** True once this expense has been filed — auto-set when its quarterly declaration completes,
+   * or toggled by hand independent of any declaration. Informational only; does not restrict
+   * editing/deleting the expense. */
+  declared: boolean;
 }
 
 export type NewExpense = Omit<ExpenseRecord, "id">;
@@ -32,6 +36,7 @@ interface ExpenseRow {
   irpf_amount: number | null;
   receipt_file_path: string | null;
   declared_period: string | null;
+  declared: number;
 }
 
 function mapRow(row: ExpenseRow): ExpenseRecord {
@@ -47,6 +52,7 @@ function mapRow(row: ExpenseRow): ExpenseRecord {
     irpfAmount: row.irpf_amount,
     receiptFilePath: row.receipt_file_path,
     declaredPeriod: row.declared_period,
+    declared: !!row.declared,
   };
 }
 
@@ -101,8 +107,8 @@ export async function getExpense(id: number): Promise<ExpenseRecord | null> {
 export async function createExpense(input: NewExpense): Promise<ExpenseRecord> {
   const db = await getDb();
   const result = await db.execute(
-    `INSERT INTO expenses (date, category, description, amount, iva_amount, deductible_pct, irpf_rate, irpf_amount, receipt_file_path, declared_period)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    `INSERT INTO expenses (date, category, description, amount, iva_amount, deductible_pct, irpf_rate, irpf_amount, receipt_file_path, declared_period, declared)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       input.date,
       input.category,
@@ -114,6 +120,7 @@ export async function createExpense(input: NewExpense): Promise<ExpenseRecord> {
       input.irpfAmount,
       input.receiptFilePath,
       input.declaredPeriod,
+      input.declared ? 1 : 0,
     ],
   );
   const created = await getExpense(result.lastInsertId!);
@@ -132,6 +139,7 @@ const COLUMN_BY_KEY: Record<keyof NewExpense, string> = {
   irpfAmount: "irpf_amount",
   receiptFilePath: "receipt_file_path",
   declaredPeriod: "declared_period",
+  declared: "declared",
 };
 
 export async function updateExpense(id: number, patch: Partial<NewExpense>): Promise<void> {
