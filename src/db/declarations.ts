@@ -123,7 +123,9 @@ export async function attachDeclarationFile(
   return storedPath;
 }
 
-/** Marks a declaration completed. Throws if any of the three Modelo PDFs hasn't been attached yet. */
+/** Marks a declaration completed. Throws if any of the three Modelo PDFs hasn't been attached yet.
+ * Also flags every expense in the frozen snapshot as declared, so Gastos reflects what was
+ * actually filed regardless of any `declared_period` override used to build that snapshot. */
 export async function markDeclarationCompleted(id: number): Promise<void> {
   const declaration = await getDeclaration(id);
   if (!declaration) throw new Error("Declaration not found");
@@ -135,6 +137,11 @@ export async function markDeclarationCompleted(id: number): Promise<void> {
     "UPDATE quarterly_declarations SET status = 'completed', completed_at = datetime('now') WHERE id = $1",
     [id],
   );
+  const expenseIds = declaration.snapshot.expenses.map((e) => e.id);
+  if (expenseIds.length > 0) {
+    const placeholders = expenseIds.map((_, i) => `$${i + 1}`).join(", ");
+    await db.execute(`UPDATE expenses SET declared = 1 WHERE id IN (${placeholders})`, expenseIds);
+  }
 }
 
 /** Opens the native file picker restricted to PDFs; returns the picked absolute path, or null if cancelled. */
