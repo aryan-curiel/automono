@@ -175,6 +175,24 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0026_quarterly_declarations.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 26,
+            description: "reta_monthly_cuota",
+            sql: include_str!("../migrations/0027_reta_monthly_cuota.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 27,
+            description: "reta_start_date",
+            sql: include_str!("../migrations/0028_reta_start_date.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 28,
+            description: "expense_declared",
+            sql: include_str!("../migrations/0029_expense_declared.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
