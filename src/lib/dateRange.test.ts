@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { monthRange, monthsInRange, priorYearPeriod, quarterRange, yearRange } from "./dateRange";
+import {
+  compareQuarterKeys,
+  monthRange,
+  monthsInRange,
+  nextQuarterKey,
+  previousQuarterKey,
+  priorYearPeriod,
+  quarterMonths,
+  quarterRange,
+  yearRange,
+} from "./dateRange";
 
 describe("dateRange", () => {
   it("computes February bounds in a leap year", () => {
@@ -16,6 +26,24 @@ describe("dateRange", () => {
 
   it("computes a full year span", () => {
     expect(yearRange(2026)).toMatchObject({ from: "2026-01-01", to: "2026-12-31" });
+  });
+});
+
+describe("quarterMonths", () => {
+  it("splits a quarter into its 3 calendar months", () => {
+    expect(quarterMonths(2026, 2)).toEqual([
+      monthRange(2026, 4),
+      monthRange(2026, 5),
+      monthRange(2026, 6),
+    ]);
+  });
+
+  it("handles Q4 without rolling into the next year", () => {
+    expect(quarterMonths(2026, 4)).toEqual([
+      monthRange(2026, 10),
+      monthRange(2026, 11),
+      monthRange(2026, 12),
+    ]);
   });
 });
 
@@ -50,5 +78,27 @@ describe("priorYearPeriod", () => {
       from: "2023-02-01",
       to: "2023-02-28",
     });
+  });
+});
+
+describe("previousQuarterKey / nextQuarterKey", () => {
+  it("steps back within a year", () => {
+    expect(previousQuarterKey("2026-Q3")).toBe("2026-Q2");
+  });
+
+  it("steps back across a year boundary", () => {
+    expect(previousQuarterKey("2026-Q1")).toBe("2025-Q4");
+  });
+
+  it("is the inverse of nextQuarterKey across a year boundary", () => {
+    expect(previousQuarterKey(nextQuarterKey("2025-Q4"))).toBe("2025-Q4");
+  });
+});
+
+describe("compareQuarterKeys", () => {
+  it("orders chronologically across years", () => {
+    expect(compareQuarterKeys("2025-Q4", "2026-Q1")).toBeLessThan(0);
+    expect(compareQuarterKeys("2026-Q1", "2025-Q4")).toBeGreaterThan(0);
+    expect(compareQuarterKeys("2026-Q2", "2026-Q2")).toBe(0);
   });
 });

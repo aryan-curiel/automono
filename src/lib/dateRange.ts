@@ -37,6 +37,12 @@ export function quarterRange(year: number, quarter: 1 | 2 | 3 | 4): Period {
   };
 }
 
+/** The 3 calendar months making up a quarter, e.g. Q2 2026 -> [Apr, May, Jun 2026]. */
+export function quarterMonths(year: number, quarter: 1 | 2 | 3 | 4): Period[] {
+  const startMonth = (quarter - 1) * 3 + 1;
+  return [0, 1, 2].map((i) => monthRange(year, startMonth + i));
+}
+
 export function yearRange(year: number): Period {
   return {
     from: iso(year, 1, 1),
@@ -70,6 +76,23 @@ export function nextQuarterKey(key: string): string {
   const year = Number(yearStr);
   const quarter = Number(q);
   return quarter === 4 ? `${year + 1}-Q1` : `${year}-Q${quarter + 1}`;
+}
+
+/** The quarter key ("YYYY-QN") immediately before `key`. */
+export function previousQuarterKey(key: string): string {
+  const [yearStr, q] = key.split("-Q");
+  const year = Number(yearStr);
+  const quarter = Number(q);
+  return quarter === 1 ? `${year - 1}-Q4` : `${year}-Q${quarter - 1}`;
+}
+
+/** Orders two quarter keys chronologically: negative if `a` is earlier, positive if later. */
+export function compareQuarterKeys(a: string, b: string): number {
+  const ordinal = (key: string) => {
+    const [yearStr, q] = key.split("-Q");
+    return Number(yearStr) * 4 + Number(q);
+  };
+  return ordinal(a) - ordinal(b);
 }
 
 /** Human-readable label for a quarter key, e.g. "2026-Q3" -> "Q3 2026". */
