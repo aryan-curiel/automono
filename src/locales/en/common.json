@@ -382,27 +382,16 @@
   },
   "declarations": {
     "title": "Quarterly declarations",
-    "newButton": "New declaration",
-    "empty": "No declarations yet. Create the first one with \"New declaration\".",
-    "loading": "Loading…",
+    "startButton": "Start declaration",
     "status": {
       "in_progress": "In progress",
       "completed": "Completed"
-    },
-    "table": {
-      "invoicesLabel": "invoices",
-      "expensesLabel": "expenses"
     },
     "errors": {
       "loadFailed": "Failed to load the declaration."
     },
     "wizard": {
       "title": "New quarterly declaration",
-      "step1": {
-        "title": "Select the quarter",
-        "year": "Year",
-        "quarter": "Quarter"
-      },
       "step2": {
         "title": "Confirm the paid invoices",
         "empty": "No paid invoices in this quarter.",
@@ -486,7 +475,13 @@
   "resumenTrimestral": {
     "title": "Quarterly summary",
     "subtitle": "informational aid for Modelo 130/303",
+    "projectionSubtitle": "Projection — not declared yet",
     "exportCsv": "Export CSV",
-    "exportingCsv": "Exporting…"
+    "exportingCsv": "Exporting…",
+    "invoicesTitle": "Invoices",
+    "noInvoices": "No invoices in this quarter.",
+    "expensesTitle": "Expenses",
+    "noExpenses": "No expenses in this quarter.",
+    "allMonths": "All"
   }
 }

@@ -382,27 +382,16 @@
   },
   "declarations": {
     "title": "Declaraciones trimestrales",
-    "newButton": "Nueva declaración",
-    "empty": "Todavía no hay declaraciones. Crea la primera con \"Nueva declaración\".",
-    "loading": "Cargando…",
+    "startButton": "Iniciar declaración",
     "status": {
       "in_progress": "En curso",
       "completed": "Completada"
-    },
-    "table": {
-      "invoicesLabel": "facturas",
-      "expensesLabel": "gastos"
     },
     "errors": {
       "loadFailed": "No se pudo cargar la declaración."
     },
     "wizard": {
       "title": "Nueva declaración trimestral",
-      "step1": {
-        "title": "Selecciona el trimestre",
-        "year": "Año",
-        "quarter": "Trimestre"
-      },
       "step2": {
         "title": "Confirma las facturas cobradas",
         "empty": "No hay facturas cobradas en este trimestre.",
@@ -486,7 +475,13 @@
   "resumenTrimestral": {
     "title": "Resumen trimestral",
     "subtitle": "ayuda informativa para Modelo 130/303",
+    "projectionSubtitle": "Proyección — aún sin declarar",
     "exportCsv": "Exportar CSV",
-    "exportingCsv": "Exportando…"
+    "exportingCsv": "Exportando…",
+    "invoicesTitle": "Facturas",
+    "noInvoices": "No hay facturas en este trimestre.",
+    "expensesTitle": "Gastos",
+    "noExpenses": "No hay gastos en este trimestre.",
+    "allMonths": "Todos"
   }
 }
