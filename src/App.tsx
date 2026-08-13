@@ -27,7 +27,6 @@ import { Gastos } from "./screens/Gastos";
 import { GastoDetalle } from "./screens/GastoDetalle";
 import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
-import { DeclaracionDetalle } from "./screens/DeclaracionDetalle";
 import { Ajustes } from "./screens/Ajustes";
 import { Onboarding } from "./screens/Onboarding";
 import {
@@ -60,7 +59,6 @@ export default function App() {
   const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
   const [newContractClientId, setNewContractClientId] = useState<number | undefined>(undefined);
   const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
-  const [selectedDeclarationId, setSelectedDeclarationId] = useState<number | null>(null);
   const [pendingDropPath, setPendingDropPath] = useState<string | null>(null);
   const [dropToken, setDropToken] = useState(0);
   const [declarationDropPaths, setDeclarationDropPaths] = useState<string[] | null>(null);
@@ -116,7 +114,7 @@ export default function App() {
     let cancelled = false;
     getCurrentWebview()
       .onDragDropEvent((event) => {
-        const onDeclaration = screenRef.current === "declaracion-detalle";
+        const onDeclaration = screenRef.current === "resumen-trimestral";
         if (event.payload.type === "enter") {
           const path = event.payload.paths[0];
           const supported = onDeclaration
@@ -548,18 +546,6 @@ export default function App() {
           {screen === "resumen-trimestral" && (
             <ResumenTrimestral
               invoices={invoices}
-              onOpenDeclaration={(id) => {
-                setSelectedDeclarationId(id);
-                setScreen("declaracion-detalle");
-              }}
-            />
-          )}
-
-          {screen === "declaracion-detalle" && selectedDeclarationId !== null && (
-            <DeclaracionDetalle
-              declarationId={selectedDeclarationId}
-              onBack={() => setScreen("resumen-trimestral")}
-              onDeleted={() => setScreen("resumen-trimestral")}
               dropPaths={declarationDropPaths}
               dropToken={declarationDropToken}
             />

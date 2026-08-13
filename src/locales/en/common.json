@@ -482,6 +482,9 @@
     "noInvoices": "No invoices in this quarter.",
     "expensesTitle": "Expenses",
     "noExpenses": "No expenses in this quarter.",
-    "allMonths": "All"
+    "allMonths": "All",
+    "pagePrev": "Previous page",
+    "pageNext": "Next page",
+    "pageIndicator": "{{page}} of {{count}}"
   }
 }

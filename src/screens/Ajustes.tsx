@@ -38,6 +38,7 @@ import {
 } from "../db/backup";
 import type { BackupSettingsRecord, BackupEntry } from "../db/backup";
 import { getLlmSettings, updateLlmSettings } from "../db/llmSettings";
+import { getPreferences, updatePreferences } from "../db/preferences";
 import type { LlmProvider, LlmSettingsRecord } from "../db/llmSettings";
 
 const EMPTY_LLM_SETTINGS: LlmSettingsRecord = {
@@ -93,6 +94,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [dbStatus, setDbStatus] = useState(t("settings.dbChecking"));
   const [vatNumberEdited, setVatNumberEdited] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [retaStartDate, setRetaStartDate] = useState("");
 
   const [backupSettings, setBackupSettings] = useState<BackupSettingsRecord | null>(null);
   const [backupRunning, setBackupRunning] = useState(false);
@@ -206,6 +208,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+    getPreferences().then((prefs) => {
+      if (!cancelled) setRetaStartDate(prefs.retaStartDate);
+    });
     return () => {
       cancelled = true;
     };
@@ -266,6 +271,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     setSaving(true);
     try {
       await updateBusinessProfile(payload);
+      await updatePreferences({ retaStartDate });
       setForm(payload);
       setSaved(true);
     } catch {
@@ -498,6 +504,13 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
               </FormRow>
               <FormRow label="Dirección fiscal">
                 <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />
+              </FormRow>
+              <FormRow label="Fecha de alta como autónomo">
+                <TextInput
+                  type="date"
+                  value={retaStartDate}
+                  onChange={(e) => setRetaStartDate(e.target.value)}
+                />
               </FormRow>
               <FormRow label="Logo">
                 <div className="flex items-center gap-2.5">

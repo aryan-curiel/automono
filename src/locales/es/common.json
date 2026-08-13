@@ -482,6 +482,9 @@
     "noInvoices": "No hay facturas en este trimestre.",
     "expensesTitle": "Gastos",
     "noExpenses": "No hay gastos en este trimestre.",
-    "allMonths": "Todos"
+    "allMonths": "Todos",
+    "pagePrev": "Página anterior",
+    "pageNext": "Página siguiente",
+    "pageIndicator": "{{page}} de {{count}}"
   }
 }

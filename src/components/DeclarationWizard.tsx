@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CalendarBlank, Receipt, Wallet, ClipboardText } from "@phosphor-icons/react";
+import { Receipt, Wallet, ClipboardText } from "@phosphor-icons/react";
 import { Sheet } from "./ui/Sheet";
 import { Button } from "./ui/Button";
-import { FormRow } from "./ui/FormRow";
-import { Select } from "./ui/Field";
 import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { createDeclaration } from "../db/declarations";
@@ -15,10 +13,10 @@ import { formatEUR, formatDate } from "../lib/format";
 import type { InvoiceListItem } from "../db/invoices";
 import { EXIT_SPRING } from "../lib/motion";
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 type Quarter = 1 | 2 | 3 | 4;
 
-const STEP_ICON = { 1: CalendarBlank, 2: Receipt, 3: Wallet, 4: ClipboardText };
+const STEP_ICON = { 1: Receipt, 2: Wallet, 3: ClipboardText };
 
 type StepVariantCustom = { direction: number; reduceMotion: boolean };
 
@@ -32,15 +30,12 @@ const stepVariants = {
   }),
 };
 
-const currentYear = new Date().getFullYear();
-const YEAR_OPTIONS = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3];
-
 interface DeclarationWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoices: InvoiceListItem[];
-  initialYear: number;
-  initialQuarter: Quarter;
+  year: number;
+  quarter: Quarter;
   onCreated: () => void;
 }
 
@@ -48,16 +43,14 @@ export function DeclarationWizard({
   open,
   onOpenChange,
   invoices,
-  initialYear,
-  initialQuarter,
+  year,
+  quarter,
   onCreated,
 }: DeclarationWizardProps) {
   const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const [step, setStep] = useState<Step>(1);
   const [direction, setDirection] = useState(1);
-  const [year, setYear] = useState(initialYear);
-  const [quarter, setQuarter] = useState<Quarter>(initialQuarter);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [excludedExpenseIds, setExcludedExpenseIds] = useState<Set<number>>(new Set());
   const [creating, setCreating] = useState(false);
@@ -70,8 +63,6 @@ export function DeclarationWizard({
     setWasOpen(true);
     setStep(1);
     setDirection(1);
-    setYear(initialYear);
-    setQuarter(initialQuarter);
     setExcludedExpenseIds(new Set());
     setCreateError(null);
   } else if (!open && wasOpen) {
@@ -140,7 +131,7 @@ export function DeclarationWizard({
         <motion.div
           className="h-full rounded-pill bg-accent"
           initial={false}
-          animate={{ width: `${(step / 4) * 100}%` }}
+          animate={{ width: `${(step / 3) * 100}%` }}
           transition={progressTransition}
         />
       </div>
@@ -158,43 +149,13 @@ export function DeclarationWizard({
           <div className="flex items-center gap-2 mb-3.5">
             <StepIcon size={18} weight="bold" className="text-accent" />
             <div className="font-bold text-sm">
-              {step === 1 && t("declarations.wizard.step1.title")}
-              {step === 2 && t("declarations.wizard.step2.title")}
-              {step === 3 && t("declarations.wizard.step3.title")}
-              {step === 4 && t("declarations.wizard.step4.title")}
+              {step === 1 && t("declarations.wizard.step2.title")}
+              {step === 2 && t("declarations.wizard.step3.title")}
+              {step === 3 && t("declarations.wizard.step4.title")}
             </div>
           </div>
 
           {step === 1 && (
-            <>
-              <FormRow label={t("declarations.wizard.step1.year")}>
-                <Select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-                  {YEAR_OPTIONS.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </Select>
-              </FormRow>
-              <FormRow label={t("declarations.wizard.step1.quarter")}>
-                <Select
-                  value={quarter}
-                  onChange={(e) => setQuarter(Number(e.target.value) as Quarter)}
-                >
-                  {([1, 2, 3, 4] as Quarter[]).map((q) => (
-                    <option key={q} value={q}>
-                      Q{q}
-                    </option>
-                  ))}
-                </Select>
-              </FormRow>
-              <div className="flex justify-end mt-5">
-                <Button onClick={() => goTo(2)}>{t("declarations.wizard.actions.continue")}</Button>
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
             <>
               <div className="max-h-80 overflow-y-auto">
                 {paidInvoices.length === 0 && (
@@ -218,16 +179,13 @@ export function DeclarationWizard({
                 <span>{t("declarations.wizard.step2.total")}</span>
                 <span className="font-mono">{formatEUR(snapshot.totals.invoicedBase)}</span>
               </div>
-              <div className="flex justify-between mt-5">
-                <Button variant="secondary" onClick={() => goTo(1)}>
-                  {t("declarations.wizard.actions.back")}
-                </Button>
-                <Button onClick={() => goTo(3)}>{t("declarations.wizard.actions.continue")}</Button>
+              <div className="flex justify-end mt-5">
+                <Button onClick={() => goTo(2)}>{t("declarations.wizard.actions.continue")}</Button>
               </div>
             </>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <>
               <div className="max-h-80 overflow-y-auto">
                 {expenses.length === 0 && (
@@ -254,15 +212,15 @@ export function DeclarationWizard({
                 ))}
               </div>
               <div className="flex justify-between mt-5">
-                <Button variant="secondary" onClick={() => goTo(2)}>
+                <Button variant="secondary" onClick={() => goTo(1)}>
                   {t("declarations.wizard.actions.back")}
                 </Button>
-                <Button onClick={() => goTo(4)}>{t("declarations.wizard.actions.continue")}</Button>
+                <Button onClick={() => goTo(3)}>{t("declarations.wizard.actions.continue")}</Button>
               </div>
             </>
           )}
 
-          {step === 4 && (
+          {step === 3 && (
             <>
               <div className="text-[13px] space-y-2">
                 <div className="flex justify-between">
@@ -290,7 +248,7 @@ export function DeclarationWizard({
               </div>
               {createError && <p className="text-danger text-xs mt-3">{createError}</p>}
               <div className="flex justify-between mt-5">
-                <Button variant="secondary" onClick={() => goTo(3)}>
+                <Button variant="secondary" onClick={() => goTo(2)}>
                   {t("declarations.wizard.actions.back")}
                 </Button>
                 <Button onClick={handleCreate} disabled={creating}>

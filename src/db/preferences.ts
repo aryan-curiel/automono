@@ -6,6 +6,8 @@ export interface PreferencesRecord {
   defaultIvaRate: number;
   defaultIrpfRate: number;
   onboardingCompleted: boolean;
+  /** Date self-employment (RETA registration) began, ISO "YYYY-MM-DD". */
+  retaStartDate: string;
 }
 
 interface PreferencesRow {
@@ -14,6 +16,7 @@ interface PreferencesRow {
   default_iva_rate: number;
   default_irpf_rate: number;
   onboarding_completed: number;
+  reta_start_date: string;
 }
 
 function mapRow(row: PreferencesRow): PreferencesRecord {
@@ -23,13 +26,14 @@ function mapRow(row: PreferencesRow): PreferencesRecord {
     defaultIvaRate: row.default_iva_rate,
     defaultIrpfRate: row.default_irpf_rate,
     onboardingCompleted: row.onboarding_completed === 1,
+    retaStartDate: row.reta_start_date,
   };
 }
 
 export async function getPreferences(): Promise<PreferencesRecord> {
   const db = await getDb();
   const rows = await db.select<PreferencesRow[]>(
-    "SELECT theme, language, default_iva_rate, default_irpf_rate, onboarding_completed FROM preferences WHERE id = 1",
+    "SELECT theme, language, default_iva_rate, default_irpf_rate, onboarding_completed, reta_start_date FROM preferences WHERE id = 1",
   );
   return mapRow(rows[0]);
 }
@@ -40,7 +44,7 @@ export async function updatePreferences(patch: Partial<PreferencesRecord>): Prom
   const db = await getDb();
   await db.execute(
     `UPDATE preferences
-     SET theme = $1, language = $2, default_iva_rate = $3, default_irpf_rate = $4, onboarding_completed = $5
+     SET theme = $1, language = $2, default_iva_rate = $3, default_irpf_rate = $4, onboarding_completed = $5, reta_start_date = $6
      WHERE id = 1`,
     [
       next.theme,
@@ -48,6 +52,7 @@ export async function updatePreferences(patch: Partial<PreferencesRecord>): Prom
       next.defaultIvaRate,
       next.defaultIrpfRate,
       next.onboardingCompleted ? 1 : 0,
+      next.retaStartDate,
     ],
   );
 }
