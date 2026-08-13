@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendUp, Clock, Wallet, Scales, Lock } from "@phosphor-icons/react";
+import { TrendUp, Clock, Wallet, Scales } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -25,6 +25,7 @@ import type { Period } from "../lib/dateRange";
 import { expenseByCategory, revenueByClient } from "../lib/analytics";
 import { QuarterBarChart } from "../components/charts/QuarterBarChart";
 import { StackedQuarterBarChart } from "../components/charts/StackedQuarterBarChart";
+import { QuarterTrendChart } from "../components/charts/QuarterTrendChart";
 import { nextTaxDeadlines } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
 import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
@@ -171,20 +172,26 @@ export function Dashboard({
     }
   }
 
-  const maxTrendValue = Math.max(
-    1,
-    ...QUARTER_KEYS.flatMap((key) => [
-      invoicedByQuarter.get(key) ?? 0,
-      expensesByQuarter.get(key) ?? 0,
-    ]),
-  );
-
   const currentDeclaration = declarations.find(
     (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
   );
   const statusByKey = new Map<string, DeclarationStatus>(
     declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
   );
+
+  const trendData = QUARTER_KEYS.map((key) => {
+    const invoiced = invoicedByQuarter.get(key) ?? 0;
+    const expenses = expensesByQuarter.get(key) ?? 0;
+    return {
+      key,
+      label: quarterKeyLabel(key),
+      invoiced,
+      expenses,
+      net: invoiced - expenses,
+      status: statusByKey.get(key) ?? ("none" as const),
+      locked: altaKey !== null && compareQuarterKeys(key, altaKey) < 0,
+    };
+  });
 
   const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
 
@@ -460,64 +467,14 @@ export function Dashboard({
       <div className="mb-4">
         <Card className="p-6">
           <div className="font-bold text-sm mb-4">{t("dashboard.trend.title")}</div>
-          {QUARTER_KEYS.map((key) => {
-            const invoiced = invoicedByQuarter.get(key) ?? 0;
-            const expenses = expensesByQuarter.get(key) ?? 0;
-            const status = statusByKey.get(key);
-            const locked = altaKey !== null && compareQuarterKeys(key, altaKey) < 0;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onNavigateToQuarter(key)}
-                disabled={locked}
-                className="w-full text-left px-2 -mx-2 py-2 border-b border-border last:border-b-0
-                         rounded-control cursor-pointer hover:bg-surface-alt
-                         transition-colors ease-[var(--ease-out)]
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
-                         disabled:cursor-default disabled:hover:bg-transparent"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-medium mb-1.5">
-                  {locked ? (
-                    <Lock size={10} weight="bold" className="text-ink-soft shrink-0" />
-                  ) : (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        status === "completed"
-                          ? "bg-success"
-                          : status === "in_progress"
-                            ? "bg-info"
-                            : "bg-ink-soft/40"
-                      }`}
-                    />
-                  )}
-                  {quarterKeyLabel(key)}
-                </div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-accent"
-                      style={{ width: `${(invoiced / maxTrendValue) * 100}%` }}
-                    />
-                  </div>
-                  <span className="font-mono text-[11px] w-20 text-right shrink-0">
-                    {formatEUR(invoiced)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-warn"
-                      style={{ width: `${(expenses / maxTrendValue) * 100}%` }}
-                    />
-                  </div>
-                  <span className="font-mono text-[11px] w-20 text-right shrink-0">
-                    {formatEUR(expenses)}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+          <QuarterTrendChart
+            data={trendData}
+            invoicedLabel={t("dashboard.kpis.invoicedQuarter")}
+            expensesLabel={t("dashboard.kpis.expensesQuarter")}
+            netLabel={t("dashboard.kpis.netQuarter")}
+            formatValue={formatEUR}
+            onSelectQuarter={onNavigateToQuarter}
+          />
         </Card>
       </div>
 
