@@ -265,6 +265,41 @@ export function Dashboard({
     }),
   );
 
+  const clientInvoiceCountThisYear = new Map<number, number>();
+  for (const inv of invoicesThisYear) {
+    if (inv.status === "draft") continue;
+    clientInvoiceCountThisYear.set(
+      inv.clientId,
+      (clientInvoiceCountThisYear.get(inv.clientId) ?? 0) + 1,
+    );
+  }
+  const revenueByClientThisYear = revenueByClient(invoicesThisYear);
+  const totalRevenueThisYear = revenueByClientThisYear.reduce((s, c) => s + c.total, 0);
+  const repeatRevenueThisYear = revenueByClientThisYear
+    .filter((c) => (clientInvoiceCountThisYear.get(c.clientId) ?? 0) >= 2)
+    .reduce((s, c) => s + c.total, 0);
+  const topClientShare =
+    totalRevenueThisYear > 0 ? (topClients[0]?.total ?? 0) / totalRevenueThisYear : 0;
+  const repeatClientShare = totalRevenueThisYear > 0 ? repeatRevenueThisYear / totalRevenueThisYear : 0;
+
+  const topExpenseCategory = expenseByCategory(recentExpenses)[0]?.category;
+  const categoryTrendByQuarter = new Map(
+    QUARTER_KEYS.map((key) => {
+      const total = recentExpenses
+        .filter(
+          (e) =>
+            expenseQuarterKey(e) === key &&
+            (e.category?.trim() || "Sin categoría") === topExpenseCategory,
+        )
+        .reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
+      return [key, total] as const;
+    }),
+  );
+  const maxCategoryTrendValue = Math.max(
+    1,
+    ...QUARTER_KEYS.map((key) => categoryTrendByQuarter.get(key) ?? 0),
+  );
+
   const recurring = recurringInvoiceCandidates(invoices, todayIso);
   const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
   const maxCategoryExpense = Math.max(1, ...topCategories.map((c) => c.total));
@@ -781,6 +816,83 @@ export function Dashboard({
               {t("dashboard.analytics.paidVsOutstanding.pending")}
             </span>
           </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mt-4">
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">{t("dashboard.analytics.composition.title")}</div>
+          {totalRevenueThisYear === 0 ? (
+            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
+          ) : (
+            <>
+              <div className="py-2 border-b border-border">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <span className="font-medium text-[13.5px] truncate min-w-0">
+                    {t("dashboard.analytics.composition.topClient", {
+                      client: topClients[0]?.clientName ?? "",
+                    })}
+                  </span>
+                  <span className="font-semibold text-[13px] font-mono shrink-0">
+                    {Math.round(topClientShare * 100)}%
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${topClientShare * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div className="py-2">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <span className="font-medium text-[13.5px]">
+                    {t("dashboard.analytics.composition.repeatClients")}
+                  </span>
+                  <span className="font-semibold text-[13px] font-mono shrink-0">
+                    {Math.round(repeatClientShare * 100)}%
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${repeatClientShare * 100}%` }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">
+            {topExpenseCategory
+              ? t("dashboard.analytics.topCategoryTrend.title", { category: topExpenseCategory })
+              : t("dashboard.analytics.topCategoryTrend.titleEmpty")}
+          </div>
+          {!topExpenseCategory ? (
+            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
+          ) : (
+            QUARTER_KEYS.map((key) => {
+              const amount = categoryTrendByQuarter.get(key) ?? 0;
+              return (
+                <div key={key} className="py-2 border-b border-border last:border-b-0">
+                  <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-warn"
+                        style={{ width: `${(amount / maxCategoryTrendValue) * 100}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-[11px] w-20 text-right shrink-0">
+                      {formatEUR(amount)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </Card>
       </div>
     </div>
