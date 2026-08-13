@@ -105,8 +105,8 @@
     "kpis": {
       "invoicedQuarter": "Invoiced (quarter)",
       "pendingCollection": "Pending collection",
-      "activeClients": "Active clients",
-      "expensesQuarter": "Expenses (quarter)"
+      "expensesQuarter": "Expenses (quarter)",
+      "netQuarter": "Net (quarter)"
     },
     "declarationStatus": {
       "notStarted": "Not started",
@@ -148,13 +148,6 @@
     },
     "trend": {
       "title": "Invoiced vs. expenses"
-    },
-    "comparison": {
-      "title": "Comparison",
-      "invoiced": "Invoiced",
-      "expenses": "Expenses",
-      "net": "Net",
-      "subtitle": "vs. previous quarter"
     },
     "analytics": {
       "title": "Analytics",

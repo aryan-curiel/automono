@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendUp, TrendDown, Clock, UsersThree, Wallet, Lock } from "@phosphor-icons/react";
+import { TrendUp, Clock, Wallet, Scales, Lock } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { KpiTile } from "../components/ui/KpiTile";
+import type { KpiDelta } from "../components/ui/KpiTile";
 import { PageHeader } from "../components/PageHeader";
-import { listClients } from "../db/clients";
 import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { getPreferences } from "../db/preferences";
@@ -90,17 +90,12 @@ export function Dashboard({
   onDuplicateInvoice,
 }: DashboardProps) {
   const { t } = useTranslation();
-  const [clientCount, setClientCount] = useState(0);
   const [recentExpenses, setRecentExpenses] = useState<ExpenseRecord[]>([]);
   const [generatingFor, setGeneratingFor] = useState<number | null>(null);
   const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
   const [currentDeclarationDetail, setCurrentDeclarationDetail] =
     useState<DeclarationDetail | null>(null);
   const [altaKey, setAltaKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    listClients().then((clients) => setClientCount(clients.length));
-  }, []);
 
   useEffect(() => {
     getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
@@ -192,22 +187,6 @@ export function Dashboard({
   );
 
   const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
-  const currInvoiced = invoicedByQuarter.get(CURRENT_KEY) ?? 0;
-  const currExpenses = expensesByQuarter.get(CURRENT_KEY) ?? 0;
-  const prevInvoiced = invoicedByQuarter.get(prevQuarterKey) ?? 0;
-  const prevExpenses = expensesByQuarter.get(prevQuarterKey) ?? 0;
-  function comparisonRow(label: string, current: number, prior: number) {
-    return { label, value: current, delta: current - prior };
-  }
-  const comparison = [
-    comparisonRow(t("dashboard.comparison.invoiced"), currInvoiced, prevInvoiced),
-    comparisonRow(t("dashboard.comparison.expenses"), currExpenses, prevExpenses),
-    comparisonRow(
-      t("dashboard.comparison.net"),
-      currInvoiced - currExpenses,
-      prevInvoiced - prevExpenses,
-    ),
-  ];
 
   const ivaInvoicedByQuarter = new Map(
     QUARTER_KEYS.map((key) => {
@@ -328,6 +307,33 @@ export function Dashboard({
   const pendiente = invoices
     .filter((inv) => inv.status === "issued")
     .reduce((s, inv) => s + inv.total, 0);
+  const netoTrimestre = totalFacturado - expensesThisQuarter;
+
+  /** Quarter-over-quarter change for a KPI tile. `invert` flips which direction reads
+   * as good news — an expense going up is unfavorable even though the number rose. */
+  function kpiDelta(amount: number, invert = false): KpiDelta | undefined {
+    if (amount === 0) return undefined;
+    const goingUp = amount >= 0;
+    const favorable = invert ? !goingUp : goingUp;
+    return {
+      formatted: `${goingUp ? "+" : "-"}${formatEUR(Math.abs(amount))}`,
+      direction: goingUp ? "up" : "down",
+      tone: favorable ? "success" : "danger",
+    };
+  }
+
+  const facturadoDelta = kpiDelta(
+    (grossInvoicedByQuarter.get(CURRENT_KEY) ?? 0) - (grossInvoicedByQuarter.get(prevQuarterKey) ?? 0),
+  );
+  const gastosDelta = kpiDelta(
+    (expensesByQuarter.get(CURRENT_KEY) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0),
+    true,
+  );
+  const netoDelta = kpiDelta(
+    (grossInvoicedByQuarter.get(CURRENT_KEY) ?? 0) -
+      (expensesByQuarter.get(CURRENT_KEY) ?? 0) -
+      ((grossInvoicedByQuarter.get(prevQuarterKey) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0)),
+  );
 
   const kpis = [
     {
@@ -335,24 +341,27 @@ export function Dashboard({
       value: formatEUR(totalFacturado),
       icon: TrendUp,
       tone: "neutral" as const,
-    },
-    {
-      label: t("dashboard.kpis.pendingCollection"),
-      value: formatEUR(pendiente),
-      icon: Clock,
-      tone: "warn" as const,
-    },
-    {
-      label: t("dashboard.kpis.activeClients"),
-      value: String(clientCount),
-      icon: UsersThree,
-      tone: "neutral" as const,
+      delta: facturadoDelta,
     },
     {
       label: t("dashboard.kpis.expensesQuarter"),
       value: formatEUR(expensesThisQuarter),
       icon: Wallet,
       tone: "neutral" as const,
+      delta: gastosDelta,
+    },
+    {
+      label: t("dashboard.kpis.netQuarter"),
+      value: formatEUR(netoTrimestre),
+      icon: Scales,
+      tone: "neutral" as const,
+      delta: netoDelta,
+    },
+    {
+      label: t("dashboard.kpis.pendingCollection"),
+      value: formatEUR(pendiente),
+      icon: Clock,
+      tone: "warn" as const,
     },
   ];
 
@@ -443,44 +452,12 @@ export function Dashboard({
             value={kpi.value}
             icon={kpi.icon}
             tone={kpi.tone}
+            delta={kpi.delta}
           />
         ))}
       </div>
 
-      <div className="grid grid-cols-[1fr_1.4fr] gap-4 mb-4">
-        <Card className="p-6">
-          <div className="font-bold text-sm mb-4">{t("dashboard.comparison.title")}</div>
-          {comparison.map((row) => (
-            <div
-              key={row.label}
-              className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
-            >
-              <span className="font-medium text-[13.5px]">{row.label}</span>
-              <span className="flex items-center gap-2.5">
-                {row.delta !== 0 && (
-                  <span
-                    className={`flex items-center gap-1 text-xs font-medium ${
-                      row.delta >= 0 ? "text-success" : "text-danger"
-                    }`}
-                  >
-                    {row.delta >= 0 ? (
-                      <TrendUp size={12} weight="bold" />
-                    ) : (
-                      <TrendDown size={12} weight="bold" />
-                    )}
-                    {row.delta >= 0 ? "+" : "-"}
-                    {formatEUR(Math.abs(row.delta))}
-                  </span>
-                )}
-                <span className="font-semibold text-[13.5px] font-mono w-[90px] text-right">
-                  {formatEUR(row.value)}
-                </span>
-              </span>
-            </div>
-          ))}
-          <div className="text-[11px] text-ink-soft mt-3">{t("dashboard.comparison.subtitle")}</div>
-        </Card>
-
+      <div className="mb-4">
         <Card className="p-6">
           <div className="font-bold text-sm mb-4">{t("dashboard.trend.title")}</div>
           {QUARTER_KEYS.map((key) => {

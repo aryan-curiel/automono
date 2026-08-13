@@ -105,8 +105,8 @@
     "kpis": {
       "invoicedQuarter": "Facturado (trimestre)",
       "pendingCollection": "Pendiente de cobro",
-      "activeClients": "Clientes activos",
-      "expensesQuarter": "Gastos (trimestre)"
+      "expensesQuarter": "Gastos (trimestre)",
+      "netQuarter": "Neto (trimestre)"
     },
     "declarationStatus": {
       "notStarted": "Sin empezar",
@@ -148,13 +148,6 @@
     },
     "trend": {
       "title": "Facturado vs. gastos"
-    },
-    "comparison": {
-      "title": "Comparativa",
-      "invoiced": "Facturado",
-      "expenses": "Gastos",
-      "net": "Neto",
-      "subtitle": "vs. trimestre anterior"
     },
     "analytics": {
       "title": "Análisis",
