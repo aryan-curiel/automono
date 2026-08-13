@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextTaxDeadlines } from "./taxCalendar";
+import { nextTaxDeadlines, deadlineQuarterKey } from "./taxCalendar";
 
 describe("nextTaxDeadlines", () => {
   it("returns the next N deadlines in chronological order", () => {
@@ -22,5 +22,23 @@ describe("nextTaxDeadlines", () => {
   it("includes a deadline that falls exactly today (still actionable)", () => {
     const deadlines = nextTaxDeadlines("2026-10-20", 1);
     expect(deadlines[0].dueDate).toBe("2026-10-20");
+  });
+});
+
+describe("deadlineQuarterKey", () => {
+  it("maps a Q1 deadline (month 4) to the same year's Q1", () => {
+    expect(deadlineQuarterKey("2026-04-20")).toBe("2026-Q1");
+  });
+
+  it("maps a Q2 deadline (month 7) to the same year's Q2", () => {
+    expect(deadlineQuarterKey("2026-07-20")).toBe("2026-Q2");
+  });
+
+  it("maps a Q3 deadline (month 10) to the same year's Q3", () => {
+    expect(deadlineQuarterKey("2026-10-20")).toBe("2026-Q3");
+  });
+
+  it("rolls a January deadline back to Q4 of the PREVIOUS year", () => {
+    expect(deadlineQuarterKey("2026-01-20")).toBe("2025-Q4");
   });
 });

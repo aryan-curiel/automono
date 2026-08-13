@@ -111,8 +111,7 @@
     "declarationStatus": {
       "notStarted": "Sin empezar",
       "goToSummary": "Ir a Resumen trimestral",
-      "summary": "Facturado {{invoiced}} · Gastos {{expenses}}",
-      "nextDeadline": "Próximo vencimiento: {{date}}",
+      "nextDeadline": "Próximo vencimiento: {{label}} · {{date}}",
       "missing": "Falta"
     },
     "recurring": {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendUp, Clock, UsersThree, Wallet, CalendarCheck } from "@phosphor-icons/react";
+import { TrendUp, Clock, UsersThree, Wallet, CalendarCheck, Lock } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -9,19 +9,23 @@ import { PageHeader } from "../components/PageHeader";
 import { listClients } from "../db/clients";
 import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
+import { getPreferences } from "../db/preferences";
 import { invoiceNumberLabel } from "../lib/invoice";
 import { invoiceStatusMeta } from "../lib/status";
 import { formatDate, formatEUR } from "../lib/format";
 import {
+  compareQuarterKeys,
   defaultQuarterPeriod,
   previousQuarterKey,
   quarterKeyLabel,
   quarterKeyOf,
   quarterRange,
 } from "../lib/dateRange";
+import type { Period } from "../lib/dateRange";
 import { agingReport, expenseByCategory, revenueByClient } from "../lib/analytics";
-import { nextTaxDeadlines } from "../lib/taxCalendar";
+import { nextTaxDeadlines, deadlineQuarterKey } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
+import { invoicesInPeriod } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
 import { listDeclarations, getDeclaration } from "../db/declarations";
 import type {
@@ -32,14 +36,14 @@ import type {
 } from "../db/declarations";
 import type { Screen } from "../types";
 
-const RECENT_QUARTERS = 6;
+const RECENT_QUARTERS = 4;
 const CURRENT_KEY = quarterKeyOf(defaultQuarterPeriod().from);
 const [CURRENT_YEAR_STR, CURRENT_QUARTER_STR] = CURRENT_KEY.split("-Q");
 const CURRENT_YEAR = Number(CURRENT_YEAR_STR);
 const CURRENT_QUARTER = Number(CURRENT_QUARTER_STR);
 
 /** The [from, to] date range of a "YYYY-QN" quarter key. */
-function quarterKeyRange(key: string): { from: string; to: string } {
+function quarterKeyRange(key: string): Period {
   const [yearStr, q] = key.split("-Q");
   return quarterRange(Number(yearStr), Number(q) as 1 | 2 | 3 | 4);
 }
@@ -61,17 +65,6 @@ function expenseQuarterKey(expense: ExpenseRecord): string {
   return expense.declaredPeriod ?? quarterKeyOf(expense.date);
 }
 
-/** Recovers the "YYYY-QN" quarter a 130/303 deadline reports on, from its due date (the 20th
- * of the month after that quarter ends — see `nextTaxDeadlines` in `lib/taxCalendar.ts`). */
-function deadlineQuarterKey(dueDate: string): string {
-  const [yearStr, monthStr] = dueDate.split("-");
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  if (month === 1) return `${year - 1}-Q4`;
-  const quarter = (month - 4) / 3 + 1;
-  return `${year}-Q${quarter}`;
-}
-
 const MODELOS: Modelo[] = ["303", "130", "111"];
 const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "modelo111Path"> = {
   "303": "modelo303Path",
@@ -87,15 +80,19 @@ interface DashboardProps {
   onDuplicateInvoice: (id: number) => Promise<void>;
 }
 
-/** A fixed, non-paginated 6-quarter status strip — unlike `QuarterTimeline`, there's no
- * focus/page window here, just the same quarters `Dashboard` already computed. */
+/** A fixed, non-paginated quarter status strip — unlike `QuarterTimeline`, there's no
+ * focus/page window here, just the same quarters `Dashboard` already computed. Quarters
+ * before `altaKey` (RETA registration) are locked, mirroring `QuarterTimeline`'s own guard,
+ * since navigating there would otherwise bypass it via `initialQuarterKey`. */
 function DashboardQuarterStrip({
   quarterKeys,
   declarations,
+  altaKey,
   onSelect,
 }: {
   quarterKeys: string[];
   declarations: DeclarationListItem[];
+  altaKey: string | null;
   onSelect: (key: string) => void;
 }) {
   const statusByKey = new Map<string, DeclarationStatus>(
@@ -105,25 +102,32 @@ function DashboardQuarterStrip({
     <div className="flex items-center gap-1 p-1 rounded-control bg-surface-alt border border-border">
       {quarterKeys.map((key) => {
         const status = statusByKey.get(key);
+        const locked = altaKey !== null && compareQuarterKeys(key, altaKey) < 0;
         return (
           <button
             key={key}
             type="button"
             onClick={() => onSelect(key)}
+            disabled={locked}
             className="relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium
                        rounded-control cursor-pointer text-ink-soft hover:text-ink hover:bg-surface
                        transition-colors ease-[var(--ease-out)]
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
+                       disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                status === "completed"
-                  ? "bg-success"
-                  : status === "in_progress"
-                    ? "bg-info"
-                    : "bg-ink-soft/40"
-              }`}
-            />
+            {locked ? (
+              <Lock size={10} weight="bold" className="shrink-0" />
+            ) : (
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  status === "completed"
+                    ? "bg-success"
+                    : status === "in_progress"
+                      ? "bg-info"
+                      : "bg-ink-soft/40"
+                }`}
+              />
+            )}
             {quarterKeyLabel(key)}
           </button>
         );
@@ -146,9 +150,14 @@ export function Dashboard({
   const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
   const [currentDeclarationDetail, setCurrentDeclarationDetail] =
     useState<DeclarationDetail | null>(null);
+  const [altaKey, setAltaKey] = useState<string | null>(null);
 
   useEffect(() => {
     listClients().then((clients) => setClientCount(clients.length));
+  }, []);
+
+  useEffect(() => {
+    getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
   }, []);
 
   useEffect(() => {
@@ -203,16 +212,10 @@ export function Dashboard({
 
   const invoicedByQuarter = new Map(
     QUARTER_KEYS.map((key) => {
-      const { from, to } = quarterKeyRange(key);
-      const total = invoices
-        .filter(
-          (inv) =>
-            inv.status !== "draft" &&
-            inv.issueDate !== null &&
-            inv.issueDate >= from &&
-            inv.issueDate <= to,
-        )
-        .reduce((s, inv) => s + inv.total, 0);
+      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+        (s, inv) => s + inv.subtotal,
+        0,
+      );
       return [key, total] as const;
     }),
   );
@@ -322,12 +325,6 @@ export function Dashboard({
                   : t("dashboard.declarationStatus.notStarted")}
               </Badge>
             </div>
-            <div className="text-xs text-ink-soft">
-              {t("dashboard.declarationStatus.summary", {
-                invoiced: formatEUR(totalFacturado),
-                expenses: formatEUR(expensesThisQuarter),
-              })}
-            </div>
             {taxDeadlines[0] && (
               <div
                 className={`text-xs mt-1 ${
@@ -335,6 +332,7 @@ export function Dashboard({
                 }`}
               >
                 {t("dashboard.declarationStatus.nextDeadline", {
+                  label: taxDeadlines[0].label,
                   date: formatDate(taxDeadlines[0].dueDate),
                 })}
               </div>
@@ -389,6 +387,7 @@ export function Dashboard({
           <DashboardQuarterStrip
             quarterKeys={QUARTER_KEYS}
             declarations={declarations}
+            altaKey={altaKey}
             onSelect={onNavigateToQuarter}
           />
         </Card>

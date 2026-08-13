@@ -19,6 +19,17 @@ function quarterlyDeadline(year: number, quarter: 1 | 2 | 3 | 4): TaxDeadline {
   return { model: "130/303", label: `Modelo 130/303 (${quarter}T)`, dueDate };
 }
 
+/** Recovers the "YYYY-QN" quarter a 130/303 deadline reports on, from its due date (the 20th
+ * of the month after that quarter ends — the inverse of `quarterlyDeadline` above). */
+export function deadlineQuarterKey(dueDate: string): string {
+  const [yearStr, monthStr] = dueDate.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (month === 1) return `${year - 1}-Q4`;
+  const quarter = (month - 4) / 3 + 1;
+  return `${year}-Q${quarter}`;
+}
+
 /** Annual Modelo 190/390 summary deadline: Jan 30 of the year after the reported year. */
 function annualDeadline(reportedYear: number): TaxDeadline {
   return {

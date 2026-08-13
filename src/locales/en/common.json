@@ -111,8 +111,7 @@
     "declarationStatus": {
       "notStarted": "Not started",
       "goToSummary": "Go to Quarterly summary",
-      "summary": "Invoiced {{invoiced}} · Expenses {{expenses}}",
-      "nextDeadline": "Next deadline: {{date}}",
+      "nextDeadline": "Next deadline: {{label}} · {{date}}",
       "missing": "Missing"
     },
     "recurring": {
