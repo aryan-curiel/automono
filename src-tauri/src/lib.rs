@@ -4,6 +4,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod backup;
 mod branding;
+mod business_documents;
 mod contracts;
 mod declarations;
 mod expenses;
@@ -13,6 +14,7 @@ mod llm;
 mod modelo_review;
 mod pdf;
 mod receipt_extract;
+mod user_context;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -193,6 +195,18 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0029_expense_declared.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 29,
+            description: "business_documents",
+            sql: include_str!("../migrations/0030_business_documents.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 30,
+            description: "business_documents_generic",
+            sql: include_str!("../migrations/0031_business_documents_generic.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -221,6 +235,12 @@ pub fn run() {
             receipt_extract::extract_receipt_fields_cmd,
             receipt_extract::extract_receipt_fields_llm_cmd,
             branding::attach_business_logo_cmd,
+            business_documents::attach_business_document_cmd,
+            business_documents::extract_business_document_fields_cmd,
+            business_documents::open_business_document_file_cmd,
+            user_context::read_user_context_cmd,
+            user_context::write_user_context_cmd,
+            user_context::synthesize_user_context_cmd,
             export::write_text_file_cmd,
             export::export_gestor_bundle_cmd,
             declarations::attach_declaration_file_cmd,

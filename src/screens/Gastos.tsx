@@ -149,8 +149,12 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <div className="text-[13px] text-ink-soft">{formatDate(e.date)}</div>
-              <div className="flex items-center gap-1.5">
-                {e.category && <Badge tone="neutral">{e.category}</Badge>}
+              <div className="flex items-center gap-1.5 min-w-0 pr-3">
+                {e.category && (
+                  <Badge tone="neutral" className="truncate" title={e.category}>
+                    {e.category}
+                  </Badge>
+                )}
                 {e.declared && <Badge tone="success">{t("expenses.declaredBadge")}</Badge>}
               </div>
               <div className="font-medium text-[13.5px]">{e.description}</div>

@@ -96,6 +96,12 @@ pub fn pdf_content(base64_data: String) -> UserContent {
     })
 }
 
+/// Builds a plain text content block — used for extraction calls that synthesize from already-
+/// extracted text (e.g. combining several documents' summaries) rather than reading a file.
+pub fn text_content(text: String) -> UserContent {
+    UserContent::text(text)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

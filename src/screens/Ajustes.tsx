@@ -6,6 +6,7 @@ import { Card } from "../components/ui/Card";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/ui/Button";
 import { Sheet } from "../components/ui/Sheet";
+import { Toast } from "../components/ui/Toast";
 import { ErrorText, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
@@ -40,6 +41,9 @@ import type { BackupSettingsRecord, BackupEntry } from "../db/backup";
 import { getLlmSettings, updateLlmSettings } from "../db/llmSettings";
 import { getPreferences, updatePreferences } from "../db/preferences";
 import type { LlmProvider, LlmSettingsRecord } from "../db/llmSettings";
+import { BusinessDocumentsPanel } from "../components/BusinessDocumentsPanel";
+import { mergeRegistrationFields } from "../db/businessDocuments";
+import type { RegistrationFields } from "../db/businessDocuments";
 
 const EMPTY_LLM_SETTINGS: LlmSettingsRecord = {
   provider: "anthropic",
@@ -67,11 +71,12 @@ const EMPTY_FORM: BusinessProfileRecord = {
 };
 
 type FieldErrors = Partial<Record<"name" | "nifCif" | "vatNumber" | "iban", string>>;
-type Tab = "general" | "datos" | "categorias" | "backup";
+type Tab = "general" | "datos" | "documentos" | "categorias" | "backup";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "general", label: "General" },
   { value: "datos", label: "Datos" },
+  { value: "documentos", label: "Documentos" },
   { value: "categorias", label: "Categorías" },
   { value: "backup", label: "Copia de seguridad" },
 ];
@@ -95,6 +100,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [vatNumberEdited, setVatNumberEdited] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [retaStartDate, setRetaStartDate] = useState("");
+  const [documentsToast, setDocumentsToast] = useState<string | null>(null);
 
   const [backupSettings, setBackupSettings] = useState<BackupSettingsRecord | null>(null);
   const [backupRunning, setBackupRunning] = useState(false);
@@ -209,7 +215,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         if (!cancelled) setLoading(false);
       });
     getPreferences().then((prefs) => {
-      if (!cancelled) setRetaStartDate(prefs.retaStartDate);
+      if (!cancelled) {
+        setRetaStartDate(prefs.retaStartDate);
+      }
     });
     return () => {
       cancelled = true;
@@ -279,6 +287,25 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Fills only the still-blank fields of the Datos tab's local state from an extracted
+   * document — a real business profile is already assigned by this point (onboarding is done),
+   * so a re-upload or a mis-extraction must never silently replace it. Nothing is written to
+   * SQLite until the user hits "Guardar", same as any other manual edit. RETA start date is
+   * deliberately left untouched here: unlike the text fields above it never looks "blank"
+   * (it always holds a real date), so there's no safe way to tell "still the factory
+   * default" from "the value the user actually wants" — the document's summary text (shown
+   * under its filename) is there for the user to read and copy in by hand instead. */
+  function applyExtracted(fields: RegistrationFields) {
+    const merged = mergeRegistrationFields(form, fields);
+    const changed = (Object.keys(merged) as (keyof BusinessProfileRecord)[]).some(
+      (key) => merged[key] !== form[key],
+    );
+    if (!changed) return;
+    setSaved(false);
+    setForm(merged);
+    setDocumentsToast("Se han rellenado los campos vacíos de la pestaña Datos — no olvides guardar.");
   }
 
   async function handlePickLogo() {
@@ -564,6 +591,20 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           </>
         ))}
 
+      {tab === "documentos" && (
+        <Card className="px-5 max-w-[640px]">
+          <div className="pt-4 pb-3">
+            <div className="font-bold text-sm mb-1.5">Documentos de alta como autónomo</div>
+            <div className="text-[13px] text-ink-soft">
+              Sube el certificado censal, el alta en RETA y demás documentación de registro. Si
+              hay una clave de IA configurada en la pestaña General, se extraen datos y se
+              rellenan los campos de la pestaña Datos automáticamente.
+            </div>
+          </div>
+          <BusinessDocumentsPanel onExtracted={applyExtracted} />
+        </Card>
+      )}
+
       {tab === "categorias" && (
         <Card className="px-5 max-w-[640px]">
           <div className="pt-4 pb-3">
@@ -785,6 +826,12 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           </Button>
         </div>
       </Sheet>
+
+      <Toast
+        message={documentsToast}
+        tone="info"
+        onDismiss={() => setDocumentsToast(null)}
+      />
     </div>
   );
 }

@@ -68,6 +68,7 @@ export default function App() {
     context: "expense" | "declaration";
   } | null>(null);
   const screenRef = useRef(screen);
+  const preferencesRef = useRef(preferences);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
@@ -110,10 +111,21 @@ export default function App() {
   }, [screen]);
 
   useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
+
+  useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     getCurrentWebview()
       .onDragDropEvent((event) => {
+        // The Documentos tab in Ajustes (and onboarding's document step) has its own drop
+        // handling — this global listener must stay out of the way entirely there, or a
+        // dropped PDF would also get hijacked into navigating to "gasto-nuevo" below.
+        if (screenRef.current === "ajustes" || !preferencesRef.current?.onboardingCompleted) {
+          setDragOver(null);
+          return;
+        }
         const onDeclaration = screenRef.current === "resumen-trimestral";
         if (event.payload.type === "enter") {
           const path = event.payload.paths[0];

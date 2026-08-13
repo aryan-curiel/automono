@@ -2,12 +2,15 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as Switch from "@radix-ui/react-switch";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Buildings, Bank, SlidersHorizontal } from "@phosphor-icons/react";
+import { Buildings, Bank, FileArrowUp, SlidersHorizontal } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
+import { BusinessDocumentsPanel } from "../components/BusinessDocumentsPanel";
+import { mergeRegistrationFields } from "../db/businessDocuments";
+import type { RegistrationFields } from "../db/businessDocuments";
 import { attachBusinessLogo, pickBusinessLogo, updateBusinessProfile } from "../db/businessProfile";
 import type { BusinessProfileRecord } from "../db/businessProfile";
 import { updatePreferences } from "../db/preferences";
@@ -32,10 +35,10 @@ const EMPTY_BUSINESS: BusinessProfileRecord = {
   logoPath: null,
 };
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 type StepOneErrors = Partial<Record<"name" | "nifCif" | "vatNumber", string>>;
 
-const STEP_ICON = { 1: Buildings, 2: Bank, 3: SlidersHorizontal };
+const STEP_ICON = { 1: FileArrowUp, 2: Buildings, 3: Bank, 4: SlidersHorizontal };
 
 type StepVariantCustom = { direction: number; reduceMotion: boolean };
 
@@ -111,7 +114,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
     if (business.vatNumber.trim() && !isValidVatNumber(business.vatNumber))
       errors.vatNumber = "Número de IVA con formato inválido";
     setStepOneErrors(errors);
-    if (Object.keys(errors).length === 0) goTo(2);
+    if (Object.keys(errors).length === 0) goTo(3);
   }
 
   function continueFromStepTwo() {
@@ -120,7 +123,19 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
       return;
     }
     setIbanError(undefined);
-    goTo(3);
+    goTo(4);
+  }
+
+  /** Merges extracted fields into the still-unsaved local state — nothing is written to
+   * SQLite here, so the following steps simply render pre-filled and remain editable before
+   * the user hits "Continuar"/"Finalizar". Only fills fields still blank (e.g. from an earlier
+   * upload or manual typing), never replaces one already filled in. */
+  function applyExtracted(fields: RegistrationFields) {
+    setBusiness((b) => mergeRegistrationFields(b, fields));
+    setPrefs((p) => ({
+      ...p,
+      retaStartDate: fields.retaStartDate ?? p.retaStartDate,
+    }));
   }
 
   async function handlePickLogo() {
@@ -176,7 +191,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
             <motion.div
               className="h-full rounded-pill bg-accent"
               initial={false}
-              animate={{ width: `${(step / 3) * 100}%` }}
+              animate={{ width: `${(step / 4) * 100}%` }}
               transition={progressTransition}
             />
           </div>
@@ -194,13 +209,32 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
               <div className="flex items-center gap-2 mb-0.5">
                 <StepIcon size={18} weight="bold" className="text-accent" />
                 <div className="font-bold text-[17px]">
-                  {step === 1 && "Bienvenido a AutoMono"}
-                  {step === 2 && "Cuenta bancaria"}
-                  {step === 3 && "Preferencias"}
+                  {step === 1 && "Documentos de alta"}
+                  {step === 2 && "Bienvenido a AutoMono"}
+                  {step === 3 && "Cuenta bancaria"}
+                  {step === 4 && "Preferencias"}
                 </div>
               </div>
 
               {step === 1 && (
+                <div>
+                  <div className="text-[13px] text-ink-soft mb-4">
+                    Sube tus documentos de alta como autónomo (censal, RETA, IAE…) y rellenaremos
+                    los siguientes pasos por ti.
+                  </div>
+                  <BusinessDocumentsPanel onExtracted={applyExtracted} showContext={false} />
+                  <div className="flex items-center justify-between mt-5">
+                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
+                      Saltar por ahora
+                    </Button>
+                    <Button type="button" onClick={() => goTo(2)}>
+                      Continuar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -268,12 +302,17 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                     <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
                       Saltar por ahora
                     </Button>
-                    <Button type="submit">Continuar</Button>
+                    <div className="flex gap-2.5">
+                      <Button type="button" variant="secondary" onClick={() => goTo(1)}>
+                        Atrás
+                      </Button>
+                      <Button type="submit">Continuar</Button>
+                    </div>
                   </div>
                 </form>
               )}
 
-              {step === 2 && (
+              {step === 3 && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -313,7 +352,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
-                      <Button type="button" variant="secondary" onClick={() => goTo(1)}>
+                      <Button type="button" variant="secondary" onClick={() => goTo(2)}>
                         Atrás
                       </Button>
                       <Button type="submit">Continuar</Button>
@@ -322,7 +361,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                 </form>
               )}
 
-              {step === 3 && (
+              {step === 4 && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -385,7 +424,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
-                      <Button type="button" variant="secondary" onClick={() => goTo(2)}>
+                      <Button type="button" variant="secondary" onClick={() => goTo(3)}>
                         Atrás
                       </Button>
                       <Button type="submit" disabled={finishing}>
