@@ -12,12 +12,68 @@ import type { ExpenseRecord } from "../db/expenses";
 import { invoiceNumberLabel } from "../lib/invoice";
 import { invoiceStatusMeta } from "../lib/status";
 import { formatDate, formatEUR } from "../lib/format";
-import { defaultQuarterPeriod, quartersInRange } from "../lib/dateRange";
+import {
+  defaultQuarterPeriod,
+  previousQuarterKey,
+  quarterKeyLabel,
+  quarterKeyOf,
+  quarterRange,
+} from "../lib/dateRange";
 import { agingReport, expenseByCategory, revenueByClient } from "../lib/analytics";
 import { nextTaxDeadlines } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
 import type { InvoiceListItem } from "../db/invoices";
+import { listDeclarations, getDeclaration } from "../db/declarations";
+import type {
+  DeclarationListItem,
+  DeclarationDetail,
+  DeclarationStatus,
+  Modelo,
+} from "../db/declarations";
 import type { Screen } from "../types";
+
+const RECENT_QUARTERS = 6;
+const CURRENT_KEY = quarterKeyOf(defaultQuarterPeriod().from);
+const [CURRENT_YEAR_STR, CURRENT_QUARTER_STR] = CURRENT_KEY.split("-Q");
+const CURRENT_YEAR = Number(CURRENT_YEAR_STR);
+const CURRENT_QUARTER = Number(CURRENT_QUARTER_STR);
+
+/** The [from, to] date range of a "YYYY-QN" quarter key. */
+function quarterKeyRange(key: string): { from: string; to: string } {
+  const [yearStr, q] = key.split("-Q");
+  return quarterRange(Number(yearStr), Number(q) as 1 | 2 | 3 | 4);
+}
+
+/** `count` quarter keys ending at `currentKey`, ascending (oldest first). */
+function recentQuarterKeys(currentKey: string, count: number): string[] {
+  const keys = [currentKey];
+  for (let i = 1; i < count; i++) keys.unshift(previousQuarterKey(keys[0]));
+  return keys;
+}
+
+const QUARTER_KEYS = recentQuarterKeys(CURRENT_KEY, RECENT_QUARTERS);
+const QUARTER_WINDOW_FROM = quarterKeyRange(QUARTER_KEYS[0]).from;
+const QUARTER_WINDOW_TO = quarterKeyRange(QUARTER_KEYS[QUARTER_KEYS.length - 1]).to;
+
+/** The quarter an expense counts toward — its own date's quarter, unless overridden. Mirrors
+ * the OR-match `listExpenses({ quarterKeys })` already applies server-side. */
+function expenseQuarterKey(expense: ExpenseRecord): string {
+  return expense.declaredPeriod ?? quarterKeyOf(expense.date);
+}
+
+const MODELOS: Modelo[] = ["303", "130", "111"];
+const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "modelo111Path"> = {
+  "303": "modelo303Path",
+  "130": "modelo130Path",
+  "111": "modelo111Path",
+};
+
+// quarterKeyLabel/MODELOS/MODELO_PATH_KEY/DeclarationStatus are wired into JSX starting in
+// Tasks 3-5 (hero card, quarter strip, trend chart) — keep noUnusedLocals quiet until then.
+export type { DeclarationStatus };
+void quarterKeyLabel;
+void MODELOS;
+void MODELO_PATH_KEY;
 
 interface DashboardProps {
   invoices: InvoiceListItem[];
@@ -34,23 +90,36 @@ export function Dashboard({
 }: DashboardProps) {
   const { t } = useTranslation();
   const [clientCount, setClientCount] = useState(0);
-  const [expensesThisQuarter, setExpensesThisQuarter] = useState(0);
-  const [quarterExpenses, setQuarterExpenses] = useState<ExpenseRecord[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<ExpenseRecord[]>([]);
   const [generatingFor, setGeneratingFor] = useState<number | null>(null);
+  const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
+  const [currentDeclarationDetail, setCurrentDeclarationDetail] =
+    useState<DeclarationDetail | null>(null);
 
   useEffect(() => {
     listClients().then((clients) => setClientCount(clients.length));
   }, []);
 
   useEffect(() => {
-    const { from, to } = defaultQuarterPeriod();
-    listExpenses({ from, to, quarterKeys: quartersInRange(from, to) }).then((expenses) => {
-      setQuarterExpenses(expenses);
-      setExpensesThisQuarter(
-        expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0),
-      );
-    });
+    listExpenses({
+      from: QUARTER_WINDOW_FROM,
+      to: QUARTER_WINDOW_TO,
+      quarterKeys: QUARTER_KEYS,
+    }).then(setRecentExpenses);
   }, []);
+
+  useEffect(() => {
+    listDeclarations().then(setDeclarations);
+  }, []);
+
+  useEffect(() => {
+    const current = declarations.find(
+      (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+    );
+    const detail =
+      current?.status === "in_progress" ? getDeclaration(current.id) : Promise.resolve(null);
+    detail.then(setCurrentDeclarationDetail);
+  }, [declarations]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const thisYear = new Date().getFullYear();
@@ -68,9 +137,61 @@ export function Dashboard({
   const recentInvoices = invoices.slice(0, 4);
   const upcomingDue = invoices.filter((inv) => inv.status === "issued").slice(0, 3);
   const topClients = revenueByClient(invoicesThisYear).slice(0, 5);
-  const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
   const aging = agingReport(invoices, todayIso).filter((g) => g.bucket !== "current");
   const taxDeadlines = nextTaxDeadlines(todayIso, 2);
+
+  const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === CURRENT_KEY);
+  const expensesThisQuarter = quarterExpenses.reduce(
+    (s, e) => s + e.amount * (e.deductiblePct / 100),
+    0,
+  );
+  const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
+
+  const invoicedByQuarter = new Map(
+    QUARTER_KEYS.map((key) => {
+      const { from, to } = quarterKeyRange(key);
+      const total = invoices
+        .filter(
+          (inv) =>
+            inv.status !== "draft" &&
+            inv.issueDate !== null &&
+            inv.issueDate >= from &&
+            inv.issueDate <= to,
+        )
+        .reduce((s, inv) => s + inv.total, 0);
+      return [key, total] as const;
+    }),
+  );
+
+  const expensesByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
+  for (const expense of recentExpenses) {
+    const key = expenseQuarterKey(expense);
+    if (expensesByQuarter.has(key)) {
+      expensesByQuarter.set(
+        key,
+        expensesByQuarter.get(key)! + expense.amount * (expense.deductiblePct / 100),
+      );
+    }
+  }
+
+  const maxTrendValue = Math.max(
+    1,
+    ...QUARTER_KEYS.flatMap((key) => [
+      invoicedByQuarter.get(key) ?? 0,
+      expensesByQuarter.get(key) ?? 0,
+    ]),
+  );
+
+  const currentDeclaration = declarations.find(
+    (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+  );
+
+  // currentDeclarationDetail/maxTrendValue/currentDeclaration are wired into JSX starting in
+  // Tasks 3-5 (hero card, quarter strip, trend chart) — keep noUnusedLocals quiet until then.
+  void currentDeclarationDetail;
+  void maxTrendValue;
+  void currentDeclaration;
+
   const recurring = recurringInvoiceCandidates(invoices, todayIso);
   const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
   const maxCategoryExpense = Math.max(1, ...topCategories.map((c) => c.total));
@@ -240,7 +361,9 @@ export function Dashboard({
       <div className="grid grid-cols-2 gap-4 mt-4">
         <Card className="p-6">
           <div className="font-bold text-sm mb-4">{t("dashboard.aging.title")}</div>
-          {aging.length === 0 && <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>}
+          {aging.length === 0 && (
+            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
+          )}
           {aging.map((g) => (
             <div
               key={g.bucket}
