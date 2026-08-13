@@ -79,7 +79,7 @@ function QuarterTick({
       role={datum.locked ? undefined : "button"}
       aria-label={datum.label}
       style={{ cursor: datum.locked ? "default" : "pointer" }}
-      className="focus-visible:outline-none"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
     >
       <rect x={-24} y={2} width={48} height={26} fill="transparent" />
       {datum.locked ? (
