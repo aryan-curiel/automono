@@ -146,6 +146,12 @@
     },
     "expensesByCategory": {
       "title": "Gastos por categoría ({{period}})"
+    },
+    "history": {
+      "title": "Declaraciones por trimestre"
+    },
+    "trend": {
+      "title": "Facturado vs. gastos"
     }
   },
   "invoices": {

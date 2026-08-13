@@ -146,6 +146,12 @@
     },
     "expensesByCategory": {
       "title": "Expenses by category ({{period}})"
+    },
+    "history": {
+      "title": "Declarations by quarter"
+    },
+    "trend": {
+      "title": "Invoiced vs. expenses"
     }
   },
   "invoices": {

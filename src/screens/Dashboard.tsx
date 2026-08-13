@@ -68,20 +68,63 @@ const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "model
   "111": "modelo111Path",
 };
 
-// DeclarationStatus is wired into JSX starting in Tasks 4-5 (quarter strip, trend chart) —
-// keep noUnusedLocals quiet until then.
-export type { DeclarationStatus };
-
 interface DashboardProps {
   invoices: InvoiceListItem[];
   onNavigate: (screen: Screen) => void;
+  onNavigateToQuarter: (quarterKey: string) => void;
   onOpenInvoice: (id: number) => void;
   onDuplicateInvoice: (id: number) => Promise<void>;
+}
+
+/** A fixed, non-paginated 6-quarter status strip — unlike `QuarterTimeline`, there's no
+ * focus/page window here, just the same quarters `Dashboard` already computed. */
+function DashboardQuarterStrip({
+  quarterKeys,
+  declarations,
+  onSelect,
+}: {
+  quarterKeys: string[];
+  declarations: DeclarationListItem[];
+  onSelect: (key: string) => void;
+}) {
+  const statusByKey = new Map<string, DeclarationStatus>(
+    declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
+  );
+  return (
+    <div className="flex items-center gap-1 p-1 rounded-control bg-surface-alt border border-border">
+      {quarterKeys.map((key) => {
+        const status = statusByKey.get(key);
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelect(key)}
+            className="relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium
+                       rounded-control cursor-pointer text-ink-soft hover:text-ink hover:bg-surface
+                       transition-colors ease-[var(--ease-out)]
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                status === "completed"
+                  ? "bg-success"
+                  : status === "in_progress"
+                    ? "bg-info"
+                    : "bg-ink-soft/40"
+              }`}
+            />
+            {quarterKeyLabel(key)}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function Dashboard({
   invoices,
   onNavigate,
+  onNavigateToQuarter,
   onOpenInvoice,
   onDuplicateInvoice,
 }: DashboardProps) {
@@ -185,10 +228,6 @@ export function Dashboard({
   const currentDeclaration = declarations.find(
     (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
   );
-
-  // maxTrendValue is wired into JSX starting in Task 5 (trend chart) — keep noUnusedLocals
-  // quiet until then.
-  void maxTrendValue;
 
   const recurring = recurringInvoiceCandidates(invoices, todayIso);
   const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
@@ -331,6 +370,52 @@ export function Dashboard({
             tone={kpi.tone}
           />
         ))}
+      </div>
+
+      <div className="grid grid-cols-[1fr_1fr] gap-4 mb-4">
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">{t("dashboard.history.title")}</div>
+          <DashboardQuarterStrip
+            quarterKeys={QUARTER_KEYS}
+            declarations={declarations}
+            onSelect={onNavigateToQuarter}
+          />
+        </Card>
+
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">{t("dashboard.trend.title")}</div>
+          {QUARTER_KEYS.map((key) => {
+            const invoiced = invoicedByQuarter.get(key) ?? 0;
+            const expenses = expensesByQuarter.get(key) ?? 0;
+            return (
+              <div key={key} className="py-2 border-b border-border last:border-b-0">
+                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${(invoiced / maxTrendValue) * 100}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[11px] w-20 text-right shrink-0">
+                    {formatEUR(invoiced)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-warn"
+                      style={{ width: `${(expenses / maxTrendValue) * 100}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[11px] w-20 text-right shrink-0">
+                    {formatEUR(expenses)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
       </div>
 
       {recurring.length > 0 && (
