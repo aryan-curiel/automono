@@ -68,12 +68,9 @@ const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "model
   "111": "modelo111Path",
 };
 
-// quarterKeyLabel/MODELOS/MODELO_PATH_KEY/DeclarationStatus are wired into JSX starting in
-// Tasks 3-5 (hero card, quarter strip, trend chart) — keep noUnusedLocals quiet until then.
+// DeclarationStatus is wired into JSX starting in Tasks 4-5 (quarter strip, trend chart) —
+// keep noUnusedLocals quiet until then.
 export type { DeclarationStatus };
-void quarterKeyLabel;
-void MODELOS;
-void MODELO_PATH_KEY;
 
 interface DashboardProps {
   invoices: InvoiceListItem[];
@@ -122,6 +119,9 @@ export function Dashboard({
   }, [declarations]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
+  const soonIso = new Date(new Date(todayIso).getTime() + 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const thisYear = new Date().getFullYear();
   const invoicesThisYear = invoices.filter(
     (inv) => inv.issueDate !== null && inv.issueDate.startsWith(String(thisYear)),
@@ -186,11 +186,9 @@ export function Dashboard({
     (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
   );
 
-  // currentDeclarationDetail/maxTrendValue/currentDeclaration are wired into JSX starting in
-  // Tasks 3-5 (hero card, quarter strip, trend chart) — keep noUnusedLocals quiet until then.
-  void currentDeclarationDetail;
+  // maxTrendValue is wired into JSX starting in Task 5 (trend chart) — keep noUnusedLocals
+  // quiet until then.
   void maxTrendValue;
-  void currentDeclaration;
 
   const recurring = recurringInvoiceCandidates(invoices, todayIso);
   const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
@@ -254,6 +252,74 @@ export function Dashboard({
           </>
         }
       />
+
+      <Card className="p-6 mb-6">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="font-bold text-sm">{quarterKeyLabel(CURRENT_KEY)}</span>
+              <Badge
+                tone={
+                  currentDeclaration?.status === "completed"
+                    ? "success"
+                    : currentDeclaration?.status === "in_progress"
+                      ? "info"
+                      : "neutral"
+                }
+              >
+                {currentDeclaration
+                  ? t(`declarations.status.${currentDeclaration.status}`)
+                  : t("dashboard.declarationStatus.notStarted")}
+              </Badge>
+            </div>
+            <div className="text-xs text-ink-soft">
+              {t("dashboard.declarationStatus.summary", {
+                invoiced: formatEUR(totalFacturado),
+                expenses: formatEUR(expensesThisQuarter),
+              })}
+            </div>
+            {taxDeadlines[0] && (
+              <div
+                className={`text-xs mt-1 ${
+                  taxDeadlines[0].dueDate <= soonIso ? "text-warn font-medium" : "text-ink-soft"
+                }`}
+              >
+                {t("dashboard.declarationStatus.nextDeadline", {
+                  date: formatDate(taxDeadlines[0].dueDate),
+                })}
+              </div>
+            )}
+            {currentDeclarationDetail && (
+              <div className="flex items-center gap-4 mt-3">
+                {MODELOS.map((modelo) => {
+                  const attached = !!currentDeclarationDetail[MODELO_PATH_KEY[modelo]];
+                  return (
+                    <span
+                      key={modelo}
+                      className="flex items-center gap-1.5 text-xs text-ink-soft"
+                      title={
+                        attached
+                          ? t("declarations.detail.attached")
+                          : t("dashboard.declarationStatus.missing")
+                      }
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          attached ? "bg-success" : "bg-ink-soft/40"
+                        }`}
+                      />
+                      Modelo {modelo}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <Button onClick={() => onNavigate("resumen-trimestral")} className="shrink-0">
+            {t("dashboard.declarationStatus.goToSummary")}
+          </Button>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-4 gap-4 mb-6">
         {kpis.map((kpi) => (
