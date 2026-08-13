@@ -108,6 +108,12 @@
       "activeClients": "Active clients",
       "expensesQuarter": "Expenses (quarter)"
     },
+    "declarationStatus": {
+      "notStarted": "Not started",
+      "goToSummary": "Go to Quarterly summary",
+      "nextDeadline": "Next deadline: {{label}} · {{date}}",
+      "missing": "Missing"
+    },
     "recurring": {
       "title": "Recurring invoices",
       "lastInvoiced": "Invoiced last month: {{amount}}",
@@ -139,6 +145,12 @@
     },
     "expensesByCategory": {
       "title": "Expenses by category ({{period}})"
+    },
+    "history": {
+      "title": "Declarations by quarter"
+    },
+    "trend": {
+      "title": "Invoiced vs. expenses"
     }
   },
   "invoices": {

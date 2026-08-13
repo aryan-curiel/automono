@@ -108,6 +108,12 @@
       "activeClients": "Clientes activos",
       "expensesQuarter": "Gastos (trimestre)"
     },
+    "declarationStatus": {
+      "notStarted": "Sin empezar",
+      "goToSummary": "Ir a Resumen trimestral",
+      "nextDeadline": "Próximo vencimiento: {{label}} · {{date}}",
+      "missing": "Falta"
+    },
     "recurring": {
       "title": "Facturas recurrentes",
       "lastInvoiced": "Facturado el mes pasado: {{amount}}",
@@ -139,6 +145,12 @@
     },
     "expensesByCategory": {
       "title": "Gastos por categoría ({{period}})"
+    },
+    "history": {
+      "title": "Declaraciones por trimestre"
+    },
+    "trend": {
+      "title": "Facturado vs. gastos"
     }
   },
   "invoices": {

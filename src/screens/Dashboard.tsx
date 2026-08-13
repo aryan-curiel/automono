@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendUp, Clock, UsersThree, Wallet, CalendarCheck } from "@phosphor-icons/react";
+import { TrendUp, Clock, UsersThree, Wallet, CalendarCheck, Lock } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -9,50 +9,182 @@ import { PageHeader } from "../components/PageHeader";
 import { listClients } from "../db/clients";
 import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
+import { getPreferences } from "../db/preferences";
 import { invoiceNumberLabel } from "../lib/invoice";
 import { invoiceStatusMeta } from "../lib/status";
 import { formatDate, formatEUR } from "../lib/format";
-import { defaultQuarterPeriod, quartersInRange } from "../lib/dateRange";
+import {
+  compareQuarterKeys,
+  defaultQuarterPeriod,
+  previousQuarterKey,
+  quarterKeyLabel,
+  quarterKeyOf,
+  quarterRange,
+} from "../lib/dateRange";
+import type { Period } from "../lib/dateRange";
 import { agingReport, expenseByCategory, revenueByClient } from "../lib/analytics";
-import { nextTaxDeadlines } from "../lib/taxCalendar";
+import { nextTaxDeadlines, deadlineQuarterKey } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
+import { invoicesInPeriod } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
+import { listDeclarations, getDeclaration } from "../db/declarations";
+import type {
+  DeclarationListItem,
+  DeclarationDetail,
+  DeclarationStatus,
+  Modelo,
+} from "../db/declarations";
 import type { Screen } from "../types";
+
+const RECENT_QUARTERS = 4;
+const CURRENT_KEY = quarterKeyOf(defaultQuarterPeriod().from);
+const [CURRENT_YEAR_STR, CURRENT_QUARTER_STR] = CURRENT_KEY.split("-Q");
+const CURRENT_YEAR = Number(CURRENT_YEAR_STR);
+const CURRENT_QUARTER = Number(CURRENT_QUARTER_STR);
+
+/** The [from, to] date range of a "YYYY-QN" quarter key. */
+function quarterKeyRange(key: string): Period {
+  const [yearStr, q] = key.split("-Q");
+  return quarterRange(Number(yearStr), Number(q) as 1 | 2 | 3 | 4);
+}
+
+/** `count` quarter keys ending at `currentKey`, ascending (oldest first). */
+function recentQuarterKeys(currentKey: string, count: number): string[] {
+  const keys = [currentKey];
+  for (let i = 1; i < count; i++) keys.unshift(previousQuarterKey(keys[0]));
+  return keys;
+}
+
+const QUARTER_KEYS = recentQuarterKeys(CURRENT_KEY, RECENT_QUARTERS);
+const QUARTER_WINDOW_FROM = quarterKeyRange(QUARTER_KEYS[0]).from;
+const QUARTER_WINDOW_TO = quarterKeyRange(QUARTER_KEYS[QUARTER_KEYS.length - 1]).to;
+
+/** The quarter an expense counts toward — its own date's quarter, unless overridden. Mirrors
+ * the OR-match `listExpenses({ quarterKeys })` already applies server-side. */
+function expenseQuarterKey(expense: ExpenseRecord): string {
+  return expense.declaredPeriod ?? quarterKeyOf(expense.date);
+}
+
+const MODELOS: Modelo[] = ["303", "130", "111"];
+const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "modelo111Path"> = {
+  "303": "modelo303Path",
+  "130": "modelo130Path",
+  "111": "modelo111Path",
+};
 
 interface DashboardProps {
   invoices: InvoiceListItem[];
   onNavigate: (screen: Screen) => void;
+  onNavigateToQuarter: (quarterKey: string) => void;
   onOpenInvoice: (id: number) => void;
   onDuplicateInvoice: (id: number) => Promise<void>;
+}
+
+/** A fixed, non-paginated quarter status strip — unlike `QuarterTimeline`, there's no
+ * focus/page window here, just the same quarters `Dashboard` already computed. Quarters
+ * before `altaKey` (RETA registration) are locked, mirroring `QuarterTimeline`'s own guard,
+ * since navigating there would otherwise bypass it via `initialQuarterKey`. */
+function DashboardQuarterStrip({
+  quarterKeys,
+  declarations,
+  altaKey,
+  onSelect,
+}: {
+  quarterKeys: string[];
+  declarations: DeclarationListItem[];
+  altaKey: string | null;
+  onSelect: (key: string) => void;
+}) {
+  const statusByKey = new Map<string, DeclarationStatus>(
+    declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
+  );
+  return (
+    <div className="flex items-center gap-1 p-1 rounded-control bg-surface-alt border border-border">
+      {quarterKeys.map((key) => {
+        const status = statusByKey.get(key);
+        const locked = altaKey !== null && compareQuarterKeys(key, altaKey) < 0;
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelect(key)}
+            disabled={locked}
+            className="relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium
+                       rounded-control cursor-pointer text-ink-soft hover:text-ink hover:bg-surface
+                       transition-colors ease-[var(--ease-out)]
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
+                       disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
+          >
+            {locked ? (
+              <Lock size={10} weight="bold" className="shrink-0" />
+            ) : (
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  status === "completed"
+                    ? "bg-success"
+                    : status === "in_progress"
+                      ? "bg-info"
+                      : "bg-ink-soft/40"
+                }`}
+              />
+            )}
+            {quarterKeyLabel(key)}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function Dashboard({
   invoices,
   onNavigate,
+  onNavigateToQuarter,
   onOpenInvoice,
   onDuplicateInvoice,
 }: DashboardProps) {
   const { t } = useTranslation();
   const [clientCount, setClientCount] = useState(0);
-  const [expensesThisQuarter, setExpensesThisQuarter] = useState(0);
-  const [quarterExpenses, setQuarterExpenses] = useState<ExpenseRecord[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<ExpenseRecord[]>([]);
   const [generatingFor, setGeneratingFor] = useState<number | null>(null);
+  const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
+  const [currentDeclarationDetail, setCurrentDeclarationDetail] =
+    useState<DeclarationDetail | null>(null);
+  const [altaKey, setAltaKey] = useState<string | null>(null);
 
   useEffect(() => {
     listClients().then((clients) => setClientCount(clients.length));
   }, []);
 
   useEffect(() => {
-    const { from, to } = defaultQuarterPeriod();
-    listExpenses({ from, to, quarterKeys: quartersInRange(from, to) }).then((expenses) => {
-      setQuarterExpenses(expenses);
-      setExpensesThisQuarter(
-        expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0),
-      );
-    });
+    getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
   }, []);
 
+  useEffect(() => {
+    listExpenses({
+      from: QUARTER_WINDOW_FROM,
+      to: QUARTER_WINDOW_TO,
+      quarterKeys: QUARTER_KEYS,
+    }).then(setRecentExpenses);
+  }, []);
+
+  useEffect(() => {
+    listDeclarations().then(setDeclarations);
+  }, []);
+
+  useEffect(() => {
+    const current = declarations.find(
+      (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+    );
+    const detail =
+      current?.status === "in_progress" ? getDeclaration(current.id) : Promise.resolve(null);
+    detail.then(setCurrentDeclarationDetail);
+  }, [declarations]);
+
   const todayIso = new Date().toISOString().slice(0, 10);
+  const soonIso = new Date(new Date(todayIso).getTime() + 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const thisYear = new Date().getFullYear();
   const invoicesThisYear = invoices.filter(
     (inv) => inv.issueDate !== null && inv.issueDate.startsWith(String(thisYear)),
@@ -68,9 +200,49 @@ export function Dashboard({
   const recentInvoices = invoices.slice(0, 4);
   const upcomingDue = invoices.filter((inv) => inv.status === "issued").slice(0, 3);
   const topClients = revenueByClient(invoicesThisYear).slice(0, 5);
-  const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
   const aging = agingReport(invoices, todayIso).filter((g) => g.bucket !== "current");
   const taxDeadlines = nextTaxDeadlines(todayIso, 2);
+
+  const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === CURRENT_KEY);
+  const expensesThisQuarter = quarterExpenses.reduce(
+    (s, e) => s + e.amount * (e.deductiblePct / 100),
+    0,
+  );
+  const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
+
+  const invoicedByQuarter = new Map(
+    QUARTER_KEYS.map((key) => {
+      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+        (s, inv) => s + inv.subtotal,
+        0,
+      );
+      return [key, total] as const;
+    }),
+  );
+
+  const expensesByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
+  for (const expense of recentExpenses) {
+    const key = expenseQuarterKey(expense);
+    if (expensesByQuarter.has(key)) {
+      expensesByQuarter.set(
+        key,
+        expensesByQuarter.get(key)! + expense.amount * (expense.deductiblePct / 100),
+      );
+    }
+  }
+
+  const maxTrendValue = Math.max(
+    1,
+    ...QUARTER_KEYS.flatMap((key) => [
+      invoicedByQuarter.get(key) ?? 0,
+      expensesByQuarter.get(key) ?? 0,
+    ]),
+  );
+
+  const currentDeclaration = declarations.find(
+    (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+  );
+
   const recurring = recurringInvoiceCandidates(invoices, todayIso);
   const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
   const maxCategoryExpense = Math.max(1, ...topCategories.map((c) => c.total));
@@ -134,6 +306,69 @@ export function Dashboard({
         }
       />
 
+      <Card className="p-6 mb-6">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="font-bold text-sm">{quarterKeyLabel(CURRENT_KEY)}</span>
+              <Badge
+                tone={
+                  currentDeclaration?.status === "completed"
+                    ? "success"
+                    : currentDeclaration?.status === "in_progress"
+                      ? "info"
+                      : "neutral"
+                }
+              >
+                {currentDeclaration
+                  ? t(`declarations.status.${currentDeclaration.status}`)
+                  : t("dashboard.declarationStatus.notStarted")}
+              </Badge>
+            </div>
+            {taxDeadlines[0] && (
+              <div
+                className={`text-xs mt-1 ${
+                  taxDeadlines[0].dueDate <= soonIso ? "text-warn font-medium" : "text-ink-soft"
+                }`}
+              >
+                {t("dashboard.declarationStatus.nextDeadline", {
+                  label: taxDeadlines[0].label,
+                  date: formatDate(taxDeadlines[0].dueDate),
+                })}
+              </div>
+            )}
+            {currentDeclarationDetail && (
+              <div className="flex items-center gap-4 mt-3">
+                {MODELOS.map((modelo) => {
+                  const attached = !!currentDeclarationDetail[MODELO_PATH_KEY[modelo]];
+                  return (
+                    <span
+                      key={modelo}
+                      className="flex items-center gap-1.5 text-xs text-ink-soft"
+                      title={
+                        attached
+                          ? t("declarations.detail.attached")
+                          : t("dashboard.declarationStatus.missing")
+                      }
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          attached ? "bg-success" : "bg-ink-soft/40"
+                        }`}
+                      />
+                      Modelo {modelo}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <Button onClick={() => onNavigate("resumen-trimestral")} className="shrink-0">
+            {t("dashboard.declarationStatus.goToSummary")}
+          </Button>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-4 gap-4 mb-6">
         {kpis.map((kpi) => (
           <KpiTile
@@ -144,6 +379,53 @@ export function Dashboard({
             tone={kpi.tone}
           />
         ))}
+      </div>
+
+      <div className="grid grid-cols-[1fr_1fr] gap-4 mb-4">
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">{t("dashboard.history.title")}</div>
+          <DashboardQuarterStrip
+            quarterKeys={QUARTER_KEYS}
+            declarations={declarations}
+            altaKey={altaKey}
+            onSelect={onNavigateToQuarter}
+          />
+        </Card>
+
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">{t("dashboard.trend.title")}</div>
+          {QUARTER_KEYS.map((key) => {
+            const invoiced = invoicedByQuarter.get(key) ?? 0;
+            const expenses = expensesByQuarter.get(key) ?? 0;
+            return (
+              <div key={key} className="py-2 border-b border-border last:border-b-0">
+                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${(invoiced / maxTrendValue) * 100}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[11px] w-20 text-right shrink-0">
+                    {formatEUR(invoiced)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-warn"
+                      style={{ width: `${(expenses / maxTrendValue) * 100}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[11px] w-20 text-right shrink-0">
+                    {formatEUR(expenses)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
       </div>
 
       {recurring.length > 0 && (
@@ -240,7 +522,9 @@ export function Dashboard({
       <div className="grid grid-cols-2 gap-4 mt-4">
         <Card className="p-6">
           <div className="font-bold text-sm mb-4">{t("dashboard.aging.title")}</div>
-          {aging.length === 0 && <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>}
+          {aging.length === 0 && (
+            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
+          )}
           {aging.map((g) => (
             <div
               key={g.bucket}
@@ -266,18 +550,43 @@ export function Dashboard({
           {taxDeadlines.length === 0 && (
             <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
           )}
-          {taxDeadlines.map((d) => (
-            <div
-              key={d.dueDate}
-              className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
-            >
-              <div className="flex items-center gap-2.5">
-                <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
-                <span className="font-medium text-[13.5px]">{d.label}</span>
+          {taxDeadlines.map((d) => {
+            const declarationStatus =
+              d.model === "130/303"
+                ? (() => {
+                    const key = deadlineQuarterKey(d.dueDate);
+                    const [yearStr, q] = key.split("-Q");
+                    return declarations.find(
+                      (dec) => dec.year === Number(yearStr) && dec.quarter === Number(q),
+                    )?.status;
+                  })()
+                : undefined;
+            return (
+              <div
+                key={d.dueDate}
+                className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
+              >
+                <div className="flex items-center gap-2.5">
+                  <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
+                  <span className="font-medium text-[13.5px]">{d.label}</span>
+                </div>
+                <span className="flex items-center gap-2 font-semibold text-[13.5px] font-mono">
+                  {d.model === "130/303" && (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        declarationStatus === "completed"
+                          ? "bg-success"
+                          : declarationStatus === "in_progress"
+                            ? "bg-info"
+                            : "bg-ink-soft/40"
+                      }`}
+                    />
+                  )}
+                  {formatDate(d.dueDate)}
+                </span>
               </div>
-              <span className="font-semibold text-[13.5px] font-mono">{formatDate(d.dueDate)}</span>
-            </div>
-          ))}
+            );
+          })}
         </Card>
       </div>
 
