@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  TrendUp,
-  TrendDown,
-  Clock,
-  UsersThree,
-  Wallet,
-  CalendarCheck,
-  Lock,
-} from "@phosphor-icons/react";
+import { TrendUp, TrendDown, Clock, UsersThree, Wallet, Lock } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -30,10 +22,10 @@ import {
   quarterRange,
 } from "../lib/dateRange";
 import type { Period } from "../lib/dateRange";
-import { agingReport, expenseByCategory, revenueByClient } from "../lib/analytics";
+import { expenseByCategory, revenueByClient } from "../lib/analytics";
 import { QuarterBarChart } from "../components/charts/QuarterBarChart";
 import { StackedQuarterBarChart } from "../components/charts/StackedQuarterBarChart";
-import { nextTaxDeadlines, deadlineQuarterKey } from "../lib/taxCalendar";
+import { nextTaxDeadlines } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
 import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
@@ -154,7 +146,6 @@ export function Dashboard({
   const recentInvoices = invoices.slice(0, 4);
   const upcomingDue = invoices.filter((inv) => inv.status === "issued").slice(0, 3);
   const topClients = revenueByClient(invoicesThisYear).slice(0, 5);
-  const aging = agingReport(invoices, todayIso).filter((g) => g.bucket !== "current");
   const taxDeadlines = nextTaxDeadlines(todayIso, 2);
 
   const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === CURRENT_KEY);
@@ -641,77 +632,6 @@ export function Dashboard({
               </div>
             </div>
           ))}
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mt-4">
-        <Card className="p-6">
-          <div className="font-bold text-sm mb-4">{t("dashboard.aging.title")}</div>
-          {aging.length === 0 && (
-            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
-          )}
-          {aging.map((g) => (
-            <div
-              key={g.bucket}
-              className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
-            >
-              <span className="font-medium text-[13.5px]">
-                {t(`dashboard.aging.buckets.${g.bucket}` as const)}
-              </span>
-              <span className="flex items-center gap-2.5">
-                <span className="text-xs text-ink-soft">
-                  {t("dashboard.aging.invoiceCount", { count: g.invoices.length })}
-                </span>
-                <span className="font-semibold text-[13.5px] font-mono w-[90px] text-right">
-                  {formatEUR(g.total)}
-                </span>
-              </span>
-            </div>
-          ))}
-        </Card>
-
-        <Card className="p-6">
-          <div className="font-bold text-sm mb-4">{t("dashboard.taxCalendar.title")}</div>
-          {taxDeadlines.length === 0 && (
-            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
-          )}
-          {taxDeadlines.map((d) => {
-            const declarationStatus =
-              d.model === "130/303"
-                ? (() => {
-                    const key = deadlineQuarterKey(d.dueDate);
-                    const [yearStr, q] = key.split("-Q");
-                    return declarations.find(
-                      (dec) => dec.year === Number(yearStr) && dec.quarter === Number(q),
-                    )?.status;
-                  })()
-                : undefined;
-            return (
-              <div
-                key={d.dueDate}
-                className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
-              >
-                <div className="flex items-center gap-2.5">
-                  <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
-                  <span className="font-medium text-[13.5px]">{d.label}</span>
-                </div>
-                <span className="flex items-center gap-2 font-semibold text-[13.5px] font-mono">
-                  {d.model === "130/303" && (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        declarationStatus === "completed"
-                          ? "bg-success"
-                          : declarationStatus === "in_progress"
-                            ? "bg-info"
-                            : "bg-ink-soft/40"
-                      }`}
-                    />
-                  )}
-                  {formatDate(d.dueDate)}
-                </span>
-              </div>
-            );
-          })}
         </Card>
       </div>
 
