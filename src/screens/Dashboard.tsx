@@ -61,6 +61,17 @@ function expenseQuarterKey(expense: ExpenseRecord): string {
   return expense.declaredPeriod ?? quarterKeyOf(expense.date);
 }
 
+/** Recovers the "YYYY-QN" quarter a 130/303 deadline reports on, from its due date (the 20th
+ * of the month after that quarter ends — see `nextTaxDeadlines` in `lib/taxCalendar.ts`). */
+function deadlineQuarterKey(dueDate: string): string {
+  const [yearStr, monthStr] = dueDate.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  if (month === 1) return `${year - 1}-Q4`;
+  const quarter = (month - 4) / 3 + 1;
+  return `${year}-Q${quarter}`;
+}
+
 const MODELOS: Modelo[] = ["303", "130", "111"];
 const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "modelo111Path"> = {
   "303": "modelo303Path",
@@ -540,18 +551,43 @@ export function Dashboard({
           {taxDeadlines.length === 0 && (
             <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
           )}
-          {taxDeadlines.map((d) => (
-            <div
-              key={d.dueDate}
-              className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
-            >
-              <div className="flex items-center gap-2.5">
-                <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
-                <span className="font-medium text-[13.5px]">{d.label}</span>
+          {taxDeadlines.map((d) => {
+            const declarationStatus =
+              d.model === "130/303"
+                ? (() => {
+                    const key = deadlineQuarterKey(d.dueDate);
+                    const [yearStr, q] = key.split("-Q");
+                    return declarations.find(
+                      (dec) => dec.year === Number(yearStr) && dec.quarter === Number(q),
+                    )?.status;
+                  })()
+                : undefined;
+            return (
+              <div
+                key={d.dueDate}
+                className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
+              >
+                <div className="flex items-center gap-2.5">
+                  <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
+                  <span className="font-medium text-[13.5px]">{d.label}</span>
+                </div>
+                <span className="flex items-center gap-2 font-semibold text-[13.5px] font-mono">
+                  {d.model === "130/303" && (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        declarationStatus === "completed"
+                          ? "bg-success"
+                          : declarationStatus === "in_progress"
+                            ? "bg-info"
+                            : "bg-ink-soft/40"
+                      }`}
+                    />
+                  )}
+                  {formatDate(d.dueDate)}
+                </span>
               </div>
-              <span className="font-semibold text-[13.5px] font-mono">{formatDate(d.dueDate)}</span>
-            </div>
-          ))}
+            );
+          })}
         </Card>
       </div>
 
