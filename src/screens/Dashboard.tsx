@@ -238,7 +238,10 @@ export function Dashboard({
   const ivaNetByQuarter = new Map(
     QUARTER_KEYS.map(
       (key) =>
-        [key, (ivaInvoicedByQuarter.get(key) ?? 0) - (ivaDeductibleByQuarter.get(key) ?? 0)] as const,
+        [
+          key,
+          (ivaInvoicedByQuarter.get(key) ?? 0) - (ivaDeductibleByQuarter.get(key) ?? 0),
+        ] as const,
     ),
   );
   const maxIvaNetValue = Math.max(
@@ -280,7 +283,8 @@ export function Dashboard({
     .reduce((s, c) => s + c.total, 0);
   const topClientShare =
     totalRevenueThisYear > 0 ? (topClients[0]?.total ?? 0) / totalRevenueThisYear : 0;
-  const repeatClientShare = totalRevenueThisYear > 0 ? repeatRevenueThisYear / totalRevenueThisYear : 0;
+  const repeatClientShare =
+    totalRevenueThisYear > 0 ? repeatRevenueThisYear / totalRevenueThisYear : 0;
 
   const topExpenseCategory = expenseByCategory(recentExpenses)[0]?.category;
   const categoryTrendByQuarter = new Map(
@@ -781,6 +785,9 @@ export function Dashboard({
               </div>
             );
           })}
+          <div className="text-[11px] text-ink-soft mt-3">
+            {t("dashboard.analytics.ivaTrend.subtitle")}
+          </div>
         </Card>
 
         <Card className="p-6">
@@ -795,13 +802,14 @@ export function Dashboard({
             const pendingPct = total > 0 ? (pending / total) * 100 : 0;
             return (
               <div key={key} className="py-2 border-b border-border last:border-b-0">
-                <div className="flex items-center justify-between text-xs font-medium mb-1.5">
-                  <span>{quarterKeyLabel(key)}</span>
-                  <span className="font-mono text-ink-soft">{formatEUR(total)}</span>
-                </div>
+                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
                 <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden flex">
                   <div className="h-full bg-success" style={{ width: `${paidPct}%` }} />
                   <div className="h-full bg-warn" style={{ width: `${pendingPct}%` }} />
+                </div>
+                <div className="flex items-center justify-between mt-1 text-[11px] font-mono">
+                  <span className="text-success">{formatEUR(paid)}</span>
+                  <span className="text-warn">{formatEUR(pending)}</span>
                 </div>
               </div>
             );
