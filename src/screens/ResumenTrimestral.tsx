@@ -86,6 +86,9 @@ interface ResumenTrimestralProps {
   invoices: InvoiceListItem[];
   dropPaths?: string[] | null;
   dropToken?: number;
+  /** Seeds the focused quarter (e.g. when arriving from the Inicio historical timeline) —
+   * falls back to the current quarter when omitted. */
+  initialQuarterKey?: string;
 }
 
 interface QuarterLineItem {
@@ -239,9 +242,14 @@ function GastosMesTabs({
   );
 }
 
-export function ResumenTrimestral({ invoices, dropPaths, dropToken }: ResumenTrimestralProps) {
+export function ResumenTrimestral({
+  invoices,
+  dropPaths,
+  dropToken,
+  initialQuarterKey,
+}: ResumenTrimestralProps) {
   const { t } = useTranslation();
-  const [focusedKey, setFocusedKey] = useState(CURRENT_KEY);
+  const [focusedKey, setFocusedKey] = useState(initialQuarterKey ?? CURRENT_KEY);
   const { year, quarter } = parseQuarterKey(focusedKey);
   const period = quarterRange(year, quarter);
 
