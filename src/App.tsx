@@ -56,6 +56,7 @@ export default function App() {
   const [dbReady, setDbReady] = useState(false);
   const [dbErrorToast, setDbErrorToast] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [dashboardQuarterKey, setDashboardQuarterKey] = useState<string | null>(null);
   const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
   const [newContractClientId, setNewContractClientId] = useState<number | undefined>(undefined);
   const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
@@ -309,13 +310,23 @@ export default function App() {
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-bg text-ink transition-colors overflow-hidden">
-        <Sidebar screen={screen} onNavigate={setScreen} />
+        <Sidebar
+          screen={screen}
+          onNavigate={(next) => {
+            setDashboardQuarterKey(null);
+            setScreen(next);
+          }}
+        />
 
         <div className="flex-1 overflow-y-auto min-w-0">
           {screen === "dashboard" && (
             <Dashboard
               invoices={invoices}
               onNavigate={navigateFromDashboard}
+              onNavigateToQuarter={(key) => {
+                setDashboardQuarterKey(key);
+                setScreen("resumen-trimestral");
+              }}
               onOpenInvoice={openInvoice}
               onDuplicateInvoice={handleDuplicateInvoice}
             />
@@ -548,6 +559,7 @@ export default function App() {
               invoices={invoices}
               dropPaths={declarationDropPaths}
               dropToken={declarationDropToken}
+              initialQuarterKey={dashboardQuarterKey ?? undefined}
             />
           )}
           {screen === "ajustes" && <Ajustes theme={theme} onToggleTheme={handleToggleTheme} />}
