@@ -151,16 +151,6 @@ export function Dashboard({
   );
   const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
 
-  const invoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.subtotal,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-
   const expensesByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
   for (const expense of recentExpenses) {
     const key = expenseQuarterKey(expense);
@@ -178,20 +168,6 @@ export function Dashboard({
   const statusByKey = new Map<string, DeclarationStatus>(
     declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
   );
-
-  const trendData = QUARTER_KEYS.map((key) => {
-    const invoiced = invoicedByQuarter.get(key) ?? 0;
-    const expenses = expensesByQuarter.get(key) ?? 0;
-    return {
-      key,
-      label: quarterKeyLabel(key),
-      invoiced,
-      expenses,
-      net: invoiced - expenses,
-      status: statusByKey.get(key) ?? ("none" as const),
-      locked: altaKey !== null && compareQuarterKeys(key, altaKey) < 0,
-    };
-  });
 
   const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
 
@@ -247,6 +223,21 @@ export function Dashboard({
       return [key, total] as const;
     }),
   );
+
+  const trendData = QUARTER_KEYS.map((key) => {
+    const invoiced = grossInvoicedByQuarter.get(key) ?? 0;
+    const expenses = expensesByQuarter.get(key) ?? 0;
+    return {
+      key,
+      label: quarterKeyLabel(key),
+      invoiced,
+      expenses,
+      net: invoiced - expenses,
+      status: statusByKey.get(key) ?? ("none" as const),
+      locked: altaKey !== null && compareQuarterKeys(key, altaKey) < 0,
+    };
+  });
+
   const paidPendingData = QUARTER_KEYS.map((key) => {
     const total = grossInvoicedByQuarter.get(key) ?? 0;
     const paid = paidByQuarter.get(key) ?? 0;

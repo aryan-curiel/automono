@@ -1,3 +1,4 @@
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -58,19 +59,42 @@ function QuarterTick({
   const datum = data[index];
   if (!datum) return null;
 
+  const handleActivate = datum.locked ? undefined : () => onSelectQuarter(datum.key);
+
   return (
     <g
       transform={`translate(${x},${y})`}
-      onClick={datum.locked ? undefined : () => onSelectQuarter(datum.key)}
+      onClick={handleActivate}
+      onKeyDown={
+        handleActivate
+          ? (e: ReactKeyboardEvent<SVGGElement>) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleActivate();
+              }
+            }
+          : undefined
+      }
+      tabIndex={datum.locked ? undefined : 0}
+      role={datum.locked ? undefined : "button"}
+      aria-label={datum.label}
       style={{ cursor: datum.locked ? "default" : "pointer" }}
+      className="focus-visible:outline-none"
     >
+      <rect x={-24} y={2} width={48} height={26} fill="transparent" />
       {datum.locked ? (
         <g transform="translate(-4,8)" fill="none" stroke="var(--color-ink-soft)" strokeWidth={1.2}>
           <rect x={0} y={3} width={8} height={6} rx={1} />
           <path d="M1.5 3 V1.5 a2.5 2.5 0 0 1 5 0 V3" />
         </g>
       ) : (
-        <circle cx={0} cy={11} r={2.5} fill={STATUS_DOT_COLOR[datum.status]} />
+        <circle
+          cx={0}
+          cy={11}
+          r={2.5}
+          fill={STATUS_DOT_COLOR[datum.status]}
+          fillOpacity={datum.status === "none" ? 0.4 : 1}
+        />
       )}
       <text x={0} y={24} textAnchor="middle" fontSize={11} fill="var(--color-ink-soft)">
         {datum.label}
@@ -100,6 +124,7 @@ export function QuarterTrendChart({
           <CartesianGrid vertical={false} stroke="var(--color-border)" />
           <XAxis
             dataKey="label"
+            interval={0}
             tickLine={false}
             axisLine={{ stroke: "var(--color-border)" }}
             height={40}
