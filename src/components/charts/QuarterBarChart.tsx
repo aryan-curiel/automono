@@ -18,6 +18,7 @@ export interface QuarterBarDatum {
 export interface QuarterBarChartProps {
   data: QuarterBarDatum[];
   color: string;
+  seriesLabel: string;
   formatValue: (value: number) => string;
   formatTooltipValue?: (value: number) => string;
   height?: number;
@@ -31,6 +32,7 @@ export interface QuarterBarChartProps {
 export function QuarterBarChart({
   data,
   color,
+  seriesLabel,
   formatValue,
   formatTooltipValue,
   height = 160,
@@ -54,7 +56,7 @@ export function QuarterBarChart({
           axisLine={false}
           tickFormatter={formatValue}
           allowDecimals={false}
-          width={56}
+          width="auto"
         />
         {hasNegative && <ReferenceLine y={0} stroke="var(--color-border)" />}
         <Tooltip
@@ -62,13 +64,13 @@ export function QuarterBarChart({
           formatter={(value) => formatTooltip(Number(value))}
           labelStyle={{ color: "var(--color-ink)", fontWeight: 600, marginBottom: 4 }}
           contentStyle={{
-            background: "var(--color-surface)",
+            backgroundColor: "var(--color-surface)",
             border: "1px solid var(--color-border)",
             borderRadius: 8,
             fontSize: 12,
           }}
         />
-        <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} />
+        <Bar dataKey="value" name={seriesLabel} fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} />
       </BarChart>
     </ResponsiveContainer>
   );

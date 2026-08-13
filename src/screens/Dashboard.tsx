@@ -777,6 +777,7 @@ export function Dashboard({
           <QuarterBarChart
             data={ivaTrendData}
             color="var(--color-accent)"
+            seriesLabel={t("dashboard.analytics.ivaTrend.title")}
             formatValue={formatEUR}
             formatTooltipValue={(value) =>
               value < 0
@@ -858,7 +859,12 @@ export function Dashboard({
           {!topExpenseCategory ? (
             <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
           ) : (
-            <QuarterBarChart data={categoryTrendData} color="var(--color-warn)" formatValue={formatEUR} />
+            <QuarterBarChart
+              data={categoryTrendData}
+              color="var(--color-warn)"
+              seriesLabel={topExpenseCategory}
+              formatValue={formatEUR}
+            />
           )}
         </Card>
       </div>

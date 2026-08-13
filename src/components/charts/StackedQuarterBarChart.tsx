@@ -48,24 +48,28 @@ export function StackedQuarterBarChart({
             axisLine={false}
             tickFormatter={formatValue}
             allowDecimals={false}
-            width={56}
+            width="auto"
           />
           <Tooltip
             cursor={{ fill: "var(--color-surface-alt)" }}
-            formatter={(value, name) => [
-              formatValue(Number(value)),
-              name === "a" ? aLabel : bLabel,
-            ]}
+            formatter={(value) => formatValue(Number(value))}
             labelStyle={{ color: "var(--color-ink)", fontWeight: 600, marginBottom: 4 }}
             contentStyle={{
-              background: "var(--color-surface)",
+              backgroundColor: "var(--color-surface)",
               border: "1px solid var(--color-border)",
               borderRadius: 8,
               fontSize: 12,
             }}
           />
-          <Bar dataKey="a" stackId="quarter" fill={aColor} maxBarSize={24} />
-          <Bar dataKey="b" stackId="quarter" fill={bColor} radius={[4, 4, 0, 0]} maxBarSize={24} />
+          <Bar dataKey="a" name={aLabel} stackId="quarter" fill={aColor} maxBarSize={24} />
+          <Bar
+            dataKey="b"
+            name={bLabel}
+            stackId="quarter"
+            fill={bColor}
+            radius={[4, 4, 0, 0]}
+            maxBarSize={24}
+          />
         </BarChart>
       </ResponsiveContainer>
       <div className="flex items-center gap-4 mt-1 text-[11px] text-ink-soft">
