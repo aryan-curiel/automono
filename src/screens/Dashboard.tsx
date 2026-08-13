@@ -32,6 +32,7 @@ import {
 import type { Period } from "../lib/dateRange";
 import { agingReport, expenseByCategory, revenueByClient } from "../lib/analytics";
 import { QuarterBarChart } from "../components/charts/QuarterBarChart";
+import { StackedQuarterBarChart } from "../components/charts/StackedQuarterBarChart";
 import { nextTaxDeadlines, deadlineQuarterKey } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
 import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
@@ -269,6 +270,16 @@ export function Dashboard({
       return [key, total] as const;
     }),
   );
+  const paidPendingData = QUARTER_KEYS.map((key) => {
+    const total = grossInvoicedByQuarter.get(key) ?? 0;
+    const paid = paidByQuarter.get(key) ?? 0;
+    return {
+      key,
+      label: quarterKeyLabel(key),
+      a: paid,
+      b: Math.max(0, total - paid),
+    };
+  });
 
   const clientInvoiceCountThisYear = new Map<number, number>();
   for (const inv of invoicesThisYear) {
@@ -782,36 +793,14 @@ export function Dashboard({
           <div className="font-bold text-sm mb-4">
             {t("dashboard.analytics.paidVsOutstanding.title")}
           </div>
-          {QUARTER_KEYS.map((key) => {
-            const total = grossInvoicedByQuarter.get(key) ?? 0;
-            const paid = paidByQuarter.get(key) ?? 0;
-            const pending = Math.max(0, total - paid);
-            const paidPct = total > 0 ? (paid / total) * 100 : 0;
-            const pendingPct = total > 0 ? (pending / total) * 100 : 0;
-            return (
-              <div key={key} className="py-2 border-b border-border last:border-b-0">
-                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
-                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden flex">
-                  <div className="h-full bg-success" style={{ width: `${paidPct}%` }} />
-                  <div className="h-full bg-warn" style={{ width: `${pendingPct}%` }} />
-                </div>
-                <div className="flex items-center justify-between mt-1 text-[11px] font-mono">
-                  <span className="text-success">{formatEUR(paid)}</span>
-                  <span className="text-warn">{formatEUR(pending)}</span>
-                </div>
-              </div>
-            );
-          })}
-          <div className="flex items-center gap-4 mt-3 text-[11px] text-ink-soft">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              {t("dashboard.analytics.paidVsOutstanding.paid")}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-warn" />
-              {t("dashboard.analytics.paidVsOutstanding.pending")}
-            </span>
-          </div>
+          <StackedQuarterBarChart
+            data={paidPendingData}
+            aColor="var(--color-success)"
+            bColor="var(--color-info)"
+            aLabel={t("dashboard.analytics.paidVsOutstanding.paid")}
+            bLabel={t("dashboard.analytics.paidVsOutstanding.pending")}
+            formatValue={formatEUR}
+          />
         </Card>
       </div>
 
@@ -833,7 +822,7 @@ export function Dashboard({
                     {Math.round(topClientShare * 100)}%
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
                   <div
                     className="h-full rounded-full bg-accent"
                     style={{ width: `${topClientShare * 100}%` }}
@@ -849,7 +838,7 @@ export function Dashboard({
                     {Math.round(repeatClientShare * 100)}%
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
                   <div
                     className="h-full rounded-full bg-accent"
                     style={{ width: `${repeatClientShare * 100}%` }}
