@@ -31,6 +31,7 @@ import {
 } from "../lib/dateRange";
 import type { Period } from "../lib/dateRange";
 import { agingReport, expenseByCategory, revenueByClient } from "../lib/analytics";
+import { QuarterBarChart } from "../components/charts/QuarterBarChart";
 import { nextTaxDeadlines, deadlineQuarterKey } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
 import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
@@ -244,10 +245,11 @@ export function Dashboard({
         ] as const,
     ),
   );
-  const maxIvaNetValue = Math.max(
-    1,
-    ...QUARTER_KEYS.map((key) => Math.max(0, ivaNetByQuarter.get(key) ?? 0)),
-  );
+  const ivaTrendData = QUARTER_KEYS.map((key) => ({
+    key,
+    label: quarterKeyLabel(key),
+    value: ivaNetByQuarter.get(key) ?? 0,
+  }));
 
   const grossInvoicedByQuarter = new Map(
     QUARTER_KEYS.map((key) => {
@@ -299,10 +301,11 @@ export function Dashboard({
       return [key, total] as const;
     }),
   );
-  const maxCategoryTrendValue = Math.max(
-    1,
-    ...QUARTER_KEYS.map((key) => categoryTrendByQuarter.get(key) ?? 0),
-  );
+  const categoryTrendData = QUARTER_KEYS.map((key) => ({
+    key,
+    label: quarterKeyLabel(key),
+    value: categoryTrendByQuarter.get(key) ?? 0,
+  }));
 
   const recurring = recurringInvoiceCandidates(invoices, todayIso);
   const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
@@ -760,31 +763,16 @@ export function Dashboard({
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-6">
           <div className="font-bold text-sm mb-4">{t("dashboard.analytics.ivaTrend.title")}</div>
-          {QUARTER_KEYS.map((key) => {
-            const net = ivaNetByQuarter.get(key) ?? 0;
-            return (
-              <div key={key} className="py-2 border-b border-border last:border-b-0">
-                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
-                {net < 0 ? (
-                  <div className="text-xs text-success">
-                    {t("dashboard.analytics.ivaTrend.credit", { amount: formatEUR(Math.abs(net)) })}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-accent"
-                        style={{ width: `${(net / maxIvaNetValue) * 100}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-[11px] w-20 text-right shrink-0">
-                      {formatEUR(net)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          <QuarterBarChart
+            data={ivaTrendData}
+            color="var(--color-accent)"
+            formatValue={formatEUR}
+            formatTooltipValue={(value) =>
+              value < 0
+                ? `${formatEUR(Math.abs(value))} ${t("dashboard.analytics.ivaTrend.creditSuffix")}`
+                : formatEUR(value)
+            }
+          />
           <div className="text-[11px] text-ink-soft mt-3">
             {t("dashboard.analytics.ivaTrend.subtitle")}
           </div>
@@ -881,25 +869,7 @@ export function Dashboard({
           {!topExpenseCategory ? (
             <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
           ) : (
-            QUARTER_KEYS.map((key) => {
-              const amount = categoryTrendByQuarter.get(key) ?? 0;
-              return (
-                <div key={key} className="py-2 border-b border-border last:border-b-0">
-                  <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-warn"
-                        style={{ width: `${(amount / maxCategoryTrendValue) * 100}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-[11px] w-20 text-right shrink-0">
-                      {formatEUR(amount)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
+            <QuarterBarChart data={categoryTrendData} color="var(--color-warn)" formatValue={formatEUR} />
           )}
         </Card>
       </div>

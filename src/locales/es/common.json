@@ -160,7 +160,7 @@
       "title": "Análisis",
       "ivaTrend": {
         "title": "IVA a liquidar por trimestre",
-        "credit": "IVA a tu favor: {{amount}}",
+        "creditSuffix": "a tu favor",
         "subtitle": "Proyección: incluye facturas emitidas sin cobrar"
       },
       "paidVsOutstanding": {

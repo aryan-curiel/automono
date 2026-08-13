@@ -160,7 +160,7 @@
       "title": "Analytics",
       "ivaTrend": {
         "title": "VAT due per quarter",
-        "credit": "VAT credit: {{amount}}",
+        "creditSuffix": "credit",
         "subtitle": "Projection: includes issued unpaid invoices"
       },
       "paidVsOutstanding": {
