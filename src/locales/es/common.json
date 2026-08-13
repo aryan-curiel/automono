@@ -146,11 +146,36 @@
     "expensesByCategory": {
       "title": "Gastos por categoría ({{period}})"
     },
-    "history": {
-      "title": "Declaraciones por trimestre"
-    },
     "trend": {
       "title": "Facturado vs. gastos"
+    },
+    "comparison": {
+      "title": "Comparativa",
+      "invoiced": "Facturado",
+      "expenses": "Gastos",
+      "net": "Neto",
+      "subtitle": "vs. trimestre anterior"
+    },
+    "analytics": {
+      "title": "Análisis",
+      "ivaTrend": {
+        "title": "IVA a liquidar por trimestre",
+        "credit": "IVA a tu favor: {{amount}}"
+      },
+      "paidVsOutstanding": {
+        "title": "Cobrado vs. pendiente",
+        "paid": "Cobrado",
+        "pending": "Pendiente"
+      },
+      "composition": {
+        "title": "Composición de ingresos",
+        "topClient": "Cliente principal ({{client}})",
+        "repeatClients": "Clientes recurrentes (2+ facturas este año)"
+      },
+      "topCategoryTrend": {
+        "title": "Mayor categoría de gasto: {{category}}",
+        "titleEmpty": "Mayor categoría de gasto"
+      }
     }
   },
   "invoices": {

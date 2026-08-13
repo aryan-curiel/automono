@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendUp, Clock, UsersThree, Wallet, CalendarCheck, Lock } from "@phosphor-icons/react";
+import {
+  TrendUp,
+  TrendDown,
+  Clock,
+  UsersThree,
+  Wallet,
+  CalendarCheck,
+  Lock,
+} from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -25,7 +33,7 @@ import type { Period } from "../lib/dateRange";
 import { agingReport, expenseByCategory, revenueByClient } from "../lib/analytics";
 import { nextTaxDeadlines, deadlineQuarterKey } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
-import { invoicesInPeriod } from "../lib/quarterlyDeclaration";
+import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
 import { listDeclarations, getDeclaration } from "../db/declarations";
 import type {
@@ -78,62 +86,6 @@ interface DashboardProps {
   onNavigateToQuarter: (quarterKey: string) => void;
   onOpenInvoice: (id: number) => void;
   onDuplicateInvoice: (id: number) => Promise<void>;
-}
-
-/** A fixed, non-paginated quarter status strip — unlike `QuarterTimeline`, there's no
- * focus/page window here, just the same quarters `Dashboard` already computed. Quarters
- * before `altaKey` (RETA registration) are locked, mirroring `QuarterTimeline`'s own guard,
- * since navigating there would otherwise bypass it via `initialQuarterKey`. */
-function DashboardQuarterStrip({
-  quarterKeys,
-  declarations,
-  altaKey,
-  onSelect,
-}: {
-  quarterKeys: string[];
-  declarations: DeclarationListItem[];
-  altaKey: string | null;
-  onSelect: (key: string) => void;
-}) {
-  const statusByKey = new Map<string, DeclarationStatus>(
-    declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
-  );
-  return (
-    <div className="flex items-center gap-1 p-1 rounded-control bg-surface-alt border border-border">
-      {quarterKeys.map((key) => {
-        const status = statusByKey.get(key);
-        const locked = altaKey !== null && compareQuarterKeys(key, altaKey) < 0;
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onSelect(key)}
-            disabled={locked}
-            className="relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium
-                       rounded-control cursor-pointer text-ink-soft hover:text-ink hover:bg-surface
-                       transition-colors ease-[var(--ease-out)]
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
-                       disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
-          >
-            {locked ? (
-              <Lock size={10} weight="bold" className="shrink-0" />
-            ) : (
-              <span
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                  status === "completed"
-                    ? "bg-success"
-                    : status === "in_progress"
-                      ? "bg-info"
-                      : "bg-ink-soft/40"
-                }`}
-              />
-            )}
-            {quarterKeyLabel(key)}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 export function Dashboard({
@@ -241,6 +193,76 @@ export function Dashboard({
 
   const currentDeclaration = declarations.find(
     (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+  );
+  const statusByKey = new Map<string, DeclarationStatus>(
+    declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
+  );
+
+  const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
+  const currInvoiced = invoicedByQuarter.get(CURRENT_KEY) ?? 0;
+  const currExpenses = expensesByQuarter.get(CURRENT_KEY) ?? 0;
+  const prevInvoiced = invoicedByQuarter.get(prevQuarterKey) ?? 0;
+  const prevExpenses = expensesByQuarter.get(prevQuarterKey) ?? 0;
+  function comparisonRow(label: string, current: number, prior: number) {
+    return { label, value: current, delta: current - prior };
+  }
+  const comparison = [
+    comparisonRow(t("dashboard.comparison.invoiced"), currInvoiced, prevInvoiced),
+    comparisonRow(t("dashboard.comparison.expenses"), currExpenses, prevExpenses),
+    comparisonRow(
+      t("dashboard.comparison.net"),
+      currInvoiced - currExpenses,
+      prevInvoiced - prevExpenses,
+    ),
+  ];
+
+  const ivaInvoicedByQuarter = new Map(
+    QUARTER_KEYS.map((key) => {
+      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+        (s, inv) => s + inv.ivaAmount,
+        0,
+      );
+      return [key, total] as const;
+    }),
+  );
+  const ivaDeductibleByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
+  for (const expense of recentExpenses) {
+    const key = expenseQuarterKey(expense);
+    if (ivaDeductibleByQuarter.has(key)) {
+      ivaDeductibleByQuarter.set(
+        key,
+        ivaDeductibleByQuarter.get(key)! + (expense.ivaAmount ?? 0) * (expense.deductiblePct / 100),
+      );
+    }
+  }
+  const ivaNetByQuarter = new Map(
+    QUARTER_KEYS.map(
+      (key) =>
+        [key, (ivaInvoicedByQuarter.get(key) ?? 0) - (ivaDeductibleByQuarter.get(key) ?? 0)] as const,
+    ),
+  );
+  const maxIvaNetValue = Math.max(
+    1,
+    ...QUARTER_KEYS.map((key) => Math.max(0, ivaNetByQuarter.get(key) ?? 0)),
+  );
+
+  const grossInvoicedByQuarter = new Map(
+    QUARTER_KEYS.map((key) => {
+      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+        (s, inv) => s + inv.total,
+        0,
+      );
+      return [key, total] as const;
+    }),
+  );
+  const paidByQuarter = new Map(
+    QUARTER_KEYS.map((key) => {
+      const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+        (s, inv) => s + inv.total,
+        0,
+      );
+      return [key, total] as const;
+    }),
   );
 
   const recurring = recurringInvoiceCandidates(invoices, todayIso);
@@ -381,15 +403,38 @@ export function Dashboard({
         ))}
       </div>
 
-      <div className="grid grid-cols-[1fr_1fr] gap-4 mb-4">
+      <div className="grid grid-cols-[1fr_1.4fr] gap-4 mb-4">
         <Card className="p-6">
-          <div className="font-bold text-sm mb-4">{t("dashboard.history.title")}</div>
-          <DashboardQuarterStrip
-            quarterKeys={QUARTER_KEYS}
-            declarations={declarations}
-            altaKey={altaKey}
-            onSelect={onNavigateToQuarter}
-          />
+          <div className="font-bold text-sm mb-4">{t("dashboard.comparison.title")}</div>
+          {comparison.map((row) => (
+            <div
+              key={row.label}
+              className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
+            >
+              <span className="font-medium text-[13.5px]">{row.label}</span>
+              <span className="flex items-center gap-2.5">
+                {row.delta !== 0 && (
+                  <span
+                    className={`flex items-center gap-1 text-xs font-medium ${
+                      row.delta >= 0 ? "text-success" : "text-danger"
+                    }`}
+                  >
+                    {row.delta >= 0 ? (
+                      <TrendUp size={12} weight="bold" />
+                    ) : (
+                      <TrendDown size={12} weight="bold" />
+                    )}
+                    {row.delta >= 0 ? "+" : "-"}
+                    {formatEUR(Math.abs(row.delta))}
+                  </span>
+                )}
+                <span className="font-semibold text-[13.5px] font-mono w-[90px] text-right">
+                  {formatEUR(row.value)}
+                </span>
+              </span>
+            </div>
+          ))}
+          <div className="text-[11px] text-ink-soft mt-3">{t("dashboard.comparison.subtitle")}</div>
         </Card>
 
         <Card className="p-6">
@@ -397,9 +442,36 @@ export function Dashboard({
           {QUARTER_KEYS.map((key) => {
             const invoiced = invoicedByQuarter.get(key) ?? 0;
             const expenses = expensesByQuarter.get(key) ?? 0;
+            const status = statusByKey.get(key);
+            const locked = altaKey !== null && compareQuarterKeys(key, altaKey) < 0;
             return (
-              <div key={key} className="py-2 border-b border-border last:border-b-0">
-                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+              <button
+                key={key}
+                type="button"
+                onClick={() => onNavigateToQuarter(key)}
+                disabled={locked}
+                className="w-full text-left px-2 -mx-2 py-2 border-b border-border last:border-b-0
+                         rounded-control cursor-pointer hover:bg-surface-alt
+                         transition-colors ease-[var(--ease-out)]
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
+                         disabled:cursor-default disabled:hover:bg-transparent"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-medium mb-1.5">
+                  {locked ? (
+                    <Lock size={10} weight="bold" className="text-ink-soft shrink-0" />
+                  ) : (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        status === "completed"
+                          ? "bg-success"
+                          : status === "in_progress"
+                            ? "bg-info"
+                            : "bg-ink-soft/40"
+                      }`}
+                    />
+                  )}
+                  {quarterKeyLabel(key)}
+                </div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
                     <div
@@ -422,7 +494,7 @@ export function Dashboard({
                     {formatEUR(expenses)}
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </Card>
@@ -639,6 +711,76 @@ export function Dashboard({
               </div>
             </div>
           ))}
+        </Card>
+      </div>
+
+      <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mt-8 mb-4">
+        {t("dashboard.analytics.title")}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">{t("dashboard.analytics.ivaTrend.title")}</div>
+          {QUARTER_KEYS.map((key) => {
+            const net = ivaNetByQuarter.get(key) ?? 0;
+            return (
+              <div key={key} className="py-2 border-b border-border last:border-b-0">
+                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+                {net < 0 ? (
+                  <div className="text-xs text-success">
+                    {t("dashboard.analytics.ivaTrend.credit", { amount: formatEUR(Math.abs(net)) })}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: `${(net / maxIvaNetValue) * 100}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-[11px] w-20 text-right shrink-0">
+                      {formatEUR(net)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </Card>
+
+        <Card className="p-6">
+          <div className="font-bold text-sm mb-4">
+            {t("dashboard.analytics.paidVsOutstanding.title")}
+          </div>
+          {QUARTER_KEYS.map((key) => {
+            const total = grossInvoicedByQuarter.get(key) ?? 0;
+            const paid = paidByQuarter.get(key) ?? 0;
+            const pending = Math.max(0, total - paid);
+            const paidPct = total > 0 ? (paid / total) * 100 : 0;
+            const pendingPct = total > 0 ? (pending / total) * 100 : 0;
+            return (
+              <div key={key} className="py-2 border-b border-border last:border-b-0">
+                <div className="flex items-center justify-between text-xs font-medium mb-1.5">
+                  <span>{quarterKeyLabel(key)}</span>
+                  <span className="font-mono text-ink-soft">{formatEUR(total)}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden flex">
+                  <div className="h-full bg-success" style={{ width: `${paidPct}%` }} />
+                  <div className="h-full bg-warn" style={{ width: `${pendingPct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex items-center gap-4 mt-3 text-[11px] text-ink-soft">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+              {t("dashboard.analytics.paidVsOutstanding.paid")}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-warn" />
+              {t("dashboard.analytics.paidVsOutstanding.pending")}
+            </span>
+          </div>
         </Card>
       </div>
     </div>

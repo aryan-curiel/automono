@@ -146,11 +146,36 @@
     "expensesByCategory": {
       "title": "Expenses by category ({{period}})"
     },
-    "history": {
-      "title": "Declarations by quarter"
-    },
     "trend": {
       "title": "Invoiced vs. expenses"
+    },
+    "comparison": {
+      "title": "Comparison",
+      "invoiced": "Invoiced",
+      "expenses": "Expenses",
+      "net": "Net",
+      "subtitle": "vs. previous quarter"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "ivaTrend": {
+        "title": "VAT due per quarter",
+        "credit": "VAT credit: {{amount}}"
+      },
+      "paidVsOutstanding": {
+        "title": "Paid vs. outstanding",
+        "paid": "Paid",
+        "pending": "Outstanding"
+      },
+      "composition": {
+        "title": "Revenue composition",
+        "topClient": "Top client ({{client}})",
+        "repeatClients": "Repeat clients (2+ invoices this year)"
+      },
+      "topCategoryTrend": {
+        "title": "Top expense category: {{category}}",
+        "titleEmpty": "Top expense category"
+      }
     }
   },
   "invoices": {
