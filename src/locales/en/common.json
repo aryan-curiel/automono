@@ -553,9 +553,9 @@
     "wizard": {
       "title": "New quarterly declaration",
       "step2": {
-        "title": "Confirm the paid invoices",
-        "empty": "No paid invoices in this quarter.",
-        "total": "Total collected"
+        "title": "Confirm the quarter's invoices",
+        "empty": "No invoices in this quarter.",
+        "total": "Total invoiced"
       },
       "step3": {
         "title": "Confirm the expenses",

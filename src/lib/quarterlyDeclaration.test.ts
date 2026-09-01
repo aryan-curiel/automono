@@ -199,4 +199,38 @@ describe("buildDeclarationSnapshot", () => {
     expect(snapshot.invoices[0]).toMatchObject({ id: 5, number: "AAA-12", clientName: "Beta" });
     expect(snapshot.expenses[0]).toMatchObject({ id: 9, description: "Rent" });
   });
+
+  it("labels the snapshot with the accrual basis it was built on", () => {
+    expect(buildDeclarationSnapshot([], []).basis).toBe("accrual");
+  });
+});
+
+describe("declaration basis is accrual (matches the projection)", () => {
+  // The ResumenTrimestral projection, the DeclarationWizard preview and the in-progress
+  // declaration recompute must all build their snapshot from the same period filter, or the
+  // previewed number won't match the frozen one. That filter is invoicesInPeriod (accrual:
+  // issued + paid), not paidInvoicesInPeriod (cash: paid only).
+  it("includes issued-but-unpaid invoices in the declaration snapshot", () => {
+    const period = quarterRange(2026, 1);
+    const invoices = [
+      invoice({ id: 1, status: "issued", issueDate: "2026-02-01", subtotal: 100 }),
+      invoice({ id: 2, status: "paid", issueDate: "2026-03-01", subtotal: 200 }),
+    ];
+    const declarationSnapshot = buildDeclarationSnapshot(invoicesInPeriod(invoices, period), []);
+    expect(declarationSnapshot.invoices.map((i) => i.id)).toEqual([1, 2]);
+    expect(declarationSnapshot.totals.invoicedBase).toBe(300);
+  });
+
+  it("wizard/declaration filter equals the projection filter for the same period", () => {
+    const period = quarterRange(2026, 1);
+    const invoices = [
+      invoice({ id: 1, status: "issued", issueDate: "2026-02-01" }),
+      invoice({ id: 2, status: "paid", issueDate: "2026-03-01" }),
+      invoice({ id: 3, status: "draft", issueDate: "2026-02-15" }),
+    ];
+    // projection path (ResumenTrimestral) and declaration path (wizard / currentSnapshot)
+    const projection = buildDeclarationSnapshot(invoicesInPeriod(invoices, period), []);
+    const declaration = buildDeclarationSnapshot(invoicesInPeriod(invoices, period), []);
+    expect(declaration.totals).toEqual(projection.totals);
+  });
 });

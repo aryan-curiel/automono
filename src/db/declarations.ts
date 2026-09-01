@@ -5,7 +5,7 @@ import {
   buildDeclarationCsv,
   buildDeclarationSnapshot,
   expensesInPeriod,
-  paidInvoicesInPeriod,
+  invoicesInPeriod,
   type DeclarationSnapshot,
 } from "../lib/quarterlyDeclaration";
 import type { ModeloFields } from "../lib/modeloReport";
@@ -86,7 +86,7 @@ function currentSnapshot(
 
   const period = quarterRange(row.year, row.quarter as 1 | 2 | 3 | 4);
   return buildDeclarationSnapshot(
-    paidInvoicesInPeriod(allInvoices, period),
+    invoicesInPeriod(allInvoices, period),
     expensesInPeriod(allExpenses, period),
   );
 }

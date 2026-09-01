@@ -17,7 +17,8 @@ export function invoicesInPeriod(invoices: InvoiceListItem[], period: Period): I
 }
 
 /** Invoices actually paid (collected), with an issue date inside `period` — narrower than
- * `invoicesInPeriod`, used for the declaration wizard where only money received counts. */
+ * `invoicesInPeriod`. The declaration itself is accrual (see `invoicesInPeriod`); this is for
+ * cash-flow views like the Dashboard's paid-vs-outstanding chart. */
 export function paidInvoicesInPeriod(
   invoices: InvoiceListItem[],
   period: Period,
@@ -84,7 +85,13 @@ export interface DeclarationTotals {
   margin: number;
 }
 
+/** Which tax basis the invoice set was filtered on. Spanish Modelo 303/130 are accrual
+ * (*devengo*) by default; cash (*criterio de caja*) is a future opt-in (see issue #31).
+ * Frozen snapshots without this field predate the accrual unification and were built on cash. */
+export type DeclarationBasis = "accrual" | "cash";
+
 export interface DeclarationSnapshot {
+  basis: DeclarationBasis;
   invoices: DeclarationInvoiceLine[];
   expenses: DeclarationExpenseLine[];
   totals: DeclarationTotals;
@@ -121,6 +128,7 @@ export function buildDeclarationSnapshot(
   const margin = roundCents(netIrpfIncome - irpfWithheld);
 
   return {
+    basis: "accrual",
     invoices: invoices.map((inv) => ({
       id: inv.id,
       number:
