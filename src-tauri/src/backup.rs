@@ -1,8 +1,10 @@
 use std::io;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use sqlx::{Row, SqlitePool};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
@@ -11,6 +13,7 @@ use tauri_plugin_sql::{DbInstances, DbPool};
 const DB_NAME: &str = "sqlite:automono.db";
 const DB_FILE_NAME: &str = "automono.db";
 const CONTEXT_FILE_NAME: &str = "contexto_usuario.md";
+const MANIFEST_FILE_NAME: &str = "manifest.json";
 const BACKUP_SUBDIRS: [&str; 6] = [
     "contracts",
     "expenses",
@@ -82,6 +85,100 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// One entry in `manifest.json` — a file the snapshot contains, keyed by its path relative to
+/// the `backup-<ts>/` root (forward-slash separated; macOS is the only supported target).
+#[derive(Serialize, Deserialize)]
+struct ManifestEntry {
+    path: String,
+    size: u64,
+    sha256: String,
+}
+
+/// Streams `path` through SHA-256, returning the lowercase hex digest.
+fn sha256_file(path: &Path) -> io::Result<String> {
+    let mut file = std::fs::File::open(path)?;
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 64 * 1024];
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+/// Collects every file under `dir` recursively as paths relative to `base`, skipping the
+/// manifest file itself.
+fn collect_files_relative(dir: &Path, base: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if entry.file_type()?.is_dir() {
+            collect_files_relative(&path, base, out)?;
+        } else if entry.file_type()?.is_file() {
+            let rel = path.strip_prefix(base).unwrap_or(&path).to_path_buf();
+            if rel.to_string_lossy() != MANIFEST_FILE_NAME {
+                out.push(rel);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Writes `manifest.json` into `backup_dir` recording path/size/sha256 for every file the
+/// snapshot contains — the DB plus every copied attachment. On restore, `verify_manifest`
+/// re-checks each entry before any live data is touched.
+fn write_manifest(backup_dir: &Path) -> Result<(), String> {
+    let mut files = Vec::new();
+    collect_files_relative(backup_dir, backup_dir, &mut files).map_err(|e| e.to_string())?;
+    files.sort();
+    let mut entries = Vec::with_capacity(files.len());
+    for rel in files {
+        let abs = backup_dir.join(&rel);
+        let size = std::fs::metadata(&abs).map_err(|e| e.to_string())?.len();
+        let sha256 = sha256_file(&abs).map_err(|e| e.to_string())?;
+        entries.push(ManifestEntry {
+            path: rel.to_string_lossy().replace('\\', "/"),
+            size,
+            sha256,
+        });
+    }
+    let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
+    std::fs::write(backup_dir.join(MANIFEST_FILE_NAME), json).map_err(|e| e.to_string())
+}
+
+/// Verifies every file listed in `backup_dir/manifest.json` exists with a matching size and
+/// SHA-256. Returns `Err` naming the first file that is missing, wrong-sized, or mismatched.
+fn verify_manifest(backup_dir: &Path) -> Result<(), String> {
+    let raw = std::fs::read(backup_dir.join(MANIFEST_FILE_NAME)).map_err(|e| e.to_string())?;
+    let entries: Vec<ManifestEntry> = serde_json::from_slice(&raw)
+        .map_err(|_| "El manifiesto de la copia de seguridad está dañado".to_string())?;
+    for entry in &entries {
+        let path = backup_dir.join(&entry.path);
+        let meta = std::fs::metadata(&path).map_err(|_| {
+            format!(
+                "La copia de seguridad está incompleta: falta el archivo «{}»",
+                entry.path
+            )
+        })?;
+        if meta.len() != entry.size {
+            return Err(format!(
+                "La copia de seguridad está dañada: el archivo «{}» tiene un tamaño incorrecto",
+                entry.path
+            ));
+        }
+        if sha256_file(&path).map_err(|e| e.to_string())? != entry.sha256 {
+            return Err(format!(
+                "La copia de seguridad está dañada: la suma de verificación del archivo «{}» no coincide",
+                entry.path
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Writes a consistent snapshot of the live database to `dest_db_path` via SQLite's
 /// `VACUUM INTO`. Safe regardless of journal mode and concurrent readers, unlike a plain
 /// `fs::copy` of the db file which can grab a torn WAL state.
@@ -147,6 +244,8 @@ async fn run_backup(
     if context_src.is_file() {
         std::fs::copy(&context_src, backup_dir.join(CONTEXT_FILE_NAME)).map_err(|e| e.to_string())?;
     }
+
+    write_manifest(&backup_dir)?;
 
     sqlx::query(
         "UPDATE backup_settings SET last_backup_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id = 1",
@@ -282,17 +381,21 @@ async fn restore_from_dir(backup_dir: &Path, data_dir: &Path, db_dest: &Path) ->
     let db_src = backup_dir.join(DB_FILE_NAME);
     validate_backup_db(&db_src).await?;
 
-    // Reject a backup whose attachment folder exists but is empty while the live one has files
-    // — the hallmark of an interrupted earlier backup. Aborting beats wiping live receipts /
-    // contracts with nothing to replace them.
-    // ponytail: emptiness heuristic, not a per-file manifest/checksum — deeper integrity check
-    // is a follow-up.
-    for sub in BACKUP_SUBDIRS {
-        let src = backup_dir.join(sub);
-        if src.exists() && dir_is_empty(&src) && dir_has_entries(&data_dir.join(sub)) {
-            return Err(format!(
-                "La copia de seguridad parece incompleta (carpeta «{sub}» vacía); restauración cancelada"
-            ));
+    // Integrity gate before any staging. A manifest (written since #53) checksums every
+    // snapshotted file, so it catches partial copies and truncated files. Legacy backups with
+    // no manifest fall back to the emptiness heuristic: reject a backup whose attachment folder
+    // exists but is empty while the live one has files — the hallmark of an interrupted earlier
+    // backup. Aborting beats wiping live receipts / contracts with nothing to replace them.
+    if backup_dir.join(MANIFEST_FILE_NAME).is_file() {
+        verify_manifest(backup_dir)?;
+    } else {
+        for sub in BACKUP_SUBDIRS {
+            let src = backup_dir.join(sub);
+            if src.exists() && dir_is_empty(&src) && dir_has_entries(&data_dir.join(sub)) {
+                return Err(format!(
+                    "La copia de seguridad parece incompleta (carpeta «{sub}» vacía); restauración cancelada"
+                ));
+            }
         }
     }
 
@@ -603,6 +706,89 @@ mod tests {
         assert_eq!(entries[0].folder_name, "backup-2099-01-01T00-00-00");
         assert_eq!(entries[1].folder_name, "backup-2020-01-01T00-00-00");
 
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn write_manifest_round_trips_and_verifies() {
+        let tmp = std::env::temp_dir().join(format!("automono_manifest_test_{}", std::process::id()));
+        std::fs::remove_dir_all(&tmp).ok();
+        std::fs::create_dir_all(tmp.join("expenses/2025")).unwrap();
+        std::fs::write(tmp.join(DB_FILE_NAME), b"fake db bytes").unwrap();
+        std::fs::write(tmp.join("expenses/2025/receipt.pdf"), b"receipt body").unwrap();
+
+        write_manifest(&tmp).expect("manifest written");
+
+        let raw = std::fs::read(tmp.join(MANIFEST_FILE_NAME)).unwrap();
+        let entries: Vec<ManifestEntry> = serde_json::from_slice(&raw).unwrap();
+        // DB + one receipt; manifest.json itself is excluded.
+        assert_eq!(entries.len(), 2);
+        assert!(entries.iter().any(|e| e.path == "automono.db"));
+        assert!(entries
+            .iter()
+            .any(|e| e.path == "expenses/2025/receipt.pdf" && e.size == 12));
+
+        verify_manifest(&tmp).expect("verify passes on an untouched backup");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[tokio::test]
+    async fn restore_from_dir_rejects_a_tampered_attachment_named_in_the_manifest() {
+        let (tmp, backup, data, db_dest) = restore_fixture("tampered");
+        write_valid_db(&backup.join(DB_FILE_NAME)).await;
+        std::fs::write(backup.join("expenses/receipt.pdf"), b"original receipt").unwrap();
+        write_manifest(&backup).expect("manifest written");
+        // Truncate the attachment after the manifest recorded its size + checksum.
+        std::fs::write(backup.join("expenses/receipt.pdf"), b"trunc").unwrap();
+
+        std::fs::write(data.join("expenses/receipt.pdf"), b"live receipt").unwrap();
+        std::fs::write(&db_dest, b"live db").unwrap();
+
+        let err = restore_from_dir(&backup, &data, &db_dest)
+            .await
+            .expect_err("restore aborts on a tampered file");
+        assert!(err.contains("receipt.pdf"), "error names the bad file: {err}");
+        assert_eq!(
+            std::fs::read(data.join("expenses/receipt.pdf")).unwrap(),
+            b"live receipt"
+        );
+        assert_eq!(std::fs::read(&db_dest).unwrap(), b"live db");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[tokio::test]
+    async fn restore_from_dir_accepts_a_valid_manifested_backup() {
+        let (tmp, backup, data, db_dest) = restore_fixture("manifested");
+        write_valid_db(&backup.join(DB_FILE_NAME)).await;
+        std::fs::write(backup.join("expenses/restored.pdf"), b"restored").unwrap();
+        write_manifest(&backup).expect("manifest written");
+        std::fs::write(data.join("expenses/stale.pdf"), b"stale").unwrap();
+        std::fs::write(&db_dest, b"stale db").unwrap();
+
+        restore_from_dir(&backup, &data, &db_dest)
+            .await
+            .expect("valid manifested restore succeeds");
+
+        assert!(data.join("expenses/restored.pdf").is_file());
+        assert!(!data.join("expenses/stale.pdf").exists());
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[tokio::test]
+    async fn restore_from_dir_restores_a_legacy_backup_without_a_manifest() {
+        let (tmp, backup, data, db_dest) = restore_fixture("legacy");
+        write_valid_db(&backup.join(DB_FILE_NAME)).await;
+        std::fs::write(backup.join("expenses/restored.pdf"), b"restored").unwrap();
+        std::fs::write(data.join("expenses/stale.pdf"), b"stale").unwrap();
+        std::fs::write(&db_dest, b"stale db").unwrap();
+        // No manifest.json — a snapshot from before #53.
+
+        restore_from_dir(&backup, &data, &db_dest)
+            .await
+            .expect("legacy backup restores via the emptiness-heuristic path");
+
+        assert!(data.join("expenses/restored.pdf").is_file());
+        assert!(!data.join("expenses/stale.pdf").exists());
         std::fs::remove_dir_all(&tmp).ok();
     }
 }

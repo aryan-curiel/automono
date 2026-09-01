@@ -24,6 +24,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
 tauri-plugin-sql = { version = "2.4.0", features = ["sqlite"] }
 sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 genpdf = { version = "0.2.0", features = ["images"] }
