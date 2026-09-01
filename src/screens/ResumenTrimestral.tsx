@@ -63,6 +63,7 @@ import {
 } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
 import { BasisNote } from "../components/BasisNote";
+import { CasillaPrefill } from "../components/CasillaPrefill";
 
 const PAGE_SIZE = 4;
 /** Row height (py-2 + 13px line + border) × PAGE_SIZE, so the card doesn't resize between quarters. */
@@ -322,6 +323,19 @@ export function ResumenTrimestral({
     declarationFetch && declarationFetch.id === focusedDeclarationId ? declarationFetch : null;
   const declaration = currentFetch && "detail" in currentFetch ? currentFetch.detail : null;
   const declarationLoadError = !!currentFetch && "error" in currentFetch;
+
+  // Cumulative Modelo 130 figures for the focused declaration — shared by the casilla pre-fill
+  // panel and the upload-review modal so both show the real YTD box values, not the
+  // isolated-quarter estimate.
+  const declarationModelo130Ytd = declaration
+    ? cumulativeModelo130(
+        invoices,
+        ytdExpenses,
+        declaration.year,
+        declaration.quarter as 1 | 2 | 3 | 4,
+        declaration.gdjRate,
+      )
+    : undefined;
 
   function reloadDeclaration() {
     if (focusedDeclarationId === null) return;
@@ -670,6 +684,17 @@ export function ResumenTrimestral({
             </Card>
           </div>
 
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {activeModelos.map((modelo) => (
+              <CasillaPrefill
+                key={modelo}
+                modelo={modelo}
+                snapshot={declaration.snapshot}
+                ytd130={modelo === "130" ? declarationModelo130Ytd : undefined}
+              />
+            ))}
+          </div>
+
           <ModeloReviewModal
             open={reviewFiles !== null}
             onOpenChange={(o) => !o && setReviewFiles(null)}
@@ -678,13 +703,7 @@ export function ResumenTrimestral({
             year={declaration.year}
             quarter={declaration.quarter}
             snapshot={declaration.snapshot}
-            modelo130Ytd={cumulativeModelo130(
-              invoices,
-              ytdExpenses,
-              declaration.year,
-              declaration.quarter as 1 | 2 | 3 | 4,
-              declaration.gdjRate,
-            )}
+            modelo130Ytd={declarationModelo130Ytd}
             onAttached={reloadDeclaration}
           />
 
