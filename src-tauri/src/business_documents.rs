@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::contracts::copy_into;
+use crate::contracts::{copy_into, ensure_under_data_dir};
 use crate::llm;
 
 /// Copies `source` into `app_data_dir()/documentos_autonomo/`, named after its own original
@@ -35,7 +35,10 @@ pub async fn attach_business_document_cmd(app: AppHandle, source_path: String) -
 
 #[tauri::command]
 pub async fn open_business_document_file_cmd(app: AppHandle, file_path: String) -> Result<(), String> {
-    app.opener().open_path(file_path, None::<&str>).map_err(|e| e.to_string())
+    let file_path = ensure_under_data_dir(&app, &file_path)?;
+    app.opener()
+        .open_path(file_path.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 /// Fields extracted from an arbitrary business-relevant document (a Spanish tax/social-security
