@@ -52,6 +52,7 @@ import { getPreferences } from "../db/preferences";
 import { yoyDelta } from "../lib/analytics";
 import { formatEUR, formatDate } from "../lib/format";
 import { invoiceNumberLabel } from "../lib/invoice";
+import { cumulativeModelo130 } from "../lib/modeloReport";
 import {
   buildDeclarationCsv,
   buildDeclarationSnapshot,
@@ -266,6 +267,7 @@ export function ResumenTrimestral({
 
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [priorExpenses, setPriorExpenses] = useState<ExpenseRecord[]>([]);
+  const [ytdExpenses, setYtdExpenses] = useState<ExpenseRecord[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -343,6 +345,17 @@ export function ResumenTrimestral({
       quarterKeys: quartersInRange(priorPeriod.from, priorPeriod.to),
     }).then(setPriorExpenses);
   }, [priorPeriod.from, priorPeriod.to]);
+
+  // Year-to-date expenses (Jan 1 → end of the focused quarter) feed the cumulative Modelo 130
+  // calc in the review modal.
+  const ytdPeriod = { from: quarterRange(year, 1).from, to: period.to };
+  useEffect(() => {
+    void listExpenses({
+      from: ytdPeriod.from,
+      to: ytdPeriod.to,
+      quarterKeys: quartersInRange(ytdPeriod.from, ytdPeriod.to),
+    }).then(setYtdExpenses);
+  }, [ytdPeriod.from, ytdPeriod.to]);
 
   const qInvoices = invoicesInPeriod(invoices, period);
   const projectionSnapshot = buildDeclarationSnapshot(qInvoices, expenses);
@@ -632,6 +645,13 @@ export function ResumenTrimestral({
             year={declaration.year}
             quarter={declaration.quarter}
             snapshot={declaration.snapshot}
+            modelo130Ytd={cumulativeModelo130(
+              invoices,
+              ytdExpenses,
+              declaration.year,
+              declaration.quarter as 1 | 2 | 3 | 4,
+              declaration.gdjRate,
+            )}
             onAttached={reloadDeclaration}
           />
 
