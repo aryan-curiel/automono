@@ -233,6 +233,10 @@
     "title": "Inicio",
     "addExpense": "Gasto",
     "noData": "Sin datos todavía",
+    "firstRun": {
+      "title": "Empieza a registrar tu actividad",
+      "subtitle": "Cuando emitas tu primera factura o registres un gasto, aquí verás tus totales del trimestre, la evolución y el calendario fiscal."
+    },
     "kpis": {
       "invoicedQuarter": "Facturado (trimestre)",
       "pendingCollection": "Pendiente de cobro",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TrendUp, Clock, Wallet, Scales } from "@phosphor-icons/react";
+import { TrendUp, Clock, Wallet, Scales, ChartLineUp } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -69,6 +69,7 @@ const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "model
 
 interface DashboardProps {
   invoices: InvoiceListItem[];
+  loading?: boolean;
   onNavigate: (screen: Screen) => void;
   onNavigateToQuarter: (quarterKey: string) => void;
   onOpenInvoice: (id: number) => void;
@@ -77,6 +78,7 @@ interface DashboardProps {
 
 export function Dashboard({
   invoices,
+  loading = false,
   onNavigate,
   onNavigateToQuarter,
   onOpenInvoice,
@@ -84,6 +86,7 @@ export function Dashboard({
 }: DashboardProps) {
   const { t } = useTranslation();
   const [recentExpenses, setRecentExpenses] = useState<ExpenseRecord[]>([]);
+  const [expensesLoaded, setExpensesLoaded] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<number | null>(null);
   const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
   const [currentDeclarationDetail, setCurrentDeclarationDetail] =
@@ -113,7 +116,10 @@ export function Dashboard({
       from: quarterWindowFrom,
       to: quarterWindowTo,
       quarterKeys,
-    }).then(setRecentExpenses);
+    }).then((rows) => {
+      setRecentExpenses(rows);
+      setExpensesLoaded(true);
+    });
   }, [quarterWindowFrom, quarterWindowTo, quarterKeys]);
 
   useEffect(() => {
@@ -442,6 +448,36 @@ export function Dashboard({
       tone: "warn" as const,
     },
   ];
+
+  // Nothing to plot yet — onboarding never seeds a client/invoice/expense. Collapse the
+  // "Sin datos" cards into one first-run panel until there's real activity. `expensesLoaded`
+  // guards against flashing it during the async load for a user who does have data.
+  const firstRun =
+    expensesLoaded && !loading && invoices.length === 0 && recentExpenses.length === 0;
+
+  if (firstRun) {
+    return (
+      <div className="px-8 pb-15">
+        <PageHeader title={t("dashboard.title")} />
+        <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+          <ChartLineUp size={40} className="text-ink-soft/40" />
+          <div className="font-bold text-base">{t("dashboard.firstRun.title")}</div>
+          <div className="text-sm text-ink-soft max-w-md">{t("dashboard.firstRun.subtitle")}</div>
+          <div className="flex items-center gap-2.5 mt-2">
+            <Button onClick={() => onNavigate("factura-nueva")}>
+              + {t("invoices.newInvoice")}
+            </Button>
+            <Button variant="secondary" onClick={() => onNavigate("cliente-nuevo")}>
+              + {t("clients.newClient")}
+            </Button>
+            <Button variant="secondary" onClick={() => onNavigate("gasto-nuevo")}>
+              + {t("dashboard.addExpense")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-8 pb-15">
