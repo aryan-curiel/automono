@@ -45,6 +45,7 @@ import type { BusinessProfileRecord } from "./db/businessProfile";
 import { getPreferences, updatePreferences } from "./db/preferences";
 import type { PreferencesRecord } from "./db/preferences";
 import { checkAutoBackup } from "./db/backup";
+import { runFilingReminders } from "./lib/filingReminders";
 import { isSupportedExpenseFile } from "./db/expenses";
 import type { RectificationType, Screen } from "./types";
 
@@ -223,6 +224,7 @@ export default function App() {
   useEffect(() => {
     if (!dbReady) return;
     void checkAutoBackup();
+    void runFilingReminders();
   }, [dbReady]);
 
   useEffect(() => {

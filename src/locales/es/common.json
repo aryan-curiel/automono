@@ -652,5 +652,11 @@
     "pageNext": "Página siguiente",
     "pageIndicator": "{{page}} de {{count}}",
     "vsPriorYear": "{{sign}}{{value}}% vs año anterior"
+  },
+  "reminders": {
+    "title": "Vencimiento fiscal",
+    "body_one": "{{label}} vence en {{count}} día ({{date}})",
+    "body_other": "{{label}} vence en {{count}} días ({{date}})",
+    "bodyToday": "{{label}} vence hoy ({{date}})"
   }
 }
