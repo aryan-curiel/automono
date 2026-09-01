@@ -19,7 +19,7 @@ import {
   synthesizeUserContext,
 } from "../db/businessDocuments";
 import type { BusinessDocumentRecord, RegistrationFields } from "../db/businessDocuments";
-import { activeApiKey, getLlmSettings } from "../db/llmSettings";
+import { activeApiKey, activeModel, getLlmSettings } from "../db/llmSettings";
 import type { LlmSettingsRecord } from "../db/llmSettings";
 import { getUserContext, saveUserContext } from "../db/userContext";
 
@@ -107,7 +107,7 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
           filePath,
           llmSettings.provider,
           apiKey,
-          llmSettings.openrouterModel,
+          activeModel(llmSettings),
         ).catch((err) => {
           // Never blocks the upload itself — the file is still stored for the accountant
           // archive even when extraction fails.
@@ -206,7 +206,7 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
         summaries,
         llmSettings.provider,
         apiKey,
-        llmSettings.openrouterModel,
+        activeModel(llmSettings),
       );
       setContextText(markdown);
       await saveUserContext(markdown);

@@ -50,6 +50,8 @@ const EMPTY_LLM_SETTINGS: LlmSettingsRecord = {
   anthropicApiKey: null,
   openaiApiKey: null,
   openrouterApiKey: null,
+  anthropicModel: null,
+  openaiModel: null,
   openrouterModel: null,
 };
 
@@ -435,29 +437,47 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           </FormRow>
 
           {llmSettings.provider === "anthropic" && (
-            <FormRow label={t("settings.llmApiKey")}>
-              <TextInput
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                value={llmSettings.anthropicApiKey ?? ""}
-                onChange={(e) => setLlmField("anthropicApiKey", e.target.value || null)}
-                placeholder="sk-ant-..."
-              />
-            </FormRow>
+            <>
+              <FormRow label={t("settings.llmApiKey")}>
+                <TextInput
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={llmSettings.anthropicApiKey ?? ""}
+                  onChange={(e) => setLlmField("anthropicApiKey", e.target.value || null)}
+                  placeholder="sk-ant-..."
+                />
+              </FormRow>
+              <FormRow label={t("settings.llmModel")}>
+                <TextInput
+                  value={llmSettings.anthropicModel ?? ""}
+                  onChange={(e) => setLlmField("anthropicModel", e.target.value || null)}
+                  placeholder="claude-haiku-4-5"
+                />
+              </FormRow>
+            </>
           )}
 
           {llmSettings.provider === "openai" && (
-            <FormRow label={t("settings.llmApiKey")}>
-              <TextInput
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                value={llmSettings.openaiApiKey ?? ""}
-                onChange={(e) => setLlmField("openaiApiKey", e.target.value || null)}
-                placeholder="sk-..."
-              />
-            </FormRow>
+            <>
+              <FormRow label={t("settings.llmApiKey")}>
+                <TextInput
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={llmSettings.openaiApiKey ?? ""}
+                  onChange={(e) => setLlmField("openaiApiKey", e.target.value || null)}
+                  placeholder="sk-..."
+                />
+              </FormRow>
+              <FormRow label={t("settings.llmModel")}>
+                <TextInput
+                  value={llmSettings.openaiModel ?? ""}
+                  onChange={(e) => setLlmField("openaiModel", e.target.value || null)}
+                  placeholder="gpt-5.2"
+                />
+              </FormRow>
+            </>
           )}
 
           {llmSettings.provider === "openrouter" && (
