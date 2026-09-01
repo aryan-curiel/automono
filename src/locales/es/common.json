@@ -258,6 +258,7 @@
     "recurring": {
       "title": "Facturas recurrentes",
       "lastMonth": "Facturado el mes pasado",
+      "dueOn": "Vence el {{date}}",
       "generateShort": "Generar",
       "generating": "Generando…"
     },
@@ -447,12 +448,20 @@
       "status": "Estado",
       "notes": "Notas",
       "file": "Archivo",
-      "noFile": "Sin archivo adjunto."
+      "noFile": "Sin archivo adjunto.",
+      "billingCadence": "Frecuencia de facturación",
+      "nextInvoiceDate": "Fecha de la próxima factura"
     },
     "status": {
       "active": "Activo",
       "expired": "Vencido",
       "terminated": "Terminado"
+    },
+    "cadence": {
+      "none": "Sin facturación recurrente",
+      "monthly": "Mensual",
+      "quarterly": "Trimestral",
+      "yearly": "Anual"
     },
     "actions": {
       "save": "Guardar",
@@ -468,6 +477,7 @@
     "errors": {
       "clientRequired": "Selecciona un cliente.",
       "titleRequired": "El título es obligatorio.",
+      "nextInvoiceDateRequired": "Indica la fecha de la próxima factura para la frecuencia de facturación.",
       "attachFailed": "No se pudo adjuntar el archivo. Inténtalo de nuevo.",
       "saveFailed": "No se pudo guardar el contrato. Inténtalo de nuevo.",
       "loadFailed": "No se pudo cargar el contrato.",
@@ -685,5 +695,10 @@
     "body_one": "{{label}} vence en {{count}} día ({{date}})",
     "body_other": "{{label}} vence en {{count}} días ({{date}})",
     "bodyToday": "{{label}} vence hoy ({{date}})"
+  },
+  "recurring": {
+    "notifyTitle": "Facturas recurrentes",
+    "notifyBody_one": "{{count}} factura recurrente creada como borrador según el calendario de facturación de un contrato",
+    "notifyBody_other": "{{count}} facturas recurrentes creadas como borrador según el calendario de facturación de contratos"
   }
 }

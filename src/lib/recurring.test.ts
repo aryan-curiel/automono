@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { recurringInvoiceCandidates } from "./recurring";
+import { dueRecurringDrafts, nextBillingDate, recurringInvoiceCandidates } from "./recurring";
 import type { InvoiceListItem } from "../db/invoices";
+import type { ContractRecord } from "../db/contracts";
 
 function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
   return {
@@ -27,64 +28,156 @@ function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
   };
 }
 
+function contract(overrides: Partial<ContractRecord>): ContractRecord {
+  return {
+    id: 1,
+    clientId: 1,
+    title: "Retainer",
+    filePath: null,
+    startDate: "2026-01-01",
+    endDate: null,
+    status: "active",
+    notes: null,
+    billingCadence: "monthly",
+    nextInvoiceDate: "2026-08-01",
+    ...overrides,
+  };
+}
+
+describe("nextBillingDate", () => {
+  it("advances by one month", () => {
+    expect(nextBillingDate("2026-08-01", "monthly")).toBe("2026-09-01");
+  });
+
+  it("advances by a quarter", () => {
+    expect(nextBillingDate("2026-08-15", "quarterly")).toBe("2026-11-15");
+  });
+
+  it("advances by a year", () => {
+    expect(nextBillingDate("2026-02-28", "yearly")).toBe("2027-02-28");
+  });
+
+  it("rolls the year over", () => {
+    expect(nextBillingDate("2026-12-10", "monthly")).toBe("2027-01-10");
+  });
+
+  it("clamps a month-end anchor to the shorter target month", () => {
+    expect(nextBillingDate("2026-01-31", "monthly")).toBe("2026-02-28");
+    expect(nextBillingDate("2026-03-31", "monthly")).toBe("2026-04-30");
+  });
+});
+
 describe("recurringInvoiceCandidates", () => {
-  it("flags a client invoiced last month but not yet this month", () => {
+  it("flags a cadence contract that is due, cloning the client's last invoice", () => {
     const result = recurringInvoiceCandidates(
-      [invoice({ id: 1, clientId: 1, clientName: "Acme", issueDate: "2026-07-10" })],
+      [invoice({ id: 7, clientId: 1, issueDate: "2026-07-10", total: 200 })],
+      [contract({ clientId: 1, nextInvoiceDate: "2026-08-01" })],
       "2026-08-02",
     );
     expect(result).toEqual([
-      { clientId: 1, clientName: "Acme", lastInvoiceId: 1, lastInvoiceTotal: 106 },
+      { clientId: 1, clientName: "Acme", lastInvoiceId: 7, lastInvoiceTotal: 200, dueDate: "2026-08-01" },
     ]);
   });
 
-  it("excludes a client already invoiced this month", () => {
+  it("does not flag a cadence contract whose next date is still in the future", () => {
+    const result = recurringInvoiceCandidates(
+      [invoice({ clientId: 1, issueDate: "2026-07-10" })],
+      [contract({ clientId: 1, nextInvoiceDate: "2026-09-01" })],
+      "2026-08-02",
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("skips a due contract when the client has no invoice to clone", () => {
+    const result = recurringInvoiceCandidates(
+      [],
+      [contract({ clientId: 1, nextInvoiceDate: "2026-08-01" })],
+      "2026-08-02",
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("ignores inactive contracts and cadence 'none'", () => {
+    const result = recurringInvoiceCandidates(
+      [invoice({ clientId: 1, issueDate: "2026-07-10" })],
+      [
+        contract({ id: 1, clientId: 1, status: "terminated", nextInvoiceDate: "2026-08-01" }),
+        contract({ id: 2, clientId: 1, billingCadence: "none", nextInvoiceDate: "2026-08-01" }),
+      ],
+      "2026-08-02",
+    );
+    // Falls through to the heuristic (invoiced last month, not this) instead.
+    expect(result).toEqual([
+      { clientId: 1, clientName: "Acme", lastInvoiceId: 1, lastInvoiceTotal: 106, dueDate: null },
+    ]);
+  });
+
+  it("falls back to the month heuristic for clients with no active cadence contract", () => {
+    const result = recurringInvoiceCandidates(
+      [invoice({ id: 1, clientId: 2, clientName: "Beta", issueDate: "2026-07-10" })],
+      [],
+      "2026-08-02",
+    );
+    expect(result).toEqual([
+      { clientId: 2, clientName: "Beta", lastInvoiceId: 1, lastInvoiceTotal: 106, dueDate: null },
+    ]);
+  });
+
+  it("does not double-count a client covered by both a cadence contract and the heuristic", () => {
+    const result = recurringInvoiceCandidates(
+      [invoice({ id: 1, clientId: 1, issueDate: "2026-07-10" })],
+      [contract({ clientId: 1, nextInvoiceDate: "2026-08-01" })],
+      "2026-08-02",
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].dueDate).toBe("2026-08-01");
+  });
+
+  it("excludes a heuristic client already invoiced this month", () => {
     const result = recurringInvoiceCandidates(
       [
         invoice({ id: 1, clientId: 1, issueDate: "2026-07-10" }),
         invoice({ id: 2, clientId: 1, issueDate: "2026-08-01" }),
       ],
+      [],
       "2026-08-02",
     );
     expect(result).toEqual([]);
   });
+});
 
-  it("excludes a client with no invoice last month", () => {
-    const result = recurringInvoiceCandidates(
-      [invoice({ id: 1, clientId: 1, issueDate: "2026-06-10" })],
-      "2026-08-02",
-    );
-    expect(result).toEqual([]);
-  });
-
-  it("ignores drafts (no issue date) for both months", () => {
-    const result = recurringInvoiceCandidates(
-      [invoice({ id: 1, clientId: 1, issueDate: null, status: "draft" })],
-      "2026-08-02",
-    );
-    expect(result).toEqual([]);
-  });
-
-  it("picks the most recent invoice when a client had several last month", () => {
-    const result = recurringInvoiceCandidates(
-      [
-        invoice({ id: 1, clientId: 1, issueDate: "2026-07-05", total: 50 }),
-        invoice({ id: 2, clientId: 1, issueDate: "2026-07-25", total: 75 }),
-      ],
-      "2026-08-02",
+describe("dueRecurringDrafts", () => {
+  it("returns one task per due contract, advancing the anchor past today", () => {
+    const result = dueRecurringDrafts(
+      [contract({ id: 3, clientId: 1, nextInvoiceDate: "2026-08-01" })],
+      [invoice({ id: 9, clientId: 1, issueDate: "2026-07-10" })],
+      "2026-08-05",
     );
     expect(result).toEqual([
-      { clientId: 1, clientName: "Acme", lastInvoiceId: 2, lastInvoiceTotal: 75 },
+      { contractId: 3, templateInvoiceId: 9, newNextDate: "2026-09-01" },
     ]);
   });
 
-  it("rolls over correctly from January into the prior December", () => {
-    const result = recurringInvoiceCandidates(
-      [invoice({ id: 1, clientId: 1, issueDate: "2025-12-15" })],
-      "2026-01-10",
+  it("fast-forwards a long-stale anchor to the first date after today (no backfill)", () => {
+    const result = dueRecurringDrafts(
+      [contract({ id: 3, clientId: 1, billingCadence: "monthly", nextInvoiceDate: "2026-01-01" })],
+      [invoice({ id: 9, clientId: 1, issueDate: "2025-12-10" })],
+      "2026-08-05",
     );
-    expect(result).toEqual([
-      { clientId: 1, clientName: "Acme", lastInvoiceId: 1, lastInvoiceTotal: 106 },
-    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0].newNextDate).toBe("2026-09-01");
+  });
+
+  it("skips contracts not yet due, inactive, or with no clonable invoice", () => {
+    expect(
+      dueRecurringDrafts(
+        [contract({ nextInvoiceDate: "2026-09-01" })],
+        [invoice({ clientId: 1, issueDate: "2026-07-10" })],
+        "2026-08-05",
+      ),
+    ).toEqual([]);
+    expect(
+      dueRecurringDrafts([contract({ nextInvoiceDate: "2026-08-01" })], [], "2026-08-05"),
+    ).toEqual([]);
   });
 });

@@ -49,6 +49,7 @@ import { getPreferences, updatePreferences } from "./db/preferences";
 import type { PreferencesRecord } from "./db/preferences";
 import { checkAutoBackup } from "./db/backup";
 import { runFilingReminders } from "./lib/filingReminders";
+import { runRecurringInvoices } from "./lib/recurring";
 import { isSupportedExpenseFile } from "./db/expenses";
 import type { RectificationType, Screen } from "./types";
 
@@ -261,6 +262,9 @@ export default function App() {
     if (!dbReady) return;
     void checkAutoBackup();
     void runFilingReminders();
+    void runRecurringInvoices().then((drafted) => {
+      if (drafted > 0) void listInvoices().then(setInvoices);
+    });
   }, [dbReady]);
 
   useEffect(() => {

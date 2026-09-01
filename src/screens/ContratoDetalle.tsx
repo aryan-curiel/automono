@@ -135,6 +135,18 @@ export function ContratoDetalle({
         </div>
         <InfoRow label={t("contracts.fields.startDate")} value={formatDate(contract.startDate)} />
         <InfoRow label={t("contracts.fields.endDate")} value={formatDate(contract.endDate)} />
+        {contract.billingCadence !== "none" && (
+          <>
+            <InfoRow
+              label={t("contracts.fields.billingCadence")}
+              value={t(`contracts.cadence.${contract.billingCadence}`)}
+            />
+            <InfoRow
+              label={t("contracts.fields.nextInvoiceDate")}
+              value={formatDate(contract.nextInvoiceDate)}
+            />
+          </>
+        )}
         <InfoRow
           label={t("contracts.fields.notes")}
           value={<span className="whitespace-pre-wrap">{contract.notes || "—"}</span>}

@@ -3,6 +3,7 @@ export type VatTreatment = "standard" | "reverse_charge_eu" | "export_outside_eu
 export type InvoiceLanguage = "es" | "en" | "ca";
 export type InvoiceStatus = "draft" | "issued" | "paid";
 export type ContractStatus = "active" | "expired" | "terminated";
+export type BillingCadence = "none" | "monthly" | "quarterly" | "yearly";
 export type RectificationType = "full" | "partial";
 
 export type Screen =

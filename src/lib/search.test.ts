@@ -60,6 +60,8 @@ function contract(overrides: Partial<ContractRecord>): ContractRecord {
     endDate: null,
     status: "active",
     notes: null,
+    billingCadence: "none",
+    nextInvoiceDate: null,
     ...overrides,
   };
 }

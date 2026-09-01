@@ -15,7 +15,9 @@ import {
 import type { ContractRecord, NewContract } from "../db/contracts";
 import { listClients } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
-import type { ContractStatus } from "../types";
+import type { BillingCadence, ContractStatus } from "../types";
+
+const BILLING_CADENCES: BillingCadence[] = ["none", "monthly", "quarterly", "yearly"];
 
 interface ContratoFormProps {
   mode: "create" | "edit";
@@ -33,6 +35,8 @@ interface FormState {
   endDate: string;
   status: ContractStatus;
   notes: string;
+  billingCadence: BillingCadence;
+  nextInvoiceDate: string;
 }
 
 function emptyForm(presetClientId?: number): FormState {
@@ -44,6 +48,8 @@ function emptyForm(presetClientId?: number): FormState {
     endDate: "",
     status: "active",
     notes: "",
+    billingCadence: "none",
+    nextInvoiceDate: "",
   };
 }
 
@@ -56,6 +62,8 @@ function toFormState(contract: ContractRecord): FormState {
     endDate: contract.endDate ?? "",
     status: contract.status,
     notes: contract.notes ?? "",
+    billingCadence: contract.billingCadence,
+    nextInvoiceDate: contract.nextInvoiceDate ?? "",
   };
 }
 
@@ -63,7 +71,7 @@ function fileNameOf(path: string): string {
   return path.split(/[/\\]/).pop() ?? path;
 }
 
-type FieldErrors = Partial<Record<"clientId" | "title", string>>;
+type FieldErrors = Partial<Record<"clientId" | "title" | "nextInvoiceDate", string>>;
 
 export function ContratoForm({
   mode,
@@ -138,6 +146,9 @@ export function ContratoForm({
     const next: FieldErrors = {};
     if (!form.clientId) next.clientId = t("contracts.errors.clientRequired");
     if (!form.title.trim()) next.title = t("contracts.errors.titleRequired");
+    if (form.billingCadence !== "none" && !form.nextInvoiceDate) {
+      next.nextInvoiceDate = t("contracts.errors.nextInvoiceDateRequired");
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -154,6 +165,9 @@ export function ContratoForm({
       endDate: form.endDate || null,
       status: form.status,
       notes: form.notes.trim() || null,
+      billingCadence: form.billingCadence,
+      nextInvoiceDate:
+        form.billingCadence === "none" ? null : form.nextInvoiceDate || null,
     };
 
     setSaving(true);
@@ -251,6 +265,38 @@ export function ContratoForm({
             onChange={(e) => set("endDate", e.target.value)}
           />
         </FormRow>
+
+        <FormRow label={t("contracts.fields.billingCadence")}>
+          <Select
+            value={form.billingCadence}
+            onChange={(e) => {
+              set("billingCadence", e.target.value as BillingCadence);
+              if (e.target.value === "none") {
+                setErrors((err) => ({ ...err, nextInvoiceDate: undefined }));
+              }
+            }}
+          >
+            {BILLING_CADENCES.map((c) => (
+              <option key={c} value={c}>
+                {t(`contracts.cadence.${c}`)}
+              </option>
+            ))}
+          </Select>
+        </FormRow>
+
+        {form.billingCadence !== "none" && (
+          <FormRow label={t("contracts.fields.nextInvoiceDate")} error={errors.nextInvoiceDate}>
+            <TextInput
+              type="date"
+              value={form.nextInvoiceDate}
+              error={!!errors.nextInvoiceDate}
+              onChange={(e) => {
+                set("nextInvoiceDate", e.target.value);
+                if (e.target.value) setErrors((err) => ({ ...err, nextInvoiceDate: undefined }));
+              }}
+            />
+          </FormRow>
+        )}
 
         <FormRow label={t("contracts.fields.file")}>
           <div className="flex items-center gap-2.5">

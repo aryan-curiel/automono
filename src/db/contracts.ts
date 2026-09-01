@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getDb } from "./client";
-import type { ContractStatus } from "../types";
+import type { BillingCadence, ContractStatus } from "../types";
 
 export interface ContractRecord {
   id: number;
@@ -12,6 +12,9 @@ export interface ContractRecord {
   endDate: string | null;
   status: ContractStatus;
   notes: string | null;
+  billingCadence: BillingCadence;
+  /** Anchor / next-due date for the billing cadence; advances by one interval per auto-draft. */
+  nextInvoiceDate: string | null;
 }
 
 export type NewContract = Omit<ContractRecord, "id">;
@@ -25,6 +28,8 @@ interface ContractRow {
   end_date: string | null;
   status: ContractStatus;
   notes: string | null;
+  billing_cadence: BillingCadence;
+  next_invoice_date: string | null;
 }
 
 function mapRow(row: ContractRow): ContractRecord {
@@ -37,6 +42,8 @@ function mapRow(row: ContractRow): ContractRecord {
     endDate: row.end_date,
     status: row.status,
     notes: row.notes,
+    billingCadence: row.billing_cadence,
+    nextInvoiceDate: row.next_invoice_date,
   };
 }
 
@@ -74,8 +81,9 @@ export async function getContract(id: number): Promise<ContractRecord | null> {
 export async function createContract(input: NewContract): Promise<ContractRecord> {
   const db = await getDb();
   const result = await db.execute(
-    `INSERT INTO contracts (client_id, title, file_path, start_date, end_date, status, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO contracts
+       (client_id, title, file_path, start_date, end_date, status, notes, billing_cadence, next_invoice_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       input.clientId,
       input.title,
@@ -84,6 +92,8 @@ export async function createContract(input: NewContract): Promise<ContractRecord
       input.endDate,
       input.status,
       input.notes,
+      input.billingCadence,
+      input.nextInvoiceDate,
     ],
   );
   const created = await getContract(result.lastInsertId!);
@@ -99,6 +109,8 @@ const COLUMN_BY_KEY: Record<keyof NewContract, string> = {
   endDate: "end_date",
   status: "status",
   notes: "notes",
+  billingCadence: "billing_cadence",
+  nextInvoiceDate: "next_invoice_date",
 };
 
 export async function updateContract(id: number, patch: Partial<NewContract>): Promise<void> {

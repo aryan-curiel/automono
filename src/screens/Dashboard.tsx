@@ -29,6 +29,7 @@ import { StackedQuarterBarChart } from "../components/charts/StackedQuarterBarCh
 import { QuarterTrendChart } from "../components/charts/QuarterTrendChart";
 import { nextTaxDeadlines } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
+import { listContracts, type ContractRecord } from "../db/contracts";
 import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
 import { listDeclarations, getDeclaration, requiredModelos } from "../db/declarations";
@@ -90,6 +91,7 @@ export function Dashboard({
   const [expensesLoaded, setExpensesLoaded] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<number | null>(null);
   const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
+  const [contracts, setContracts] = useState<ContractRecord[]>([]);
   const [currentDeclarationDetail, setCurrentDeclarationDetail] =
     useState<DeclarationDetail | null>(null);
   const [altaKey, setAltaKey] = useState<string | null>(null);
@@ -125,6 +127,10 @@ export function Dashboard({
 
   useEffect(() => {
     void listDeclarations().then(setDeclarations);
+  }, []);
+
+  useEffect(() => {
+    void listContracts().then(setContracts);
   }, []);
 
   useEffect(() => {
@@ -334,7 +340,7 @@ export function Dashboard({
       value: categoryTrendByQuarter.get(key) ?? 0,
     }));
 
-    const recurring = recurringInvoiceCandidates(invoices, todayIso);
+    const recurring = recurringInvoiceCandidates(invoices, contracts, todayIso);
     const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
     const maxCategoryExpense = Math.max(1, ...topCategories.map((c) => c.total));
 
@@ -370,6 +376,7 @@ export function Dashboard({
     quarterKeys,
     altaKey,
     declarations,
+    contracts,
     currentKey,
     currentYear,
     currentQuarter,
@@ -642,7 +649,11 @@ export function Dashboard({
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2 mt-1">
-                <span className="text-xs text-ink-soft">{t("dashboard.recurring.lastMonth")}</span>
+                <span className="text-xs text-ink-soft">
+                  {c.dueDate
+                    ? t("dashboard.recurring.dueOn", { date: formatDate(c.dueDate) })
+                    : t("dashboard.recurring.lastMonth")}
+                </span>
                 <Button
                   variant="secondary"
                   className="px-2.5 py-1 text-xs shrink-0"

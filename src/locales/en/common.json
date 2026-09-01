@@ -258,6 +258,7 @@
     "recurring": {
       "title": "Recurring invoices",
       "lastMonth": "Invoiced last month",
+      "dueOn": "Due {{date}}",
       "generateShort": "Generate",
       "generating": "Generating…"
     },
@@ -447,12 +448,20 @@
       "status": "Status",
       "notes": "Notes",
       "file": "File",
-      "noFile": "No file attached."
+      "noFile": "No file attached.",
+      "billingCadence": "Billing cadence",
+      "nextInvoiceDate": "Next invoice date"
     },
     "status": {
       "active": "Active",
       "expired": "Expired",
       "terminated": "Terminated"
+    },
+    "cadence": {
+      "none": "No recurring billing",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "yearly": "Yearly"
     },
     "actions": {
       "save": "Save",
@@ -468,6 +477,7 @@
     "errors": {
       "clientRequired": "Please select a client.",
       "titleRequired": "Title is required.",
+      "nextInvoiceDateRequired": "Set the next invoice date for the billing cadence.",
       "attachFailed": "Failed to attach the file. Please try again.",
       "saveFailed": "Failed to save the contract. Please try again.",
       "loadFailed": "Failed to load the contract.",
@@ -685,5 +695,10 @@
     "body_one": "{{label}} is due in {{count}} day ({{date}})",
     "body_other": "{{label}} is due in {{count}} days ({{date}})",
     "bodyToday": "{{label}} is due today ({{date}})"
+  },
+  "recurring": {
+    "notifyTitle": "Recurring invoices",
+    "notifyBody_one": "{{count}} recurring invoice drafted from a contract's billing schedule",
+    "notifyBody_other": "{{count}} recurring invoices drafted from contract billing schedules"
   }
 }
