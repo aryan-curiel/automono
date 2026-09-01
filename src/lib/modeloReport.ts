@@ -102,7 +102,11 @@ export function cumulativeModelo130(
  * Only the boxes backed by data AutoMono tracks are listed here — this is a deliberate ceiling,
  * not an oversight: extend this per-modelo list if a specific box needs comparing later.
  */
-export function expectedCasillas(modelo: Modelo, snapshot: DeclarationSnapshot): CasillaExpectation[] {
+export function expectedCasillas(
+  modelo: Modelo,
+  snapshot: DeclarationSnapshot,
+  ytd130?: Modelo130Ytd,
+): CasillaExpectation[] {
   const { totals, expenses } = snapshot;
   switch (modelo) {
     case "303": {
@@ -119,15 +123,32 @@ export function expectedCasillas(modelo: Modelo, snapshot: DeclarationSnapshot):
       ];
     }
     case "130": {
-      // ponytail: per-quarter approximation only (20% of this quarter's rendimiento neto minus
-      // retenciones already practiced this quarter). The official Modelo 130 formula is
-      // cumulative across the whole tax year (also subtracting prior quarters' own pagos
-      // fraccionados) — add that once declarations track year-to-date state, not just a single
-      // quarter's snapshot.
+      if (ytd130) {
+        // Real Modelo 130: box [03] is the YTD rendimiento neto, box [07] the cumulative pago
+        // fraccionado (see cumulativeModelo130).
+        return [
+          {
+            key: "rendimientoNeto",
+            label: "Rendimiento neto (acumulado)",
+            expected: round2(ytd130.rendimientoNetoYtd),
+          },
+          {
+            key: "pagoFraccionado",
+            label: "Pago fraccionado",
+            expected: round2(ytd130.pagoFraccionado),
+          },
+        ];
+      }
+      // ponytail: no YTD context passed (not expected from the review modal) — fall back to the
+      // isolated-quarter estimate, explicitly labelled so it's never read as an authoritative box.
       const pagoFraccionado = Math.max(0, totals.netIrpfIncome * 0.2 - totals.irpfWithheld);
       return [
         { key: "rendimientoNeto", label: "Rendimiento neto", expected: round2(totals.netIrpfIncome) },
-        { key: "pagoFraccionado", label: "Pago fraccionado (20%)", expected: round2(pagoFraccionado) },
+        {
+          key: "pagoFraccionado",
+          label: "Pago fraccionado (estimación aislada)",
+          expected: round2(pagoFraccionado),
+        },
       ];
     }
     case "111": {
@@ -171,6 +192,7 @@ export function buildModeloReport(
   snapshot: DeclarationSnapshot,
   extracted: ModeloFields,
   period: PeriodCheck,
+  ytd130?: Modelo130Ytd,
 ): ModeloReportRow[] {
   const periodMatches =
     period.detectedYear !== null &&
@@ -188,7 +210,7 @@ export function buildModeloReport(
     status: periodMatches ? "match" : "mismatch",
   };
 
-  const casillaRows = expectedCasillas(modelo, snapshot).map((c): ModeloReportRow => {
+  const casillaRows = expectedCasillas(modelo, snapshot, ytd130).map((c): ModeloReportRow => {
     const value = extracted[c.key];
     if (value === null) {
       return { key: c.key, label: c.label, expected: c.expected, extracted: null, status: "missing" };

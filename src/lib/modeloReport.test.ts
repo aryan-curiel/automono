@@ -78,17 +78,29 @@ describe("expectedCasillas", () => {
     ]);
   });
 
-  it("computes 130 rendimiento neto and pago fraccionado, clamped at zero", () => {
+  it("130 rows come from the cumulative ytd result when provided", () => {
+    const snapshot = buildDeclarationSnapshot([invoice({ subtotal: 1000 })], []);
+    const ytd130 = {
+      rendimientoNetoYtd: 12345,
+      gastosDificilJustificacion: 617,
+      priorPagosFraccionados: 100,
+      pagoFraccionado: 321,
+    };
+    const rows = expectedCasillas("130", snapshot, ytd130);
+    expect(rows).toEqual([
+      { key: "rendimientoNeto", label: "Rendimiento neto (acumulado)", expected: 12345 },
+      { key: "pagoFraccionado", label: "Pago fraccionado", expected: 321 },
+    ]);
+  });
+
+  it("130 falls back to the isolated-quarter estimate with no ytd result", () => {
     const snapshot = buildDeclarationSnapshot(
       [invoice({ subtotal: 1000, irpfAmount: 250 })],
       [expense({ amount: 200, deductiblePct: 100 })],
     );
     // netIrpfIncome = 800; 20% = 160; minus irpfWithheld 250 -> negative, clamped to 0
     const rows = expectedCasillas("130", snapshot);
-    expect(rows).toEqual([
-      { key: "rendimientoNeto", label: "Rendimiento neto", expected: 800 },
-      { key: "pagoFraccionado", label: "Pago fraccionado (20%)", expected: 0 },
-    ]);
+    expect(rows.find((r) => r.key === "pagoFraccionado")?.expected).toBe(0);
   });
 
   it("computes 111 base/retenciones only from expenses that actually withheld IRPF", () => {
