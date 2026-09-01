@@ -6,6 +6,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { KpiTile } from "../components/ui/KpiTile";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { ListRow } from "../components/ui/ListRow";
 import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector, type Kind } from "../components/PeriodSelector";
 import { ivaDeductiblePctOf, listExpenses, updateExpense } from "../db/expenses";
@@ -135,21 +136,11 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
             <div />
           </div>
           {expenses.map((e) => (
-            <div
+            <ListRow
               key={e.id}
-              onClick={() => onOpenExpense(e.id)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(ev) => {
-                if (ev.key === "Enter" || ev.key === " ") {
-                  if (ev.key === " ") ev.preventDefault();
-                  onOpenExpense(e.id);
-                }
-              }}
+              onActivate={() => onOpenExpense(e.id)}
               className="group grid grid-cols-[.9fr_1fr_1.6fr_.8fr_1fr_1fr_32px] py-3 px-6
-                         border-t border-border items-center cursor-pointer
-                         transition-colors hover:bg-surface-alt
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                         border-t border-border items-center"
             >
               <div className="text-[13px] text-ink-soft">{formatDate(e.date)}</div>
               <div className="flex items-center gap-1.5 min-w-0 pr-3">
@@ -190,7 +181,7 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
                   </MenuContent>
                 </Menu>
               </div>
-            </div>
+            </ListRow>
           ))}
         </Card>
       )}

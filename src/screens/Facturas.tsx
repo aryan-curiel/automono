@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { TextInput } from "../components/ui/Field";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { Sheet } from "../components/ui/Sheet";
+import { ListRow } from "../components/ui/ListRow";
 import { PageHeader } from "../components/PageHeader";
 import { formatDate, formatEUR } from "../lib/format";
 import { invoiceNumberLabel } from "../lib/invoice";
@@ -107,21 +108,11 @@ export function Facturas({
               ? invoices.find((i) => i.id === inv.rectifiedByInvoiceId)
               : null;
             return (
-              <div
+              <ListRow
                 key={inv.id}
-                onClick={() => onOpenInvoice(inv.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    if (e.key === " ") e.preventDefault();
-                    onOpenInvoice(inv.id);
-                  }
-                }}
+                onActivate={() => onOpenInvoice(inv.id)}
                 className="group grid grid-cols-[1.3fr_1.4fr_1fr_1fr_32px] py-3 px-5.5
-                           border-t border-border items-center cursor-pointer
-                           transition-colors hover:bg-surface-alt
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                           border-t border-border items-center"
               >
                 <div>
                   <div className="flex items-center gap-2">
@@ -169,7 +160,7 @@ export function Facturas({
                     </MenuContent>
                   </Menu>
                 </div>
-              </div>
+              </ListRow>
             );
           })}
         </Card>

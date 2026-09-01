@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { ErrorText, TextInput } from "../components/ui/Field";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { Sheet } from "../components/ui/Sheet";
+import { ListRow } from "../components/ui/ListRow";
 import { PageHeader } from "../components/PageHeader";
 import { deleteClient, listClients } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
@@ -122,21 +123,11 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
             <div />
           </div>
           {filtered.map((c) => (
-            <div
+            <ListRow
               key={c.id}
-              onClick={() => onOpenClient(c.id)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  if (e.key === " ") e.preventDefault();
-                  onOpenClient(c.id);
-                }
-              }}
+              onActivate={() => onOpenClient(c.id)}
               className="group grid grid-cols-[1.6fr_1fr_.9fr_1fr_1fr_32px] py-3 px-6
-                         border-t border-border items-center cursor-pointer
-                         transition-colors hover:bg-surface-alt
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                         border-t border-border items-center"
             >
               <div className="min-w-0">
                 <div className="font-semibold text-sm truncate">{c.name}</div>
@@ -178,7 +169,7 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
                   </MenuContent>
                 </Menu>
               </div>
-            </div>
+            </ListRow>
           ))}
         </Card>
       )}
