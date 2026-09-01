@@ -169,6 +169,14 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Latest-form ref so `attachFromPath` can read current field values for its one-time
+  // attach-time fallbacks without depending on `form` — otherwise the callback (and the
+  // `initialFilePath` effect below) is rebuilt on every keystroke. Same pattern as App.tsx.
+  const formRef = useRef(form);
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
   const attachFromPath = useCallback(
     async (source: string) => {
       setAttaching(true);
@@ -226,14 +234,18 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
 
         // ponytail: falls back to today's date and a generic note when the form has nothing
         // typed yet and extraction found nothing either.
-        const date = form.date || extracted?.date || new Date().toISOString().slice(0, 10);
+        const current = formRef.current;
+        const date = current.date || extracted?.date || new Date().toISOString().slice(0, 10);
         const note =
-          form.description.trim() || form.category.trim() || extracted?.vendorGuess || "gasto";
+          current.description.trim() ||
+          current.category.trim() ||
+          extracted?.vendorGuess ||
+          "gasto";
         const stored = await attachExpenseFile(source, date, note);
 
         // An OCR-extracted retention amount is authoritative (it's read off the vendor's own
         // printed figure), so stop the rate×amount auto-compute effect from overwriting it later.
-        if (extracted?.irpfAmount != null && !form.irpfAmount) {
+        if (extracted?.irpfAmount != null && !current.irpfAmount) {
           setIrpfAutoManaged(false);
         }
 
@@ -259,7 +271,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
         setAttaching(false);
       }
     },
-    [form, t],
+    [t],
   );
 
   async function handleAttachFile() {
