@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { buildDeclarationSnapshot } from "./quarterlyDeclaration";
-import { buildModeloReport, expectedCasillas, type ModeloFields } from "./modeloReport";
+import {
+  buildModeloReport,
+  cumulativeModelo130,
+  DEFAULT_GDJ_RATE,
+  expectedCasillas,
+  type ModeloFields,
+} from "./modeloReport";
 import type { InvoiceListItem } from "../db/invoices";
 import type { ExpenseRecord } from "../db/expenses";
 
@@ -98,6 +104,66 @@ describe("expectedCasillas", () => {
       { key: "baseRetenciones", label: "Base de retenciones", expected: 300 },
       { key: "retencionesIngresadas", label: "Retenciones ingresadas", expected: 21 },
     ]);
+  });
+});
+
+describe("cumulativeModelo130", () => {
+  it("Q1: 20% of (YTD net − GDJ) minus retenciones", () => {
+    const r = cumulativeModelo130(
+      [invoice({ issueDate: "2026-02-01", subtotal: 10000, irpfAmount: 1500 })],
+      [expense({ date: "2026-02-01", amount: 2000, deductiblePct: 100 })],
+      2026,
+      1,
+      5,
+    );
+    // net 8000; GDJ = 5% * 8000 = 400; base 7600; 0.2*7600 = 1520; − ret 1500 − prior 0 = 20
+    expect(r.rendimientoNetoYtd).toBe(8000);
+    expect(r.gastosDificilJustificacion).toBe(400);
+    expect(r.priorPagosFraccionados).toBe(0);
+    expect(r.pagoFraccionado).toBe(20);
+  });
+
+  it("Q2: YTD figures and prior quarter's positive pago are subtracted", () => {
+    const invoices = [
+      invoice({ id: 1, issueDate: "2026-02-01", subtotal: 10000, irpfAmount: 1500 }),
+      invoice({ id: 2, issueDate: "2026-05-01", subtotal: 10000, irpfAmount: 1500 }),
+    ];
+    const expenses = [
+      expense({ id: 1, date: "2026-02-01", amount: 2000, deductiblePct: 100 }),
+      expense({ id: 2, date: "2026-05-01", amount: 2000, deductiblePct: 100 }),
+    ];
+    const r = cumulativeModelo130(invoices, expenses, 2026, 2, 5);
+    // YTD net 16000; GDJ 800; base 15200; 0.2*15200 = 3040; − retYTD 3000 − priorPago(Q1=20) = 20
+    expect(r.rendimientoNetoYtd).toBe(16000);
+    expect(r.priorPagosFraccionados).toBe(20);
+    expect(r.pagoFraccionado).toBe(20);
+  });
+
+  it("negative quarter result floors at 0 and does not create a negative prior pago", () => {
+    const invoices = [
+      invoice({ id: 1, issueDate: "2026-02-01", subtotal: 1000, irpfAmount: 250 }),
+      invoice({ id: 2, issueDate: "2026-05-01", subtotal: 20000, irpfAmount: 0 }),
+    ];
+    const r = cumulativeModelo130(invoices, [], 2026, 2, 5);
+    // Q1 net 1000, 0.2*(950) = 190 − 250 -> 0 (priorPagos stays 0)
+    // Q2 YTD net 21000, GDJ 1050, 0.2*19950 = 3990 − 250 − 0 = 3740
+    expect(r.priorPagosFraccionados).toBe(0);
+    expect(r.pagoFraccionado).toBe(3740);
+  });
+
+  it("GDJ reduction is capped at €2,000/yr", () => {
+    const r = cumulativeModelo130(
+      [invoice({ issueDate: "2026-02-01", subtotal: 200000, irpfAmount: 0 })],
+      [],
+      2026,
+      1,
+      5,
+    );
+    expect(r.gastosDificilJustificacion).toBe(2000); // 5% * 200000 = 10000, capped
+  });
+
+  it("DEFAULT_GDJ_RATE is 5", () => {
+    expect(DEFAULT_GDJ_RATE).toBe(5);
   });
 });
 
