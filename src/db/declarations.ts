@@ -4,8 +4,9 @@ import { getDb } from "./client";
 import {
   buildDeclarationCsv,
   buildDeclarationSnapshot,
-  expensesInPeriod,
-  invoicesInPeriod,
+  expensesForBasis,
+  invoicesForBasis,
+  type DeclarationBasis,
   type DeclarationSnapshot,
 } from "../lib/quarterlyDeclaration";
 import type { ModeloFields } from "../lib/modeloReport";
@@ -93,27 +94,31 @@ function currentSnapshot(
   row: DeclarationRow,
   allInvoices: InvoiceListItem[],
   allExpenses: ExpenseRecord[],
+  basis: DeclarationBasis,
 ): DeclarationSnapshot {
   if (row.status === "completed") return JSON.parse(row.snapshot_json) as DeclarationSnapshot;
 
   const period = quarterRange(row.year, row.quarter as 1 | 2 | 3 | 4);
   return buildDeclarationSnapshot(
-    invoicesInPeriod(allInvoices, period),
-    expensesInPeriod(allExpenses, period),
+    invoicesForBasis(allInvoices, period, basis),
+    expensesForBasis(allExpenses, period, basis),
+    basis,
   );
 }
 
 export async function listDeclarations(): Promise<DeclarationListItem[]> {
   const db = await getDb();
-  const [rows, invoices, expenses] = await Promise.all([
+  const [rows, invoices, expenses, prefs] = await Promise.all([
     db.select<DeclarationRow[]>(
       "SELECT * FROM quarterly_declarations ORDER BY year DESC, quarter DESC",
     ),
     listInvoices(),
     listExpenses(),
+    getPreferences(),
   ]);
+  const basis: DeclarationBasis = prefs.criterioCaja ? "cash" : "accrual";
   return rows.map((row) => {
-    const snapshot = currentSnapshot(row, invoices, expenses);
+    const snapshot = currentSnapshot(row, invoices, expenses, basis);
     return {
       id: row.id,
       year: row.year,
@@ -135,8 +140,13 @@ export async function getDeclaration(id: number): Promise<DeclarationDetail | nu
   );
   if (rows.length !== 1) return null;
   const row = rows[0];
-  const [invoices, expenses] = await Promise.all([listInvoices(), listExpenses()]);
-  const snapshot = currentSnapshot(row, invoices, expenses);
+  const [invoices, expenses, prefs] = await Promise.all([
+    listInvoices(),
+    listExpenses(),
+    getPreferences(),
+  ]);
+  const basis: DeclarationBasis = prefs.criterioCaja ? "cash" : "accrual";
+  const snapshot = currentSnapshot(row, invoices, expenses, basis);
   return { ...mapRow(row), snapshot };
 }
 

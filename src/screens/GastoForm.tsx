@@ -43,6 +43,8 @@ interface FormState {
   receiptFilePath: string | null;
   /** "" means declare in the natural quarter of `date`; otherwise a "YYYY-QN" override. */
   declaredPeriod: string;
+  /** "" = no payment date recorded; used only under criterio de caja. */
+  paidDate: string;
 }
 
 function emptyForm(): FormState {
@@ -58,6 +60,7 @@ function emptyForm(): FormState {
     irpfAmount: "",
     receiptFilePath: null,
     declaredPeriod: "",
+    paidDate: "",
   };
 }
 
@@ -74,6 +77,7 @@ function toFormState(expense: ExpenseRecord): FormState {
     irpfAmount: expense.irpfAmount !== null ? String(expense.irpfAmount) : "",
     receiptFilePath: expense.receiptFilePath,
     declaredPeriod: expense.declaredPeriod ?? "",
+    paidDate: expense.paidDate ?? "",
   };
 }
 
@@ -300,6 +304,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
       receiptFilePath: form.receiptFilePath,
       declaredPeriod: form.declaredPeriod || null,
       declared,
+      paidDate: form.paidDate || null,
     };
 
     setSaving(true);
@@ -355,6 +360,14 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
               onChange={(e) => set("date", e.target.value)}
             />
           )}
+        </FormRow>
+
+        <FormRow label={t("expenses.fields.paidDate")}>
+          <TextInput
+            type="date"
+            value={form.paidDate}
+            onChange={(e) => set("paidDate", e.target.value)}
+          />
         </FormRow>
 
         <FormRow label={t("expenses.fields.declaredPeriod")}>

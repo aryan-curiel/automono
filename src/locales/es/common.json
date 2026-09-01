@@ -76,6 +76,8 @@
       "address": "Dirección fiscal",
       "retaStartDate": "Fecha de alta como autónomo",
       "presentsModelo111": "Presento el Modelo 111",
+      "criterioCaja": "Criterio de caja",
+      "criterioCajaHint": "Solo cuenta facturas cobradas y gastos por fecha de pago. Por defecto se usa el criterio de devengo.",
       "logo": "Logo",
       "bankName": "Nombre del banco",
       "iban": "IBAN",
@@ -489,6 +491,7 @@
     },
     "fields": {
       "date": "Fecha",
+      "paidDate": "Fecha de pago",
       "category": "Categoría",
       "description": "Descripción",
       "amount": "Importe",
@@ -554,6 +557,22 @@
     },
     "errors": {
       "loadFailed": "No se pudo cargar la declaración."
+    },
+    "basis": {
+      "accrual": {
+        "label": "Criterio de devengo",
+        "hint": "Incluye todas las facturas emitidas del trimestre, estén cobradas o no, y los gastos por su fecha. Es el criterio estándar para el Modelo 303/130."
+      },
+      "cash": {
+        "label": "Criterio de caja",
+        "hint": "Solo incluye facturas cobradas y gastos por su fecha de pago."
+      }
+    },
+    "prefill": {
+      "title": "Casillas para el Modelo {{modelo}}",
+      "copy": "Copiar valor",
+      "informational": "informativo",
+      "disclaimer": "Valores calculados por AutoMono a partir de tus datos. Contrástalos con tus registros antes de presentar el modelo en la Sede Electrónica de la AEAT."
     },
     "wizard": {
       "title": "Nueva declaración trimestral",

@@ -231,6 +231,20 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0035_llm_settings_provider_models.sql"),
             kind: MigrationKind::Up,
         },
+        // NOTE: `version` lags the filename by one — there is no `0021` migration file (issue #15).
+        // The guard test asserts `migrations[i].version == i + 1` over the sorted file list.
+        Migration {
+            version: 35,
+            description: "preferences_criterio_caja",
+            sql: include_str!("../migrations/0036_preferences_criterio_caja.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 36,
+            description: "expense_paid_date",
+            sql: include_str!("../migrations/0037_expense_paid_date.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

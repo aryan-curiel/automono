@@ -76,6 +76,8 @@
       "address": "Fiscal address",
       "retaStartDate": "Self-employment start date",
       "presentsModelo111": "I file Modelo 111",
+      "criterioCaja": "Cash basis",
+      "criterioCajaHint": "Counts only paid invoices and expenses by payment date. Accrual basis is used by default.",
       "logo": "Logo",
       "bankName": "Bank name",
       "iban": "IBAN",
@@ -489,6 +491,7 @@
     },
     "fields": {
       "date": "Date",
+      "paidDate": "Payment date",
       "category": "Category",
       "description": "Description",
       "amount": "Amount",
@@ -554,6 +557,22 @@
     },
     "errors": {
       "loadFailed": "Failed to load the declaration."
+    },
+    "basis": {
+      "accrual": {
+        "label": "Accrual basis",
+        "hint": "Includes every invoice issued this quarter whether collected or not, and expenses by their date. This is the standard basis for Modelo 303/130."
+      },
+      "cash": {
+        "label": "Cash basis",
+        "hint": "Includes only collected invoices and expenses by their payment date."
+      }
+    },
+    "prefill": {
+      "title": "Boxes for Modelo {{modelo}}",
+      "copy": "Copy value",
+      "informational": "informational",
+      "disclaimer": "Values computed by AutoMono from your data. Check them against your own records before filing the modelo on the AEAT website."
     },
     "wizard": {
       "title": "New quarterly declaration",

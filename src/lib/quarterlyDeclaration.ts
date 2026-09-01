@@ -32,6 +32,35 @@ export function paidInvoicesInPeriod(
   );
 }
 
+/** Cash-basis (criterio de caja) counterpart to `invoicesInPeriod`: only invoices already
+ * collected, still keyed by issue date.
+ * ponytail: no real collection-date attribution — an invoice issued Q1 / paid Q3 stays in Q1,
+ * just gated on being paid. Real payment-date bookkeeping lands with issue #36 (bank rec). */
+export function cashInvoicesInPeriod(
+  invoices: InvoiceListItem[],
+  period: Period,
+): InvoiceListItem[] {
+  return invoices.filter(
+    (inv) =>
+      inv.status === "paid" &&
+      inv.issueDate !== null &&
+      inv.issueDate >= period.from &&
+      inv.issueDate <= period.to,
+  );
+}
+
+/** Picks the invoice-in-period filter for the given tax basis: accrual (devengo) counts every
+ * non-draft invoice issued in the period; cash (criterio de caja) counts only the paid ones. */
+export function invoicesForBasis(
+  invoices: InvoiceListItem[],
+  period: Period,
+  basis: DeclarationBasis,
+): InvoiceListItem[] {
+  return basis === "cash"
+    ? cashInvoicesInPeriod(invoices, period)
+    : invoicesInPeriod(invoices, period);
+}
+
 /** Expenses belonging to `period`: dated inside it with no override, or explicitly overridden
  * (via `declaredPeriod`) into one of the quarters `period` spans — mirrors `listExpenses`'
  * `quarterKeys` SQL filter, so callers that already have the full expense list in memory (e.g.
@@ -43,6 +72,26 @@ export function expensesInPeriod(expenses: ExpenseRecord[], period: Period): Exp
       ? e.date >= period.from && e.date <= period.to
       : quarterKeys.includes(e.declaredPeriod),
   );
+}
+
+/** Cash-basis counterpart to `expensesInPeriod`: an expense's natural quarter is that of its
+ * payment date (`paidDate`) when recorded, otherwise its `date`. A `declaredPeriod` override
+ * still wins, exactly as under accrual.
+ * ponytail: operates on whatever list the caller loaded (its quarter, by `date`) — an expense
+ * dated in another quarter but paid into this one only re-buckets if it's in that list. Precise
+ * cross-quarter payment attribution is issue #36 (bank reconciliation). */
+export function expensesForBasis(
+  expenses: ExpenseRecord[],
+  period: Period,
+  basis: DeclarationBasis,
+): ExpenseRecord[] {
+  if (basis !== "cash") return expensesInPeriod(expenses, period);
+  const quarterKeys = quartersInRange(period.from, period.to);
+  return expenses.filter((e) => {
+    if (e.declaredPeriod != null) return quarterKeys.includes(e.declaredPeriod);
+    const effective = e.paidDate ?? e.date;
+    return effective >= period.from && effective <= period.to;
+  });
 }
 
 export interface DeclarationInvoiceLine {
@@ -106,6 +155,7 @@ export interface DeclarationSnapshot {
 export function buildDeclarationSnapshot(
   invoices: InvoiceListItem[],
   expenses: ExpenseRecord[],
+  basis: DeclarationBasis = "accrual",
 ): DeclarationSnapshot {
   const byRate = new Map<number, { base: number; iva: number }>();
   invoices.forEach((inv) => {
@@ -128,7 +178,7 @@ export function buildDeclarationSnapshot(
   const margin = roundCents(netIrpfIncome - irpfWithheld);
 
   return {
-    basis: "accrual",
+    basis,
     invoices: invoices.map((inv) => ({
       id: inv.id,
       number:
