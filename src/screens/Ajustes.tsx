@@ -99,6 +99,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [vatNumberEdited, setVatNumberEdited] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [retaStartDate, setRetaStartDate] = useState("");
+  const [presentsModelo111, setPresentsModelo111] = useState(false);
   const [documentsToast, setDocumentsToast] = useState<string | null>(null);
 
   const [backupSettings, setBackupSettings] = useState<BackupSettingsRecord | null>(null);
@@ -216,6 +217,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     void getPreferences().then((prefs) => {
       if (!cancelled) {
         setRetaStartDate(prefs.retaStartDate);
+        setPresentsModelo111(prefs.presentsModelo111);
       }
     });
     return () => {
@@ -278,7 +280,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     setSaving(true);
     try {
       await updateBusinessProfile(payload);
-      await updatePreferences({ retaStartDate });
+      await updatePreferences({ retaStartDate, presentsModelo111 });
       setForm(payload);
       setSaved(true);
     } catch {
@@ -539,6 +541,23 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   value={retaStartDate}
                   onChange={(e) => setRetaStartDate(e.target.value)}
                 />
+              </FormRow>
+              <FormRow label={t("settings.fields.presentsModelo111")}>
+                <div className="flex items-center gap-2.5">
+                  <Switch.Root
+                    checked={presentsModelo111}
+                    onCheckedChange={(checked) => {
+                      setSaved(false);
+                      setPresentsModelo111(checked);
+                    }}
+                    className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors ease-[var(--ease-out)] outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                  >
+                    <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform ease-[var(--ease-out)] data-[state=checked]:translate-x-[18px]" />
+                  </Switch.Root>
+                  <span className="text-[13px] text-ink-soft">
+                    {presentsModelo111 ? t("settings.on") : t("settings.off")}
+                  </span>
+                </div>
               </FormRow>
               <FormRow label={t("settings.fields.logo")}>
                 <div className="flex items-center gap-2.5">

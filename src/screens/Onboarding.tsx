@@ -15,7 +15,12 @@ import { attachBusinessLogo, pickBusinessLogo, updateBusinessProfile } from "../
 import type { BusinessProfileRecord } from "../db/businessProfile";
 import { updatePreferences } from "../db/preferences";
 import type { PreferencesRecord } from "../db/preferences";
-import { isValidNifCif, isValidVatNumber } from "../features/clients";
+import {
+  defaultIrpfRate,
+  IRPF_REDUCED_RATE,
+  isValidNifCif,
+  isValidVatNumber,
+} from "../features/clients";
 import { isValidIban } from "../features/settings";
 import { EXIT_SPRING } from "../lib/motion";
 
@@ -132,10 +137,17 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
    * upload or manual typing), never replaces one already filled in. */
   function applyExtracted(fields: RegistrationFields) {
     setBusiness((b) => mergeRegistrationFields(b, fields));
-    setPrefs((p) => ({
-      ...p,
-      retaStartDate: fields.retaStartDate ?? p.retaStartDate,
-    }));
+    setPrefs((p) => {
+      const retaStartDate = fields.retaStartDate ?? p.retaStartDate;
+      return {
+        ...p,
+        retaStartDate,
+        // Re-derive the IRPF default from the (newly extracted) alta date, unless the user already
+        // changed it away from the reduced rate by hand.
+        defaultIrpfRate:
+          p.defaultIrpfRate === IRPF_REDUCED_RATE ? defaultIrpfRate(retaStartDate) : p.defaultIrpfRate,
+      };
+    });
   }
 
   async function handlePickLogo() {

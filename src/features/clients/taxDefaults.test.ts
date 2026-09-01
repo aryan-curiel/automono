@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { irpfApplicable, suggestVatTreatment } from "./taxDefaults";
+import { defaultIrpfRate, irpfApplicable, suggestVatTreatment } from "./taxDefaults";
 
 describe("suggestVatTreatment", () => {
   it("defaults unset country to standard", () => {
@@ -34,5 +34,25 @@ describe("irpfApplicable", () => {
 
   it("does not apply outside the EU", () => {
     expect(irpfApplicable("US")).toBe(false);
+  });
+});
+
+describe("defaultIrpfRate", () => {
+  it("uses the reduced rate in the alta year", () => {
+    expect(defaultIrpfRate("2024-06-01", new Date("2024-03-01"))).toBe(7);
+  });
+
+  it("uses the reduced rate for the two years after alta", () => {
+    expect(defaultIrpfRate("2024-06-01", new Date("2026-12-31"))).toBe(7);
+  });
+
+  it("switches to the standard rate from the third year after alta", () => {
+    expect(defaultIrpfRate("2024-06-01", new Date("2027-01-01"))).toBe(15);
+  });
+
+  it("assumes just-registered when no alta date is known", () => {
+    expect(defaultIrpfRate(null)).toBe(7);
+    expect(defaultIrpfRate("")).toBe(7);
+    expect(defaultIrpfRate("not-a-date")).toBe(7);
   });
 });

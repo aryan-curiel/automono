@@ -11,6 +11,7 @@ import {
 import type { ModeloFields } from "../lib/modeloReport";
 import { listInvoices, type InvoiceListItem } from "./invoices";
 import { listExpenses, type ExpenseRecord } from "./expenses";
+import { getPreferences } from "./preferences";
 import { quarterRange } from "../lib/dateRange";
 
 export type DeclarationStatus = "in_progress" | "completed";
@@ -71,6 +72,13 @@ const MODELO_COLUMN: Record<Modelo, string> = {
   "130": "modelo_130_path",
   "111": "modelo_111_path",
 };
+
+/** The modelos an autónomo actually files each quarter: 303 (IVA) and 130 (IRPF) always, plus 111
+ * only when they practise retentions (paying employees / other professionals) — most solo
+ * autónomos don't, so it's opt-in via the "Presento el Modelo 111" preference. */
+export function requiredModelos(presentsModelo111: boolean): Modelo[] {
+  return presentsModelo111 ? ["303", "130", "111"] : ["303", "130"];
+}
 
 /** A `completed` declaration's snapshot is the frozen record of what was actually filed and is
  * returned as-is. An `in_progress` one is still being reconciled, so its snapshot is recomputed
@@ -176,14 +184,24 @@ export async function attachDeclarationFile(
   return storedPath;
 }
 
-/** Marks a declaration completed. Throws if any of the three Modelo PDFs hasn't been attached yet.
+/** Marks a declaration completed. Throws if a required Modelo PDF hasn't been attached yet (303 and
+ * 130 always; 111 only when the user files it — see the "Presento el Modelo 111" preference).
  * Also flags every expense in the frozen snapshot as declared, so Gastos reflects what was
  * actually filed regardless of any `declared_period` override used to build that snapshot. */
 export async function markDeclarationCompleted(id: number): Promise<void> {
   const declaration = await getDeclaration(id);
   if (!declaration) throw new Error("Declaration not found");
-  if (!declaration.modelo303Path || !declaration.modelo130Path || !declaration.modelo111Path) {
-    throw new Error("All three Modelo PDFs (303, 130, 111) must be attached before completing");
+  const { presentsModelo111 } = await getPreferences();
+  const required = requiredModelos(presentsModelo111);
+  const paths: Record<Modelo, string | null> = {
+    "303": declaration.modelo303Path,
+    "130": declaration.modelo130Path,
+    "111": declaration.modelo111Path,
+  };
+  if (required.some((m) => !paths[m])) {
+    throw new Error(
+      `The required Modelo PDFs (${required.join(", ")}) must be attached before completing`,
+    );
   }
   const db = await getDb();
   await db.execute(

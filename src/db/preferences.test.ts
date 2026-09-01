@@ -27,6 +27,7 @@ describe("preferences", () => {
       onboarding_completed: number;
       reta_monthly_cuota: number;
       reta_start_date: string;
+      presents_modelo_111: number;
     };
     expect(row.theme).toBe("light");
     expect(row.language).toBe("es");
@@ -35,6 +36,7 @@ describe("preferences", () => {
     expect(row.onboarding_completed).toBe(0);
     expect(row.reta_monthly_cuota).toBe(80);
     expect(row.reta_start_date).toBe("2026-06-01");
+    expect(row.presents_modelo_111).toBe(0);
   });
 
   it("rejects a second row via the CHECK(id = 1) constraint", () => {

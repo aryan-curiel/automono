@@ -75,6 +75,7 @@
       "vatNumber": "Número de IVA",
       "address": "Dirección fiscal",
       "retaStartDate": "Fecha de alta como autónomo",
+      "presentsModelo111": "Presento el Modelo 111",
       "logo": "Logo",
       "bankName": "Nombre del banco",
       "iban": "IBAN",
@@ -626,7 +627,8 @@
       "status": {
         "match": "Coincide",
         "mismatch": "No coincide",
-        "missing": "No encontrado"
+        "missing": "No encontrado",
+        "info": "Informativo"
       },
       "approve": "Aprobar y adjuntar",
       "approving": "Adjuntando…",
