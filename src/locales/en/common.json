@@ -588,6 +588,18 @@
       "informational": "informational",
       "disclaimer": "Values computed by AutoMono from your data. Check them against your own records before filing the modelo on the AEAT website."
     },
+    "modelo349": {
+      "title": "Modelo 349 · intra-EU operations",
+      "client": "Client",
+      "vatNumber": "VAT number",
+      "country": "Country",
+      "clave": "Key",
+      "base": "Taxable base",
+      "claveS": "S · supply of services",
+      "noVatNumber": "No VAT number",
+      "total": "Total",
+      "disclaimer": "This quarter's intra-community operations (clients with EU reverse charge). Check against your own records before filing Modelo 349."
+    },
     "wizard": {
       "title": "New quarterly declaration",
       "step2": {

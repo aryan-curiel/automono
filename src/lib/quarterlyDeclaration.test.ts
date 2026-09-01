@@ -33,6 +33,8 @@ function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
     total: 106,
     pdfPath: null,
     clientCountry: null,
+    vatTreatment: null,
+    clientVatNumber: null,
     ...overrides,
   };
 }

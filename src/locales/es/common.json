@@ -588,6 +588,18 @@
       "informational": "informativo",
       "disclaimer": "Valores calculados por AutoMono a partir de tus datos. Contrástalos con tus registros antes de presentar el modelo en la Sede Electrónica de la AEAT."
     },
+    "modelo349": {
+      "title": "Modelo 349 · operaciones intracomunitarias",
+      "client": "Cliente",
+      "vatNumber": "NIF-IVA",
+      "country": "País",
+      "clave": "Clave",
+      "base": "Base imponible",
+      "claveS": "S · prestación de servicios",
+      "noVatNumber": "Sin NIF-IVA",
+      "total": "Total",
+      "disclaimer": "Operaciones intracomunitarias del trimestre (clientes con inversión del sujeto pasivo UE). Contrástalo con tus registros antes de presentar el Modelo 349."
+    },
     "wizard": {
       "title": "Nueva declaración trimestral",
       "step2": {

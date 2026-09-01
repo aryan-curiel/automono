@@ -328,6 +328,8 @@ export interface InvoiceListItem {
   total: number;
   pdfPath: string | null;
   clientCountry: string | null;
+  vatTreatment: VatTreatment | null;
+  clientVatNumber: string | null;
 }
 
 interface InvoiceListRow extends InvoiceRow {
@@ -342,6 +344,8 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       clients.nif_cif AS live_client_nif,
       clients.address AS live_client_address,
       clients.country AS live_client_country,
+      clients.vat_treatment AS live_client_vat_treatment,
+      clients.vat_number AS live_client_vat_number,
       (SELECT id FROM invoices r WHERE r.rectifies_invoice_id = invoices.id) AS rectified_by_invoice_id,
       COALESCE(SUM(invoice_lines.quantity * invoice_lines.unit_price), 0) AS lines_subtotal
     FROM invoices
@@ -378,6 +382,8 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       total,
       pdfPath: row.pdf_path,
       clientCountry: row.client_country_snapshot ?? row.live_client_country,
+      vatTreatment: row.vat_treatment ?? row.live_client_vat_treatment,
+      clientVatNumber: row.client_vat_number_snapshot ?? row.live_client_vat_number,
     };
   });
 }

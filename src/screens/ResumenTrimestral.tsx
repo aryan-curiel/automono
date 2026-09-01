@@ -62,8 +62,10 @@ import {
   type DeclarationBasis,
 } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
+import { buildModelo349, buildModelo349Csv } from "../lib/modelo349";
 import { BasisNote } from "../components/BasisNote";
 import { CasillaPrefill } from "../components/CasillaPrefill";
+import { Modelo349Panel } from "../components/Modelo349Panel";
 
 const PAGE_SIZE = 4;
 /** Row height (py-2 + 13px line + border) × PAGE_SIZE, so the card doesn't resize between quarters. */
@@ -390,6 +392,10 @@ export function ResumenTrimestral({
     basis,
   );
 
+  // Modelo 349 summary for the focused quarter — always accrual (criterio de caja doesn't apply
+  // to intracom operations), shown for both the projection and the locked-declaration views.
+  const modelo349 = buildModelo349(invoices, period);
+
   const priorInvoices = invoicesForBasis(invoices, priorPeriod, basis);
   const priorTotals = buildDeclarationSnapshot(
     priorInvoices,
@@ -411,7 +417,11 @@ export function ResumenTrimestral({
     if (!path) return;
     setExporting(true);
     try {
-      await writeTextFile(path, buildDeclarationCsv(projectionSnapshot));
+      const csv =
+        modelo349.rows.length > 0
+          ? `${buildDeclarationCsv(projectionSnapshot)}\n\n${buildModelo349Csv(modelo349, period)}`
+          : buildDeclarationCsv(projectionSnapshot);
+      await writeTextFile(path, csv);
     } catch (e) {
       setExportError(`No se pudo exportar: ${String(e)}`);
     } finally {
@@ -841,6 +851,8 @@ export function ResumenTrimestral({
           </div>
         </>
       )}
+
+      <Modelo349Panel summary={modelo349} />
 
       <DeclarationWizard
         key={focusedKey}
