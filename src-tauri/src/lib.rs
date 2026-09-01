@@ -219,6 +219,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0033_declaration_gdj_rate.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 33,
+            description: "preferences_modelo_111",
+            sql: include_str!("../migrations/0034_preferences_modelo_111.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

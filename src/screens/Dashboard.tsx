@@ -30,7 +30,7 @@ import { nextTaxDeadlines } from "../lib/taxCalendar";
 import { recurringInvoiceCandidates } from "../lib/recurring";
 import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
-import { listDeclarations, getDeclaration } from "../db/declarations";
+import { listDeclarations, getDeclaration, requiredModelos } from "../db/declarations";
 import type {
   DeclarationListItem,
   DeclarationDetail,
@@ -68,7 +68,6 @@ function expenseQuarterKey(expense: ExpenseRecord): string {
   return expense.declaredPeriod ?? quarterKeyOf(expense.date);
 }
 
-const MODELOS: Modelo[] = ["303", "130", "111"];
 const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "modelo111Path"> = {
   "303": "modelo303Path",
   "130": "modelo130Path",
@@ -97,10 +96,16 @@ export function Dashboard({
   const [currentDeclarationDetail, setCurrentDeclarationDetail] =
     useState<DeclarationDetail | null>(null);
   const [altaKey, setAltaKey] = useState<string | null>(null);
+  const [presents111, setPresents111] = useState(false);
 
   useEffect(() => {
-    void getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
+    void getPreferences().then((prefs) => {
+      setAltaKey(quarterKeyOf(prefs.retaStartDate));
+      setPresents111(prefs.presentsModelo111);
+    });
   }, []);
+
+  const activeModelos = requiredModelos(presents111);
 
   useEffect(() => {
     void listExpenses({
@@ -417,7 +422,7 @@ export function Dashboard({
             )}
             {currentDeclarationDetail && (
               <div className="flex items-center gap-4 mt-3">
-                {MODELOS.map((modelo) => {
+                {activeModelos.map((modelo) => {
                   const attached = !!currentDeclarationDetail[MODELO_PATH_KEY[modelo]];
                   return (
                     <span

@@ -74,7 +74,12 @@ describe("expectedCasillas", () => {
     expect(rows).toEqual([
       { key: "ivaDevengado", label: "IVA devengado", expected: 210 },
       { key: "ivaDeducible", label: "IVA deducible", expected: 21 },
-      { key: "resultadoLiquidacion", label: "Resultado de la liquidación", expected: 189 },
+      {
+        key: "resultadoLiquidacion",
+        label: "Resultado (antes de compensación de periodos anteriores)",
+        expected: 189,
+        informational: true,
+      },
     ]);
   });
 
@@ -200,7 +205,22 @@ describe("buildModeloReport", () => {
     });
     expect(rows.find((r) => r.key === "period")?.status).toBe("match");
     expect(rows.find((r) => r.key === "ivaDevengado")?.status).toBe("match");
-    expect(rows.find((r) => r.key === "resultadoLiquidacion")?.status).toBe("match");
+    // resultadoLiquidacion is informational — AutoMono can't compute prior-period compensation, so
+    // it's shown for reference and never compared against the filed figure.
+    expect(rows.find((r) => r.key === "resultadoLiquidacion")).toMatchObject({
+      extracted: 189.01,
+      status: "info",
+    });
+  });
+
+  it("never flags the 303 resultado as a mismatch even when the filed figure differs wildly", () => {
+    const extracted: ModeloFields = { ...emptyFields, resultadoLiquidacion: 5000 };
+    const rows = buildModeloReport("303", snapshot, extracted, {
+      ...period,
+      detectedYear: 2026,
+      detectedQuarter: 3,
+    });
+    expect(rows.find((r) => r.key === "resultadoLiquidacion")?.status).toBe("info");
   });
 
   it("flags a mismatch beyond tolerance", () => {

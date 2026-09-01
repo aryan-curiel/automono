@@ -28,6 +28,9 @@ export interface CasillaExpectation {
   key: keyof ModeloFields;
   label: string;
   expected: number;
+  /** AutoMono can compute this figure but not to the box's real definition — show the value for
+   * reference, never flag it as a mismatch against the filed PDF. */
+  informational?: boolean;
 }
 
 /** A rounding tolerance wider than plain float error, since real receipts/invoices are rounded
@@ -117,8 +120,11 @@ export function expectedCasillas(
         { key: "ivaDeducible", label: "IVA deducible", expected: round2(ivaDeducible) },
         {
           key: "resultadoLiquidacion",
-          label: "Resultado de la liquidación",
+          // AutoMono only knows devengado − deducible; the real box 71 also subtracts cuotas a
+          // compensar de periodos anteriores (casilla 78/87) and annual regularisation.
+          label: "Resultado (antes de compensación de periodos anteriores)",
           expected: round2(ivaDevengado - ivaDeducible),
+          informational: true,
         },
       ];
     }
@@ -167,7 +173,7 @@ export function expectedCasillas(
   }
 }
 
-export type CasillaStatus = "match" | "mismatch" | "missing";
+export type CasillaStatus = "match" | "mismatch" | "missing" | "info";
 
 export interface ModeloReportRow {
   key: string;
@@ -212,6 +218,9 @@ export function buildModeloReport(
 
   const casillaRows = expectedCasillas(modelo, snapshot, ytd130).map((c): ModeloReportRow => {
     const value = extracted[c.key];
+    if (c.informational) {
+      return { key: c.key, label: c.label, expected: c.expected, extracted: value, status: "info" };
+    }
     if (value === null) {
       return { key: c.key, label: c.label, expected: c.expected, extracted: null, status: "missing" };
     }

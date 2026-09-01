@@ -11,7 +11,7 @@ import type { ClientRecord, InvoiceLanguage } from "../db/clients";
 import { createDraftInvoice, getInvoiceWithLines, issueInvoice, saveDraft } from "../db/invoices";
 import { getPreferences } from "../db/preferences";
 import { formatEUR } from "../lib/format";
-import { irpfApplicable, IRPF_DEFAULT_RATE } from "../features/clients";
+import { irpfApplicable, IRPF_REDUCED_RATE } from "../features/clients";
 import { mkLine, useInvoiceLines } from "../features/invoices/lines";
 
 interface FacturaNuevaProps {
@@ -27,8 +27,8 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaPro
   const [clientId, setClientId] = useState<number | null>(null);
   const { lines, setLines, updateLine, removeLine, addLine } = useInvoiceLines();
   const [ivaRate, setIvaRate] = useState(21);
-  const [irpfRate, setIrpfRate] = useState<number | null>(IRPF_DEFAULT_RATE);
-  const [defaultIrpfRate, setDefaultIrpfRate] = useState(IRPF_DEFAULT_RATE);
+  const [irpfRate, setIrpfRate] = useState<number | null>(IRPF_REDUCED_RATE);
+  const [defaultIrpfRate, setDefaultIrpfRate] = useState(IRPF_REDUCED_RATE);
   const [language, setLanguage] = useState<InvoiceLanguage>("es");
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [invoiceId, setInvoiceId] = useState<number | null>(null);

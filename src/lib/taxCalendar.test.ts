@@ -6,17 +6,31 @@ describe("nextTaxDeadlines", () => {
     const deadlines = nextTaxDeadlines("2026-08-02", 3);
     expect(deadlines).toEqual([
       { model: "130/303", label: "Modelo 130/303 (3T)", dueDate: "2026-10-20" },
-      { model: "130/303", label: "Modelo 130/303 (4T)", dueDate: "2027-01-30" },
-      { model: "190/390", label: "Modelo 190/390 (anual)", dueDate: "2027-01-30" },
+      {
+        model: "130/303 + 190/390",
+        label: "Modelo 130/303 (4T) + Modelo 190/390 (anual)",
+        dueDate: "2027-02-01",
+      },
+      { model: "130/303", label: "Modelo 130/303 (1T)", dueDate: "2027-04-20" },
     ]);
   });
 
-  it("rolls from Q4 into January of the next year", () => {
+  it("collapses the Q4 quarterly and the annual summary into one row (same due date)", () => {
     const deadlines = nextTaxDeadlines("2026-12-25", 2);
     expect(deadlines).toEqual([
-      { model: "130/303", label: "Modelo 130/303 (4T)", dueDate: "2027-01-30" },
-      { model: "190/390", label: "Modelo 190/390 (anual)", dueDate: "2027-01-30" },
+      {
+        model: "130/303 + 190/390",
+        label: "Modelo 130/303 (4T) + Modelo 190/390 (anual)",
+        dueDate: "2027-02-01",
+      },
+      { model: "130/303", label: "Modelo 130/303 (1T)", dueDate: "2027-04-20" },
     ]);
+  });
+
+  it("rolls a deadline that lands on a weekend forward to the Monday", () => {
+    // 20 Apr 2025 is a Sunday.
+    const [q1] = nextTaxDeadlines("2025-04-01", 1);
+    expect(q1).toEqual({ model: "130/303", label: "Modelo 130/303 (1T)", dueDate: "2025-04-21" });
   });
 
   it("includes a deadline that falls exactly today (still actionable)", () => {
@@ -40,5 +54,9 @@ describe("deadlineQuarterKey", () => {
 
   it("rolls a January deadline back to Q4 of the PREVIOUS year", () => {
     expect(deadlineQuarterKey("2026-01-20")).toBe("2025-Q4");
+  });
+
+  it("still resolves Q4 when a weekend roll pushed the deadline into February", () => {
+    expect(deadlineQuarterKey("2027-02-01")).toBe("2026-Q4");
   });
 });

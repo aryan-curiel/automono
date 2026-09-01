@@ -49,6 +49,7 @@ const ROW_TONE: Record<ModeloReportRow["status"], Tone> = {
   match: "success",
   mismatch: "danger",
   missing: "warning",
+  info: "info",
 };
 
 interface ModeloReviewModalProps {

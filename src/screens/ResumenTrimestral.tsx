@@ -36,6 +36,7 @@ import {
   markDeclarationCompleted,
   openDeclarationFile,
   pickDeclarationFile,
+  requiredModelos,
   type DeclarationListItem,
   type DeclarationDetail,
   type Modelo,
@@ -64,7 +65,6 @@ const PAGE_SIZE = 4;
 /** Row height (py-2 + 13px line + border) × PAGE_SIZE, so the card doesn't resize between quarters. */
 const ROWS_HEIGHT = "h-[146px]";
 
-const MODELOS: Modelo[] = ["303", "130", "111"];
 const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "modelo111Path"> = {
   "303": "modelo303Path",
   "130": "modelo130Path",
@@ -256,9 +256,14 @@ export function ResumenTrimestral({
   const period = quarterRange(year, quarter);
 
   const [altaKey, setAltaKey] = useState<string | null>(null);
+  const [presents111, setPresents111] = useState(false);
   useEffect(() => {
-    void getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
+    void getPreferences().then((prefs) => {
+      setAltaKey(quarterKeyOf(prefs.retaStartDate));
+      setPresents111(prefs.presentsModelo111);
+    });
   }, []);
+  const activeModelos = requiredModelos(presents111);
 
   const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
   type DeclarationFetch =
@@ -443,7 +448,8 @@ export function ResumenTrimestral({
     }
   }
 
-  const allModelosAttached = !!declaration && MODELOS.every((m) => declaration[MODELO_PATH_KEY[m]]);
+  const allModelosAttached =
+    !!declaration && activeModelos.every((m) => declaration[MODELO_PATH_KEY[m]]);
 
   return (
     <div className="px-8 pb-15">
@@ -603,7 +609,7 @@ export function ResumenTrimestral({
               <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide pt-4 pb-2">
                 {t("declarations.detail.modelosTitle")}
               </div>
-              {MODELOS.map((modelo) => {
+              {activeModelos.map((modelo) => {
                 const path = declaration[MODELO_PATH_KEY[modelo]];
                 return (
                   <InfoRow

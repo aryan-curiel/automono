@@ -8,6 +8,8 @@ export interface PreferencesRecord {
   onboardingCompleted: boolean;
   /** Date self-employment (RETA registration) began, ISO "YYYY-MM-DD". */
   retaStartDate: string;
+  /** Whether the user files Modelo 111 — when false it's dropped from the quarterly checklist. */
+  presentsModelo111: boolean;
 }
 
 interface PreferencesRow {
@@ -17,6 +19,7 @@ interface PreferencesRow {
   default_irpf_rate: number;
   onboarding_completed: number;
   reta_start_date: string;
+  presents_modelo_111: number;
 }
 
 function mapRow(row: PreferencesRow): PreferencesRecord {
@@ -27,13 +30,14 @@ function mapRow(row: PreferencesRow): PreferencesRecord {
     defaultIrpfRate: row.default_irpf_rate,
     onboardingCompleted: row.onboarding_completed === 1,
     retaStartDate: row.reta_start_date,
+    presentsModelo111: row.presents_modelo_111 === 1,
   };
 }
 
 export async function getPreferences(): Promise<PreferencesRecord> {
   const db = await getDb();
   const rows = await db.select<PreferencesRow[]>(
-    "SELECT theme, language, default_iva_rate, default_irpf_rate, onboarding_completed, reta_start_date FROM preferences WHERE id = 1",
+    "SELECT theme, language, default_iva_rate, default_irpf_rate, onboarding_completed, reta_start_date, presents_modelo_111 FROM preferences WHERE id = 1",
   );
   return mapRow(rows[0]);
 }
@@ -44,7 +48,7 @@ export async function updatePreferences(patch: Partial<PreferencesRecord>): Prom
   const db = await getDb();
   await db.execute(
     `UPDATE preferences
-     SET theme = $1, language = $2, default_iva_rate = $3, default_irpf_rate = $4, onboarding_completed = $5, reta_start_date = $6
+     SET theme = $1, language = $2, default_iva_rate = $3, default_irpf_rate = $4, onboarding_completed = $5, reta_start_date = $6, presents_modelo_111 = $7
      WHERE id = 1`,
     [
       next.theme,
@@ -53,6 +57,7 @@ export async function updatePreferences(patch: Partial<PreferencesRecord>): Prom
       next.defaultIrpfRate,
       next.onboardingCompleted ? 1 : 0,
       next.retaStartDate,
+      next.presentsModelo111 ? 1 : 0,
     ],
   );
 }

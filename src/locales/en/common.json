@@ -75,6 +75,7 @@
       "vatNumber": "VAT number",
       "address": "Fiscal address",
       "retaStartDate": "Self-employment start date",
+      "presentsModelo111": "I file Modelo 111",
       "logo": "Logo",
       "bankName": "Bank name",
       "iban": "IBAN",
@@ -626,7 +627,8 @@
       "status": {
         "match": "Match",
         "mismatch": "Mismatch",
-        "missing": "Not found"
+        "missing": "Not found",
+        "info": "For reference"
       },
       "approve": "Approve & attach",
       "approving": "Attaching…",
