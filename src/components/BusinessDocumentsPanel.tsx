@@ -143,7 +143,7 @@ export function BusinessDocumentsPanel({
 
   async function processFiles(paths: string[]) {
     const llmSettings = await getLlmSettings().catch(() => null);
-    const apiKey = llmSettings ? activeApiKey(llmSettings) : null;
+    const apiKey = llmSettings ? await activeApiKey(llmSettings) : null;
 
     let extracted = 0;
     let failed = 0;
@@ -201,7 +201,7 @@ export function BusinessDocumentsPanel({
     setContextSaved(false);
     try {
       const llmSettings = await getLlmSettings().catch(() => null);
-      const apiKey = llmSettings ? activeApiKey(llmSettings) : null;
+      const apiKey = llmSettings ? await activeApiKey(llmSettings) : null;
       if (!llmSettings || !apiKey) {
         setToast({ tone: "info", message: t("documentsPanel.contextRegenerateNoApiKey") });
         return;

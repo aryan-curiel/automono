@@ -38,7 +38,7 @@ import {
   openBackupFolder,
 } from "../db/backup";
 import type { BackupSettingsRecord, BackupEntry } from "../db/backup";
-import { getLlmSettings, updateLlmSettings } from "../db/llmSettings";
+import { getApiKey, getLlmSettings, setApiKey, updateLlmSettings } from "../db/llmSettings";
 import { getPreferences, updatePreferences } from "../db/preferences";
 import type { LlmProvider, LlmSettingsRecord } from "../db/llmSettings";
 import { BusinessDocumentsPanel } from "../components/BusinessDocumentsPanel";
@@ -47,13 +47,12 @@ import type { RegistrationFields } from "../db/businessDocuments";
 
 const EMPTY_LLM_SETTINGS: LlmSettingsRecord = {
   provider: "anthropic",
-  anthropicApiKey: null,
-  openaiApiKey: null,
-  openrouterApiKey: null,
   anthropicModel: null,
   openaiModel: null,
   openrouterModel: null,
 };
+
+const EMPTY_API_KEYS: Record<LlmProvider, string> = { anthropic: "", openai: "", openrouter: "" };
 
 const LLM_PROVIDER_OPTIONS: { value: LlmProvider; label: string }[] = [
   { value: "anthropic", label: "Anthropic" },
@@ -114,6 +113,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [restorePendingEntry, setRestorePendingEntry] = useState<BackupEntry | null>(null);
 
   const [llmSettings, setLlmSettings] = useState<LlmSettingsRecord>(EMPTY_LLM_SETTINGS);
+  const [apiKeys, setApiKeys] = useState<Record<LlmProvider, string>>(EMPTY_API_KEYS);
   const [llmSaving, setLlmSaving] = useState(false);
   const [llmSaved, setLlmSaved] = useState(false);
 
@@ -136,10 +136,18 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
   useEffect(() => {
     void getLlmSettings().then(setLlmSettings);
+    void Promise.all(
+      LLM_PROVIDER_OPTIONS.map((o) => getApiKey(o.value).then((key) => [o.value, key ?? ""] as const)),
+    ).then((entries) => setApiKeys(Object.fromEntries(entries) as Record<LlmProvider, string>));
   }, []);
 
   function setLlmField<K extends keyof LlmSettingsRecord>(key: K, value: LlmSettingsRecord[K]) {
     setLlmSettings((s) => ({ ...s, [key]: value }));
+    setLlmSaved(false);
+  }
+
+  function setApiKeyDraft(provider: LlmProvider, value: string) {
+    setApiKeys((k) => ({ ...k, [provider]: value }));
     setLlmSaved(false);
   }
 
@@ -148,6 +156,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     setLlmSaved(false);
     try {
       await updateLlmSettings(llmSettings);
+      await Promise.all(LLM_PROVIDER_OPTIONS.map((o) => setApiKey(o.value, apiKeys[o.value] || null)));
       setLlmSaved(true);
     } finally {
       setLlmSaving(false);
@@ -444,8 +453,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   type="password"
                   autoComplete="off"
                   spellCheck={false}
-                  value={llmSettings.anthropicApiKey ?? ""}
-                  onChange={(e) => setLlmField("anthropicApiKey", e.target.value || null)}
+                  value={apiKeys.anthropic}
+                  onChange={(e) => setApiKeyDraft("anthropic", e.target.value)}
                   placeholder="sk-ant-..."
                 />
               </FormRow>
@@ -466,8 +475,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   type="password"
                   autoComplete="off"
                   spellCheck={false}
-                  value={llmSettings.openaiApiKey ?? ""}
-                  onChange={(e) => setLlmField("openaiApiKey", e.target.value || null)}
+                  value={apiKeys.openai}
+                  onChange={(e) => setApiKeyDraft("openai", e.target.value)}
                   placeholder="sk-..."
                 />
               </FormRow>
@@ -488,8 +497,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   type="password"
                   autoComplete="off"
                   spellCheck={false}
-                  value={llmSettings.openrouterApiKey ?? ""}
-                  onChange={(e) => setLlmField("openrouterApiKey", e.target.value || null)}
+                  value={apiKeys.openrouter}
+                  onChange={(e) => setApiKeyDraft("openrouter", e.target.value)}
                   placeholder="sk-or-..."
                 />
               </FormRow>

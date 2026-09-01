@@ -10,6 +10,7 @@ mod declarations;
 mod expenses;
 mod export;
 mod invoicing;
+mod keychain;
 mod llm;
 mod modelo_review;
 mod pdf;
@@ -285,6 +286,9 @@ pub fn run() {
             declarations::export_declaration_zip_cmd,
             modelo_review::detect_modelo_cmd,
             modelo_review::extract_modelo_fields_cmd,
+            keychain::get_llm_api_key_cmd,
+            keychain::set_llm_api_key_cmd,
+            keychain::clear_llm_api_key_cmd,
             backup::backup_now_cmd,
             backup::restore_backup_cmd,
             backup::list_backups_cmd,

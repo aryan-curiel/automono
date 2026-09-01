@@ -188,7 +188,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
         // and also matches a category. Fall back to the regex PDF extractor if no key is set, or
         // the LLM call fails.
         const llmSettings = await getLlmSettings().catch(() => null);
-        const apiKey = llmSettings ? activeApiKey(llmSettings) : null;
+        const apiKey = llmSettings ? await activeApiKey(llmSettings) : null;
         let extracted: (ReceiptFields & { category?: string | null }) | null = null;
         let llmFailed = false;
         if (llmSettings && apiKey) {

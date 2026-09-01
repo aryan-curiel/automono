@@ -114,7 +114,7 @@ export function ModeloReviewModal({
     let cancelled = false;
     void (async () => {
       const llmSettings = await getLlmSettings().catch(() => null);
-      const apiKey = llmSettings ? activeApiKey(llmSettings) : null;
+      const apiKey = llmSettings ? await activeApiKey(llmSettings) : null;
 
       // Processed one at a time rather than in parallel — keeps LLM calls (when configured) from
       // firing in a burst, and per-tab progress is meaningful to show either way.
