@@ -360,6 +360,7 @@ export default function App() {
           {screen === "dashboard" && (
             <Dashboard
               invoices={invoices}
+              loading={invoicesLoading}
               onNavigate={navigateFromDashboard}
               onNavigateToQuarter={(key) => {
                 setDashboardQuarterKey(key);

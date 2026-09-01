@@ -233,6 +233,10 @@
     "title": "Home",
     "addExpense": "Expense",
     "noData": "No data yet",
+    "firstRun": {
+      "title": "Start recording your activity",
+      "subtitle": "Once you issue your first invoice or log an expense, this is where you'll see your quarter totals, trends and the tax calendar."
+    },
     "kpis": {
       "invoicedQuarter": "Invoiced (quarter)",
       "pendingCollection": "Pending collection",
