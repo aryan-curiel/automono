@@ -8,6 +8,7 @@ import { ErrorText } from "../components/ui/Field";
 import { InfoRow } from "../components/ui/InfoRow";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { Sheet } from "../components/ui/Sheet";
+import { ListRow } from "../components/ui/ListRow";
 import { BackLink, PageHeader } from "../components/PageHeader";
 import { deleteClient, getClient } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
@@ -198,21 +199,11 @@ export function ClienteDetalle({
           contracts.map((contract) => {
             const meta = contractStatusMeta(contract.status);
             return (
-              <div
+              <ListRow
                 key={contract.id}
-                onClick={() => onOpenContract(contract.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    if (e.key === " ") e.preventDefault();
-                    onOpenContract(contract.id);
-                  }
-                }}
+                onActivate={() => onOpenContract(contract.id)}
                 className="group flex items-center justify-between py-2.5 px-2 -mx-2 rounded-control
-                           border-t border-border first:border-t-0 cursor-pointer
-                           transition-colors hover:bg-surface-alt
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                           border-t border-border first:border-t-0"
               >
                 <div className="min-w-0">
                   <div className="font-semibold text-sm truncate">{contract.title}</div>
@@ -221,7 +212,7 @@ export function ClienteDetalle({
                   </div>
                 </div>
                 <Badge tone={meta.tone}>{t(meta.labelKey)}</Badge>
-              </div>
+              </ListRow>
             );
           })
         )}

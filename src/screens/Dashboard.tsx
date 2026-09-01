@@ -6,6 +6,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { KpiTile } from "../components/ui/KpiTile";
 import type { KpiDelta } from "../components/ui/KpiTile";
+import { ListRow } from "../components/ui/ListRow";
 import { PageHeader } from "../components/PageHeader";
 import { ivaDeductiblePctOf, listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
@@ -591,20 +592,10 @@ export function Dashboard({
           {recentInvoices.map((inv) => {
             const meta = invoiceStatusMeta(inv.status);
             return (
-              <div
+              <ListRow
                 key={inv.id}
-                onClick={() => onOpenInvoice(inv.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    if (e.key === " ") e.preventDefault();
-                    onOpenInvoice(inv.id);
-                  }
-                }}
-                className="flex items-center justify-between py-2.5 px-2 -mx-2 rounded-control border-b border-border last:border-b-0
-                           cursor-pointer transition-colors hover:bg-surface-alt
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                onActivate={() => onOpenInvoice(inv.id)}
+                className="flex items-center justify-between py-2.5 px-2 -mx-2 rounded-control border-b border-border last:border-b-0"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="font-semibold text-[13px] font-mono text-accent w-19 shrink-0">
@@ -620,7 +611,7 @@ export function Dashboard({
                     {formatEUR(inv.total)}
                   </div>
                 </div>
-              </div>
+              </ListRow>
             );
           })}
         </Card>
