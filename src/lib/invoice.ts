@@ -13,7 +13,13 @@ export function invoiceNumberLabel(inv: NumberedInvoice): string {
 }
 
 export function lineTotal(l: { quantity: number; unitPrice: number }): number {
-  return l.quantity * l.unitPrice;
+  return roundCents(l.quantity * l.unitPrice);
+}
+
+/** Rounds a monetary amount to the nearest cent, avoiding binary floating-point noise
+ * (e.g. 10.10 + 20.20 === 30.299999999999997) from reaching invoice totals or tax exports. */
+export function roundCents(amount: number): number {
+  return Math.round(amount * 100) / 100;
 }
 
 export interface InvoiceAmounts {
@@ -23,13 +29,25 @@ export interface InvoiceAmounts {
   total: number;
 }
 
+/** IVA/IRPF/total derivation shared by every place that turns a subtotal + rates into the rest
+ * of an invoice's amounts (draft totals in `listInvoices`, and `amountsFromLines` below). */
+export function amountsFromSubtotal(subtotal: number, ivaRate: number, irpfRate: number): InvoiceAmounts {
+  const roundedSubtotal = roundCents(subtotal);
+  const ivaAmount = roundCents((roundedSubtotal * ivaRate) / 100);
+  const irpfAmount = roundCents((roundedSubtotal * irpfRate) / 100);
+  return {
+    subtotal: roundedSubtotal,
+    ivaAmount,
+    irpfAmount,
+    total: roundCents(roundedSubtotal + ivaAmount - irpfAmount),
+  };
+}
+
 export function amountsFromLines(
   lines: InvoiceLineRecord[],
   ivaRate: number,
   irpfRate: number,
 ): InvoiceAmounts {
   const subtotal = lines.reduce((s, l) => s + lineTotal(l), 0);
-  const ivaAmount = (subtotal * ivaRate) / 100;
-  const irpfAmount = (subtotal * irpfRate) / 100;
-  return { subtotal, ivaAmount, irpfAmount, total: subtotal + ivaAmount - irpfAmount };
+  return amountsFromSubtotal(subtotal, ivaRate, irpfRate);
 }

@@ -73,14 +73,6 @@ const EMPTY_FORM: BusinessProfileRecord = {
 type FieldErrors = Partial<Record<"name" | "nifCif" | "vatNumber" | "iban", string>>;
 type Tab = "general" | "datos" | "documentos" | "categorias" | "backup";
 
-const TABS: { value: Tab; label: string }[] = [
-  { value: "general", label: "General" },
-  { value: "datos", label: "Datos" },
-  { value: "documentos", label: "Documentos" },
-  { value: "categorias", label: "Categorías" },
-  { value: "backup", label: "Copia de seguridad" },
-];
-
 interface AjustesProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
@@ -88,6 +80,13 @@ interface AjustesProps {
 
 export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const { t } = useTranslation();
+  const TABS: { value: Tab; label: string }[] = [
+    { value: "general", label: t("settings.tabs.general") },
+    { value: "datos", label: t("settings.tabs.datos") },
+    { value: "documentos", label: t("settings.tabs.documentos") },
+    { value: "categorias", label: t("settings.tabs.categorias") },
+    { value: "backup", label: t("settings.tabs.backup") },
+  ];
   const [tab, setTab] = useState<Tab>("general");
   const [form, setForm] = useState<BusinessProfileRecord>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
@@ -124,15 +123,15 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   );
 
   useEffect(() => {
-    getBackupSettings().then(setBackupSettings);
+    void getBackupSettings().then(setBackupSettings);
   }, []);
 
   useEffect(() => {
-    listExpenseCategories().then(setCategories);
+    void listExpenseCategories().then(setCategories);
   }, []);
 
   useEffect(() => {
-    getLlmSettings().then(setLlmSettings);
+    void getLlmSettings().then(setLlmSettings);
   }, []);
 
   function setLlmField<K extends keyof LlmSettingsRecord>(key: K, value: LlmSettingsRecord[K]) {
@@ -160,7 +159,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       setCategories(await listExpenseCategories());
       setNewCategoryName("");
     } catch {
-      setCategoryError("Ya existe una categoría con ese nombre.");
+      setCategoryError(t("settings.categoryNameTaken"));
     }
   }
 
@@ -173,7 +172,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       setCategories(await listExpenseCategories());
       setEditingCategoryId(null);
     } catch {
-      setCategoryError("Ya existe una categoría con ese nombre.");
+      setCategoryError(t("settings.categoryNameTaken"));
     }
   }
 
@@ -191,8 +190,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     } catch (e) {
       setCategoryError(
         e instanceof CategoryInUseError
-          ? `Esta categoría se usa en ${e.count} gasto(s). Cambia esos gastos de categoría antes de eliminarla.`
-          : "No se pudo eliminar la categoría.",
+          ? t("settings.categoryInUse", { count: e.count })
+          : t("settings.categoryDeleteFailed"),
       );
     } finally {
       setCategoryPendingDelete(null);
@@ -214,7 +213,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    getPreferences().then((prefs) => {
+    void getPreferences().then((prefs) => {
       if (!cancelled) {
         setRetaStartDate(prefs.retaStartDate);
       }
@@ -251,11 +250,11 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
   function validate(): boolean {
     const next: FieldErrors = {};
-    if (!form.name.trim()) next.name = "El nombre es obligatorio";
-    if (!isValidNifCif(form.nifCif)) next.nifCif = "NIF/CIF con formato inválido";
-    if (!isValidVatNumber(form.vatNumber)) next.vatNumber = "Número de IVA con formato inválido";
+    if (!form.name.trim()) next.name = t("settings.errors.nameRequired");
+    if (!isValidNifCif(form.nifCif)) next.nifCif = t("settings.errors.nifCifInvalid");
+    if (!isValidVatNumber(form.vatNumber)) next.vatNumber = t("settings.errors.vatNumberInvalid");
     if (form.iban.trim() && !isValidIban(form.iban))
-      next.iban = "IBAN con formato o dígitos de control inválidos";
+      next.iban = t("settings.errors.ibanInvalid");
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -283,7 +282,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       setForm(payload);
       setSaved(true);
     } catch {
-      setSaveError("No se pudo guardar. Inténtalo de nuevo.");
+      setSaveError(t("settings.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -305,7 +304,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     if (!changed) return;
     setSaved(false);
     setForm(merged);
-    setDocumentsToast("Se han rellenado los campos vacíos de la pestaña Datos — no olvides guardar.");
+    setDocumentsToast(t("settings.documentsAppliedToast"));
   }
 
   async function handlePickLogo() {
@@ -317,7 +316,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       await updateBusinessProfile({ ...form, logoPath: stored });
       set("logoPath", stored);
     } catch {
-      setSaveError("No se pudo subir el logo. Inténtalo de nuevo.");
+      setSaveError(t("settings.logoUploadFailed"));
     } finally {
       setLogoUploading(false);
     }
@@ -338,16 +337,16 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     setBackupError(null);
     setBackupMessage(null);
     if (!backupSettings?.folderPath) {
-      setBackupError("Elige primero una carpeta de destino.");
+      setBackupError(t("settings.backupChooseFolderFirst"));
       return;
     }
     setBackupRunning(true);
     try {
       await backupNow();
-      setBackupMessage("Copia de seguridad completada.");
+      setBackupMessage(t("settings.backupComplete"));
       setBackupSettings(await getBackupSettings());
     } catch (e) {
-      setBackupError(`No se pudo completar la copia: ${String(e)}`);
+      setBackupError(t("settings.backupFailed", { error: String(e) }));
     } finally {
       setBackupRunning(false);
     }
@@ -361,12 +360,12 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     try {
       const entries = await listBackups(folder);
       if (entries.length === 0) {
-        setBackupError("No se han encontrado copias de seguridad en esa carpeta.");
+        setBackupError(t("settings.backupNoneFound"));
         return;
       }
       setRestoreCandidates(entries);
     } catch (e) {
-      setBackupError(`No se pudo leer la carpeta: ${String(e)}`);
+      setBackupError(t("settings.backupReadFolderFailed", { error: String(e) }));
     }
   }
 
@@ -383,7 +382,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       await restoreFromBackup(entry.path);
       window.location.reload();
     } catch (e) {
-      setBackupError(`No se pudo restaurar: ${String(e)}`);
+      setBackupError(t("settings.backupRestoreFailed", { error: String(e) }));
       setRestoring(false);
     } finally {
       setRestorePendingEntry(null);
@@ -392,7 +391,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
   return (
     <div className="px-8 pb-15">
-      <PageHeader title="Ajustes" />
+      <PageHeader title={t("nav.settings")} />
 
       <div className="mb-5">
         <SegmentedControl options={TABS} value={tab} onChange={setTab} />
@@ -401,9 +400,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       {tab === "general" && (
         <Card className="px-5 max-w-[640px] mb-5">
           <div className="pt-4 pb-3">
-            <div className="font-bold text-sm mb-1.5">Apariencia</div>
+            <div className="font-bold text-sm mb-1.5">{t("settings.appearanceTitle")}</div>
           </div>
-          <FormRow label="Modo oscuro">
+          <FormRow label={t("settings.darkMode")}>
             <div className="flex items-center gap-2.5">
               <Switch.Root
                 checked={theme === "dark"}
@@ -413,7 +412,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                 <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform ease-[var(--ease-out)] data-[state=checked]:translate-x-[18px]" />
               </Switch.Root>
               <span className="text-[13px] text-ink-soft">
-                {theme === "dark" ? "Activado" : "Desactivado"}
+                {theme === "dark" ? t("settings.on") : t("settings.off")}
               </span>
             </div>
           </FormRow>
@@ -480,7 +479,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           )}
 
           <div className="flex items-center gap-2.5 py-3 border-t border-border">
-            <Button onClick={handleSaveLlmSettings} disabled={llmSaving}>
+            <Button onClick={() => void handleSaveLlmSettings()} disabled={llmSaving}>
               {t("settings.llmSave")}
             </Button>
             {llmSaved && <div className="text-[13px] text-accent">{t("settings.llmSaved")}</div>}
@@ -495,25 +494,25 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
       {tab === "datos" &&
         (loading ? (
-          <div className="text-sm text-ink-soft mb-5">Cargando…</div>
+          <div className="text-sm text-ink-soft mb-5">{t("settings.loading")}</div>
         ) : loadError ? (
           <div className="text-sm text-danger mb-5">
-            No se pudieron cargar los datos del negocio.
+            {t("settings.loadError")}
           </div>
         ) : (
           <>
             <Card className="px-5 max-w-[640px] mb-5">
               <div className="pt-4 pb-3">
-                <div className="font-bold text-sm mb-1.5">Datos del negocio</div>
+                <div className="font-bold text-sm mb-1.5">{t("settings.businessDataTitle")}</div>
               </div>
-              <FormRow label="Nombre / Razón social" error={errors.name}>
+              <FormRow label={t("settings.fields.name")} error={errors.name}>
                 <TextInput
                   value={form.name}
                   error={!!errors.name}
                   onChange={(e) => set("name", e.target.value)}
                 />
               </FormRow>
-              <FormRow label="NIF" error={errors.nifCif}>
+              <FormRow label={t("settings.fields.nifCif")} error={errors.nifCif}>
                 <TextInput
                   mono
                   value={form.nifCif}
@@ -521,7 +520,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   onChange={(e) => handleNifChange(e.target.value)}
                 />
               </FormRow>
-              <FormRow label="Número de IVA" error={errors.vatNumber}>
+              <FormRow label={t("settings.fields.vatNumber")} error={errors.vatNumber}>
                 <TextInput
                   mono
                   value={form.vatNumber}
@@ -529,17 +528,17 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   onChange={(e) => handleVatNumberChange(e.target.value)}
                 />
               </FormRow>
-              <FormRow label="Dirección fiscal">
+              <FormRow label={t("settings.fields.address")}>
                 <TextInput value={form.address} onChange={(e) => set("address", e.target.value)} />
               </FormRow>
-              <FormRow label="Fecha de alta como autónomo">
+              <FormRow label={t("settings.fields.retaStartDate")}>
                 <TextInput
                   type="date"
                   value={retaStartDate}
                   onChange={(e) => setRetaStartDate(e.target.value)}
                 />
               </FormRow>
-              <FormRow label="Logo">
+              <FormRow label={t("settings.fields.logo")}>
                 <div className="flex items-center gap-2.5">
                   {form.logoPath && (
                     <img
@@ -548,11 +547,19 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                       className="w-8 h-8 rounded-control object-contain bg-surface-alt shrink-0"
                     />
                   )}
-                  <Button variant="secondary" onClick={handlePickLogo} disabled={logoUploading}>
-                    {logoUploading ? "Subiendo…" : form.logoPath ? "Cambiar logo" : "Subir logo"}
+                  <Button
+                    variant="secondary"
+                    onClick={() => void handlePickLogo()}
+                    disabled={logoUploading}
+                  >
+                    {logoUploading
+                      ? t("settings.logoUploading")
+                      : form.logoPath
+                        ? t("settings.logoChange")
+                        : t("settings.logoUpload")}
                   </Button>
                   <span className="text-[13px] text-ink-soft">
-                    Se imprime en la esquina de la factura.
+                    {t("settings.logoHelp")}
                   </span>
                 </div>
               </FormRow>
@@ -560,15 +567,15 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
             <Card className="px-5 max-w-[640px] mb-5">
               <div className="pt-4 pb-3">
-                <div className="font-bold text-sm mb-1.5">Datos bancarios</div>
+                <div className="font-bold text-sm mb-1.5">{t("settings.bankDataTitle")}</div>
               </div>
-              <FormRow label="Nombre del banco">
+              <FormRow label={t("settings.fields.bankName")}>
                 <TextInput
                   value={form.bankName}
                   onChange={(e) => set("bankName", e.target.value)}
                 />
               </FormRow>
-              <FormRow label="IBAN" error={errors.iban}>
+              <FormRow label={t("settings.fields.iban")} error={errors.iban}>
                 <TextInput
                   mono
                   value={form.iban}
@@ -576,17 +583,17 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   onChange={(e) => set("iban", e.target.value)}
                 />
               </FormRow>
-              <FormRow label="BIC / SWIFT">
+              <FormRow label={t("settings.fields.bic")}>
                 <TextInput mono value={form.bic} onChange={(e) => set("bic", e.target.value)} />
               </FormRow>
             </Card>
 
             {saveError && <ErrorText>{saveError}</ErrorText>}
             <div className="flex items-center gap-3 max-w-[640px]">
-              <Button onClick={handleSave} disabled={saving}>
-                Guardar
+              <Button onClick={() => void handleSave()} disabled={saving}>
+                {t("settings.save")}
               </Button>
-              {saved && <span className="text-[13px] text-ink-soft">Guardado.</span>}
+              {saved && <span className="text-[13px] text-ink-soft">{t("settings.saved")}</span>}
             </div>
           </>
         ))}
@@ -594,11 +601,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       {tab === "documentos" && (
         <Card className="px-5 max-w-[640px]">
           <div className="pt-4 pb-3">
-            <div className="font-bold text-sm mb-1.5">Documentos de alta como autónomo</div>
+            <div className="font-bold text-sm mb-1.5">{t("settings.documentsTabTitle")}</div>
             <div className="text-[13px] text-ink-soft">
-              Sube el certificado censal, el alta en RETA y demás documentación de registro. Si
-              hay una clave de IA configurada en la pestaña General, se extraen datos y se
-              rellenan los campos de la pestaña Datos automáticamente.
+              {t("settings.documentsTabDescription")}
             </div>
           </div>
           <BusinessDocumentsPanel onExtracted={applyExtracted} />
@@ -608,9 +613,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       {tab === "categorias" && (
         <Card className="px-5 max-w-[640px]">
           <div className="pt-4 pb-3">
-            <div className="font-bold text-sm mb-1.5">Categorías de gastos</div>
+            <div className="font-bold text-sm mb-1.5">{t("settings.categoriesTitle")}</div>
             <div className="text-[13px] text-ink-soft">
-              Estas son las opciones disponibles al registrar un gasto.
+              {t("settings.categoriesSubtitle")}
             </div>
           </div>
 
@@ -624,9 +629,11 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                       onChange={(e) => setEditingCategoryName(e.target.value)}
                       className="flex-1"
                     />
-                    <Button onClick={() => handleRenameCategory(category.id)}>Guardar</Button>
+                    <Button onClick={() => void handleRenameCategory(category.id)}>
+                      {t("settings.save")}
+                    </Button>
                     <Button variant="secondary" onClick={() => setEditingCategoryId(null)}>
-                      Cancelar
+                      {t("settings.cancel")}
                     </Button>
                   </>
                 ) : (
@@ -640,10 +647,10 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                         setCategoryError(null);
                       }}
                     >
-                      Renombrar
+                      {t("settings.categoryRename")}
                     </Button>
                     <Button variant="secondary" onClick={() => handleDeleteCategory(category)}>
-                      Eliminar
+                      {t("settings.categoryDelete")}
                     </Button>
                   </>
                 )}
@@ -655,12 +662,12 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
           <div className="flex items-center gap-2.5 pt-3 pb-4 border-t border-border mt-1">
             <TextInput
-              placeholder="Nueva categoría"
+              placeholder={t("settings.categoryNamePlaceholder")}
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               className="flex-1"
             />
-            <Button onClick={handleAddCategory}>Añadir</Button>
+            <Button onClick={() => void handleAddCategory()}>{t("settings.categoryAdd")}</Button>
           </div>
         </Card>
       )}
@@ -668,38 +675,37 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       {tab === "backup" && (
         <Card className="px-5 max-w-[640px]">
           <div className="pt-4 pb-3">
-            <div className="font-bold text-sm mb-1.5">Copia de seguridad</div>
+            <div className="font-bold text-sm mb-1.5">{t("settings.backupTitle")}</div>
             <div className="text-[13px] text-ink-soft">
-              Se guarda una copia de la base de datos, facturas y contratos en una carpeta local que
-              tú sincronizas con Drive/S3.
+              {t("settings.backupDescription")}
             </div>
           </div>
 
-          <FormRow label="Carpeta de destino">
+          <FormRow label={t("settings.backupFolder")}>
             <div className="flex gap-2.5 items-center">
               <TextInput value={backupSettings?.folderPath ?? ""} readOnly className="flex-1" />
-              <Button variant="secondary" onClick={handlePickFolder}>
-                Elegir carpeta
+              <Button variant="secondary" onClick={() => void handlePickFolder()}>
+                {t("settings.backupChooseFolder")}
               </Button>
               {backupSettings?.folderPath && (
                 <Button
                   variant="secondary"
-                  onClick={() => openBackupFolder(backupSettings.folderPath)}
+                  onClick={() => void openBackupFolder(backupSettings.folderPath)}
                 >
-                  Abrir carpeta
+                  {t("settings.backupOpenFolder")}
                 </Button>
               )}
             </div>
           </FormRow>
 
-          <FormRow label="Conservar copias (días)">
+          <FormRow label={t("settings.backupRetention")}>
             <TextInput
               type="number"
               min={0}
               value={backupSettings?.retentionDays ?? 30}
               onChange={(e) =>
                 backupSettings &&
-                persistBackupSettings({
+                void persistBackupSettings({
                   ...backupSettings,
                   retentionDays: Number(e.target.value),
                 })
@@ -707,13 +713,13 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             />
           </FormRow>
 
-          <FormRow label="Copia automática">
+          <FormRow label={t("settings.backupAuto")}>
             <div className="flex items-center gap-2.5">
               <Switch.Root
                 checked={backupSettings?.autoBackupEnabled ?? false}
                 onCheckedChange={(checked) =>
                   backupSettings &&
-                  persistBackupSettings({
+                  void persistBackupSettings({
                     ...backupSettings,
                     autoBackupEnabled: checked,
                   })
@@ -722,11 +728,11 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
               >
                 <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform ease-[var(--ease-out)] data-[state=checked]:translate-x-[18px]" />
               </Switch.Root>
-              <span className="text-[13px] text-ink-soft">Al abrir la app</span>
+              <span className="text-[13px] text-ink-soft">{t("settings.backupAutoHelp")}</span>
             </div>
           </FormRow>
 
-          <FormRow label="Repetir cada (días)">
+          <FormRow label={t("settings.backupInterval")}>
             <TextInput
               type="number"
               min={1}
@@ -734,7 +740,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
               value={backupSettings?.intervalDays ?? 7}
               onChange={(e) =>
                 backupSettings &&
-                persistBackupSettings({
+                void persistBackupSettings({
                   ...backupSettings,
                   intervalDays: Number(e.target.value),
                 })
@@ -745,7 +751,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           <div className="py-4 border-t border-border mt-1">
             {backupSettings?.lastBackupAt && (
               <div className="text-[13px] text-ink-soft mb-3.5">
-                Última copia: {new Date(backupSettings.lastBackupAt).toLocaleString()}
+                {t("settings.backupLast", {
+                  date: new Date(backupSettings.lastBackupAt).toLocaleString(),
+                })}
               </div>
             )}
 
@@ -753,18 +761,18 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             {backupMessage && <div className="text-[13px] text-ink-soft mb-2">{backupMessage}</div>}
 
             <div className="flex gap-2.5">
-              <Button onClick={handleBackupNow} disabled={backupRunning}>
-                {backupRunning ? "Copiando…" : "Copia de seguridad ahora"}
+              <Button onClick={() => void handleBackupNow()} disabled={backupRunning}>
+                {backupRunning ? t("settings.backupRunning") : t("settings.backupNow")}
               </Button>
-              <Button variant="secondary" onClick={handleRestore} disabled={restoring}>
-                {restoring ? "Restaurando…" : "Restaurar desde copia"}
+              <Button variant="secondary" onClick={() => void handleRestore()} disabled={restoring}>
+                {restoring ? t("settings.backupRestoring") : t("settings.backupRestore")}
               </Button>
             </div>
 
             {restoreCandidates && (
               <div className="mt-4.5 border-t border-border pt-4.5">
                 <div className="text-[13px] font-semibold mb-2.5">
-                  Elige una copia para restaurar
+                  {t("settings.backupChooseRestoreTitle")}
                 </div>
                 <div className="flex flex-col gap-0.5 mb-3 -mx-2">
                   {restoreCandidates.map((entry) => (
@@ -779,7 +787,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                   ))}
                 </div>
                 <Button variant="secondary" onClick={() => setRestoreCandidates(null)}>
-                  Cancelar
+                  {t("settings.cancel")}
                 </Button>
               </div>
             )}
@@ -790,17 +798,17 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       <Sheet
         open={categoryPendingDelete !== null}
         onOpenChange={(open) => !open && setCategoryPendingDelete(null)}
-        title="Eliminar categoría"
+        title={t("settings.categoryDeleteTitle")}
       >
         <p className="text-[13px] text-ink-soft mb-4">
-          ¿Eliminar la categoría "{categoryPendingDelete?.name}"?
+          {t("settings.categoryDeleteConfirm", { name: categoryPendingDelete?.name })}
         </p>
         <div className="flex gap-2.5 justify-end">
           <Button variant="secondary" onClick={() => setCategoryPendingDelete(null)}>
-            Cancelar
+            {t("settings.cancel")}
           </Button>
-          <Button variant="ghost-danger" onClick={confirmDeleteCategory}>
-            Eliminar
+          <Button variant="ghost-danger" onClick={() => void confirmDeleteCategory()}>
+            {t("settings.categoryDelete")}
           </Button>
         </div>
       </Sheet>
@@ -808,10 +816,10 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
       <Sheet
         open={restorePendingEntry !== null}
         onOpenChange={(open) => !open && setRestorePendingEntry(null)}
-        title="Restaurar copia de seguridad"
+        title={t("settings.backupRestoreTitle")}
       >
         <p className="text-[13px] text-ink-soft mb-4">
-          Esto sobrescribirá tus datos actuales con los de la copia seleccionada. ¿Continuar?
+          {t("settings.backupRestoreConfirm")}
         </p>
         <div className="flex gap-2.5 justify-end">
           <Button
@@ -819,10 +827,10 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             onClick={() => setRestorePendingEntry(null)}
             disabled={restoring}
           >
-            Cancelar
+            {t("settings.cancel")}
           </Button>
-          <Button variant="ghost-danger" onClick={confirmRestore} disabled={restoring}>
-            {restoring ? "Restaurando…" : "Restaurar"}
+          <Button variant="ghost-danger" onClick={() => void confirmRestore()} disabled={restoring}>
+            {restoring ? t("settings.backupRestoring") : t("settings.backupRestoreAction")}
           </Button>
         </div>
       </Sheet>

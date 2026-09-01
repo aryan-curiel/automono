@@ -99,11 +99,11 @@ export function Dashboard({
   const [altaKey, setAltaKey] = useState<string | null>(null);
 
   useEffect(() => {
-    getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
+    void getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
   }, []);
 
   useEffect(() => {
-    listExpenses({
+    void listExpenses({
       from: QUARTER_WINDOW_FROM,
       to: QUARTER_WINDOW_TO,
       quarterKeys: QUARTER_KEYS,
@@ -111,7 +111,7 @@ export function Dashboard({
   }, []);
 
   useEffect(() => {
-    listDeclarations().then(setDeclarations);
+    void listDeclarations().then(setDeclarations);
   }, []);
 
   useEffect(() => {
@@ -120,7 +120,7 @@ export function Dashboard({
     );
     const detail =
       current?.status === "in_progress" ? getDeclaration(current.id) : Promise.resolve(null);
-    detail.then(setCurrentDeclarationDetail);
+    void detail.then(setCurrentDeclarationDetail);
   }, [declarations]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -487,7 +487,7 @@ export function Dashboard({
               </div>
               <Button
                 variant="secondary"
-                onClick={() => handleGenerateRecurring(c.lastInvoiceId)}
+                onClick={() => void handleGenerateRecurring(c.lastInvoiceId)}
                 disabled={generatingFor === c.lastInvoiceId}
               >
                 {generatingFor === c.lastInvoiceId

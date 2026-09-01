@@ -473,7 +473,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
 
         <FormRow label={t("expenses.fields.file")}>
           <div className="flex items-center gap-2.5">
-            <Button variant="secondary" onClick={handleAttachFile} disabled={attaching}>
+            <Button variant="secondary" onClick={() => void handleAttachFile()} disabled={attaching}>
               {attaching ? t("expenses.actions.attaching") : t("expenses.actions.attachFile")}
             </Button>
             {form.receiptFilePath && (
@@ -495,7 +495,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
         <Button variant="secondary" onClick={onCancel} disabled={saving || attaching}>
           {t("expenses.actions.cancel")}
         </Button>
-        <Button onClick={handleSubmit} disabled={saving || attaching}>
+        <Button onClick={() => void handleSubmit()} disabled={saving || attaching}>
           {saving ? t("expenses.actions.saving") : t("expenses.actions.save")}
         </Button>
       </div>

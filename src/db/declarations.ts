@@ -4,13 +4,14 @@ import { getDb } from "./client";
 import {
   buildDeclarationCsv,
   buildDeclarationSnapshot,
+  expensesInPeriod,
   paidInvoicesInPeriod,
   type DeclarationSnapshot,
 } from "../lib/quarterlyDeclaration";
 import type { ModeloFields } from "../lib/modeloReport";
-import { listInvoices } from "./invoices";
-import { listExpenses } from "./expenses";
-import { quarterRange, quartersInRange } from "../lib/dateRange";
+import { listInvoices, type InvoiceListItem } from "./invoices";
+import { listExpenses, type ExpenseRecord } from "./expenses";
+import { quarterRange } from "../lib/dateRange";
 
 export type DeclarationStatus = "in_progress" | "completed";
 export type Modelo = "303" | "130" | "111";
@@ -71,42 +72,45 @@ const MODELO_COLUMN: Record<Modelo, string> = {
  * returned as-is. An `in_progress` one is still being reconciled, so its snapshot is recomputed
  * from the current invoices/expenses every time — otherwise edits made after the declaration was
  * created (e.g. fixing an expense amount, adding a missed receipt) would silently never show up
- * in the Modelo Review comparison or the detail screen's/list's KPIs. */
-async function currentSnapshot(row: DeclarationRow): Promise<DeclarationSnapshot> {
+ * in the Modelo Review comparison or the detail screen's/list's KPIs.
+ *
+ * `allInvoices`/`allExpenses` are the full lists, fetched once by the caller — a per-row query
+ * here would turn `listDeclarations` into an N+1 (N full-table invoice/expense fetches for N
+ * in-progress declarations). */
+function currentSnapshot(
+  row: DeclarationRow,
+  allInvoices: InvoiceListItem[],
+  allExpenses: ExpenseRecord[],
+): DeclarationSnapshot {
   if (row.status === "completed") return JSON.parse(row.snapshot_json) as DeclarationSnapshot;
 
   const period = quarterRange(row.year, row.quarter as 1 | 2 | 3 | 4);
-  const [invoices, expenses] = await Promise.all([
-    listInvoices(),
-    listExpenses({
-      from: period.from,
-      to: period.to,
-      quarterKeys: quartersInRange(period.from, period.to),
-    }),
-  ]);
-  return buildDeclarationSnapshot(paidInvoicesInPeriod(invoices, period), expenses);
+  return buildDeclarationSnapshot(
+    paidInvoicesInPeriod(allInvoices, period),
+    expensesInPeriod(allExpenses, period),
+  );
 }
 
 export async function listDeclarations(): Promise<DeclarationListItem[]> {
   const db = await getDb();
-  const rows = await db.select<DeclarationRow[]>(
-    "SELECT * FROM quarterly_declarations ORDER BY year DESC, quarter DESC",
-  );
-  return Promise.all(
-    rows.map(async (row) => {
-      const snapshot = await currentSnapshot(row);
-      return {
-        id: row.id,
-        year: row.year,
-        quarter: row.quarter,
-        status: row.status,
-        invoiceCount: snapshot.invoices.length,
-        expenseCount: snapshot.expenses.length,
-        invoicedTotal: snapshot.totals.invoicedBase,
-        expensesTotal: snapshot.totals.expensesDeductibleBase,
-      };
-    }),
-  );
+  const [rows, invoices, expenses] = await Promise.all([
+    db.select<DeclarationRow[]>("SELECT * FROM quarterly_declarations ORDER BY year DESC, quarter DESC"),
+    listInvoices(),
+    listExpenses(),
+  ]);
+  return rows.map((row) => {
+    const snapshot = currentSnapshot(row, invoices, expenses);
+    return {
+      id: row.id,
+      year: row.year,
+      quarter: row.quarter,
+      status: row.status,
+      invoiceCount: snapshot.invoices.length,
+      expenseCount: snapshot.expenses.length,
+      invoicedTotal: snapshot.totals.invoicedBase,
+      expensesTotal: snapshot.totals.expensesDeductibleBase,
+    };
+  });
 }
 
 export async function getDeclaration(id: number): Promise<DeclarationDetail | null> {
@@ -117,7 +121,8 @@ export async function getDeclaration(id: number): Promise<DeclarationDetail | nu
   );
   if (rows.length !== 1) return null;
   const row = rows[0];
-  const snapshot = await currentSnapshot(row);
+  const [invoices, expenses] = await Promise.all([listInvoices(), listExpenses()]);
+  const snapshot = currentSnapshot(row, invoices, expenses);
   return { ...mapRow(row), snapshot };
 }
 

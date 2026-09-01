@@ -1,6 +1,6 @@
 function csvEscape(value: string | number): string {
   const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export function csvRow(values: (string | number)[]): string {

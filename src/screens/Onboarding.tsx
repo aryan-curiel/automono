@@ -224,7 +224,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </div>
                   <BusinessDocumentsPanel onExtracted={applyExtracted} showContext={false} />
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
+                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
                       Saltar por ahora
                     </Button>
                     <Button type="button" onClick={() => goTo(2)}>
@@ -287,7 +287,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={handlePickLogo}
+                      onClick={() => void handlePickLogo()}
                       disabled={logoUploading}
                     >
                       {logoUploading
@@ -299,7 +299,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
+                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
@@ -348,7 +348,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
+                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
@@ -420,7 +420,7 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={skip} disabled={finishing}>
+                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">

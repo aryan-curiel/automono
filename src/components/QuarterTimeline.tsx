@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "motion/react";
 import { CaretLeft, CaretRight, Lock } from "@phosphor-icons/react";
 import {
@@ -42,6 +43,7 @@ export function QuarterTimeline({
   declarations,
   onSelect,
 }: QuarterTimelineProps) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const layoutId = useId();
   const statusByKey = new Map(declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]));
@@ -65,7 +67,7 @@ export function QuarterTimeline({
     <div className="flex items-center gap-1.5 mb-6">
       <button
         type="button"
-        aria-label="Trimestre anterior"
+        aria-label={t("quarterTimeline.previousQuarter")}
         onClick={() => step(-1)}
         disabled={!keys.includes(prevTarget) || isDisabled(prevTarget)}
         className="p-2 rounded-control text-ink-soft hover:text-ink hover:bg-surface-alt cursor-pointer
@@ -123,7 +125,7 @@ export function QuarterTimeline({
 
       <button
         type="button"
-        aria-label="Trimestre siguiente"
+        aria-label={t("quarterTimeline.nextQuarter")}
         onClick={() => step(1)}
         disabled={!keys.includes(nextTarget) || isDisabled(nextTarget)}
         className="p-2 rounded-control text-ink-soft hover:text-ink hover:bg-surface-alt cursor-pointer

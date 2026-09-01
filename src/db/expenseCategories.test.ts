@@ -1,17 +1,13 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error type error without @types/node package
 import { DatabaseSync } from "node:sqlite";
-// @ts-expect-error type error without @types/node package
 import { readdirSync, readFileSync } from "node:fs";
-// @ts-expect-error type error without @types/node package
 import { dirname, join } from "node:path";
-// @ts-expect-error type error without @types/node package
 import { fileURLToPath } from "node:url";
 
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../src-tauri/migrations");
 
 function migrationFiles(): string[] {
-  return (readdirSync(MIGRATIONS_DIR) as string[]).filter((f: string) => f.endsWith(".sql")).sort();
+  return readdirSync(MIGRATIONS_DIR).filter((f: string) => f.endsWith(".sql")).sort();
 }
 
 function freshDb() {

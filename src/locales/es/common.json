@@ -6,6 +6,34 @@
     "viewDetail": "Ver detalle",
     "retry": "Reintentar"
   },
+  "nav": {
+    "dashboard": "Inicio",
+    "clients": "Clientes",
+    "invoices": "Facturas",
+    "expenses": "Gastos",
+    "quarterlySummary": "Resumen trimestral",
+    "settings": "Ajustes",
+    "noData": "Sin datos"
+  },
+  "commandPalette": {
+    "title": "Buscar",
+    "description": "Busca clientes, facturas y contratos por nombre o número",
+    "placeholder": "Buscar clientes, facturas, contratos…",
+    "noResults": "Sin resultados",
+    "typeClient": "Cliente",
+    "typeInvoice": "Factura",
+    "typeContract": "Contrato"
+  },
+  "periodSelector": {
+    "month": "Mes",
+    "quarter": "Trimestre",
+    "year": "Año",
+    "months": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+  },
+  "quarterTimeline": {
+    "previousQuarter": "Trimestre anterior",
+    "nextQuarter": "Trimestre siguiente"
+  },
   "dragDrop": {
     "title": "Agregar gasto",
     "subtitle": "Suelta el archivo para crear un gasto con este comprobante",
@@ -26,7 +54,109 @@
     "llmApiKey": "Clave API",
     "llmModel": "Modelo",
     "llmSave": "Guardar",
-    "llmSaved": "Guardado"
+    "llmSaved": "Guardado",
+    "tabs": {
+      "general": "General",
+      "datos": "Datos",
+      "documentos": "Documentos",
+      "categorias": "Categorías",
+      "backup": "Copia de seguridad"
+    },
+    "appearanceTitle": "Apariencia",
+    "darkMode": "Modo oscuro",
+    "on": "Activado",
+    "off": "Desactivado",
+    "loading": "Cargando…",
+    "loadError": "No se pudieron cargar los datos del negocio.",
+    "businessDataTitle": "Datos del negocio",
+    "fields": {
+      "name": "Nombre / Razón social",
+      "nifCif": "NIF",
+      "vatNumber": "Número de IVA",
+      "address": "Dirección fiscal",
+      "retaStartDate": "Fecha de alta como autónomo",
+      "logo": "Logo",
+      "bankName": "Nombre del banco",
+      "iban": "IBAN",
+      "bic": "BIC / SWIFT"
+    },
+    "logoUploading": "Subiendo…",
+    "logoChange": "Cambiar logo",
+    "logoUpload": "Subir logo",
+    "logoHelp": "Se imprime en la esquina de la factura.",
+    "bankDataTitle": "Datos bancarios",
+    "save": "Guardar",
+    "saved": "Guardado.",
+    "saveFailed": "No se pudo guardar. Inténtalo de nuevo.",
+    "logoUploadFailed": "No se pudo subir el logo. Inténtalo de nuevo.",
+    "errors": {
+      "nameRequired": "El nombre es obligatorio",
+      "nifCifInvalid": "NIF/CIF con formato inválido",
+      "vatNumberInvalid": "Número de IVA con formato inválido",
+      "ibanInvalid": "IBAN con formato o dígitos de control inválidos"
+    },
+    "documentsTabTitle": "Documentos de alta como autónomo",
+    "documentsTabDescription": "Sube el certificado censal, el alta en RETA y demás documentación de registro. Si hay una clave de IA configurada en la pestaña General, se extraen datos y se rellenan los campos de la pestaña Datos automáticamente.",
+    "documentsAppliedToast": "Se han rellenado los campos vacíos de la pestaña Datos — no olvides guardar.",
+    "categoriesTitle": "Categorías de gastos",
+    "categoriesSubtitle": "Estas son las opciones disponibles al registrar un gasto.",
+    "categoryRename": "Renombrar",
+    "categoryDelete": "Eliminar",
+    "categoryAdd": "Añadir",
+    "categoryNamePlaceholder": "Nueva categoría",
+    "categoryNameTaken": "Ya existe una categoría con ese nombre.",
+    "categoryDeleteFailed": "No se pudo eliminar la categoría.",
+    "categoryInUse_one": "Esta categoría se usa en {{count}} gasto. Cambia esos gastos de categoría antes de eliminarla.",
+    "categoryInUse_other": "Esta categoría se usa en {{count}} gastos. Cambia esos gastos de categoría antes de eliminarla.",
+    "categoryDeleteTitle": "Eliminar categoría",
+    "categoryDeleteConfirm": "¿Eliminar la categoría \"{{name}}\"?",
+    "cancel": "Cancelar",
+    "backupTitle": "Copia de seguridad",
+    "backupDescription": "Se guarda una copia de la base de datos, facturas y contratos en una carpeta local que tú sincronizas con Drive/S3.",
+    "backupFolder": "Carpeta de destino",
+    "backupChooseFolder": "Elegir carpeta",
+    "backupOpenFolder": "Abrir carpeta",
+    "backupRetention": "Conservar copias (días)",
+    "backupAuto": "Copia automática",
+    "backupAutoHelp": "Al abrir la app",
+    "backupInterval": "Repetir cada (días)",
+    "backupLast": "Última copia: {{date}}",
+    "backupChooseFolderFirst": "Elige primero una carpeta de destino.",
+    "backupComplete": "Copia de seguridad completada.",
+    "backupFailed": "No se pudo completar la copia: {{error}}",
+    "backupNow": "Copia de seguridad ahora",
+    "backupRunning": "Copiando…",
+    "backupRestore": "Restaurar desde copia",
+    "backupRestoring": "Restaurando…",
+    "backupNoneFound": "No se han encontrado copias de seguridad en esa carpeta.",
+    "backupReadFolderFailed": "No se pudo leer la carpeta: {{error}}",
+    "backupChooseRestoreTitle": "Elige una copia para restaurar",
+    "backupRestoreTitle": "Restaurar copia de seguridad",
+    "backupRestoreConfirm": "Esto sobrescribirá tus datos actuales con los de la copia seleccionada. ¿Continuar?",
+    "backupRestoreAction": "Restaurar",
+    "backupRestoreFailed": "No se pudo restaurar: {{error}}"
+  },
+  "documentsPanel": {
+    "dropzone": "Arrastra tus documentos aquí, o haz clic para elegirlos",
+    "processing": "Procesando {{index}} de {{total}}…",
+    "failed_one": "No se pudo procesar {{count}} documento.",
+    "failed_other": "No se pudieron procesar {{count}} documentos.",
+    "extracted_one": "Datos extraídos de {{count}} documento.",
+    "extracted_other": "Datos extraídos de {{count}} documentos.",
+    "noApiKey": "Documentos guardados. Configura una clave de IA en Ajustes → General para extraer datos automáticamente.",
+    "descriptionAriaLabel": "Descripción",
+    "deleteAriaLabel": "Eliminar",
+    "openTitle": "Abrir documento",
+    "openFailed": "No se pudo abrir el documento.",
+    "contextTitle": "Contexto del usuario",
+    "contextDescription": "Un resumen en markdown de tu situación como autónomo, generado a partir de los documentos. Puedes editarlo libremente.",
+    "contextSave": "Guardar",
+    "contextSaving": "Guardando…",
+    "contextSaved": "Guardado.",
+    "contextRegenerate": "Regenerar desde documentos",
+    "contextRegenerating": "Regenerando…",
+    "contextRegenerateNoApiKey": "Configura una clave de IA en Ajustes → General para regenerar el contexto.",
+    "contextRegenerateFailed": "No se pudo regenerar el contexto. Inténtalo de nuevo."
   },
   "clients": {
     "title": "Clientes",
@@ -333,7 +463,8 @@
       "titleRequired": "El título es obligatorio.",
       "attachFailed": "No se pudo adjuntar el archivo. Inténtalo de nuevo.",
       "saveFailed": "No se pudo guardar el contrato. Inténtalo de nuevo.",
-      "loadFailed": "No se pudo cargar el contrato."
+      "loadFailed": "No se pudo cargar el contrato.",
+      "deleteFailed": "No se pudo eliminar el contrato. Inténtalo de nuevo."
     },
     "detail": {
       "dataTitle": "Datos del contrato"
@@ -516,6 +647,7 @@
     "allMonths": "Todos",
     "pagePrev": "Página anterior",
     "pageNext": "Página siguiente",
-    "pageIndicator": "{{page}} de {{count}}"
+    "pageIndicator": "{{page}} de {{count}}",
+    "vsPriorYear": "{{sign}}{{value}}% vs año anterior"
   }
 }

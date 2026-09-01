@@ -9,6 +9,18 @@ fn copy_logo(source: &Path, dest_dir: &Path) -> std::io::Result<PathBuf> {
     std::fs::create_dir_all(dest_dir)?;
     let ext = source.extension().and_then(|e| e.to_str()).unwrap_or("png");
     let dest_path = dest_dir.join(format!("logo.{ext}"));
+
+    // Remove any previous logo with a different extension so replacing a .png with a .jpg
+    // doesn't leave the old file behind forever.
+    if let Ok(entries) = std::fs::read_dir(dest_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path != dest_path && path.file_stem().and_then(|s| s.to_str()) == Some("logo") {
+                std::fs::remove_file(&path)?;
+            }
+        }
+    }
+
     std::fs::copy(source, &dest_path)?;
     Ok(dest_path)
 }
@@ -62,6 +74,27 @@ mod tests {
         let dest_path = copy_logo(&source_path, &dest_dir).unwrap();
 
         assert_eq!(std::fs::read(&dest_path).unwrap(), b"v2");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn copy_logo_removes_previous_logo_of_a_different_extension() {
+        let tmp = std::env::temp_dir().join(format!("automono_logo_ext_change_test_{}", std::process::id()));
+        let source_dir = tmp.join("source");
+        std::fs::create_dir_all(&source_dir).unwrap();
+        let dest_dir = tmp.join("dest");
+
+        let png_source = source_dir.join("logo.png");
+        std::fs::write(&png_source, b"png-bytes").unwrap();
+        let png_dest = copy_logo(&png_source, &dest_dir).unwrap();
+        assert!(png_dest.exists());
+
+        let jpg_source = source_dir.join("logo.jpg");
+        std::fs::write(&jpg_source, b"jpg-bytes").unwrap();
+        let jpg_dest = copy_logo(&jpg_source, &dest_dir).unwrap();
+
+        assert!(!png_dest.exists(), "old logo.png must be removed once logo.jpg replaces it");
+        assert!(jpg_dest.exists());
         std::fs::remove_dir_all(&tmp).ok();
     }
 }

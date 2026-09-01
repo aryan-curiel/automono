@@ -12,10 +12,12 @@ function iso(year: number, month: number, day: number): string {
   return `${year}-${pad(month)}-${pad(day)}`;
 }
 
-/** Quarterly Modelo 130 (IRPF)/303 (IVA) deadline: the 20th of the month after the quarter ends. */
+/** Quarterly Modelo 130 (IRPF)/303 (IVA) deadline: the 20th of the month after the quarter ends,
+ * except Q4 which is the 30th of January (aligned with the annual summary). */
 function quarterlyDeadline(year: number, quarter: 1 | 2 | 3 | 4): TaxDeadline {
+  const dueDay = quarter === 4 ? 30 : 20;
   const dueMonth = quarter * 3 + 1;
-  const dueDate = dueMonth > 12 ? iso(year + 1, dueMonth - 12, 20) : iso(year, dueMonth, 20);
+  const dueDate = dueMonth > 12 ? iso(year + 1, dueMonth - 12, dueDay) : iso(year, dueMonth, dueDay);
   return { model: "130/303", label: `Modelo 130/303 (${quarter}T)`, dueDate };
 }
 

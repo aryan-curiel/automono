@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDeclarationSnapshot,
+  expensesInPeriod,
   invoicesInPeriod,
   paidInvoicesInPeriod,
 } from "./quarterlyDeclaration";
@@ -79,6 +80,38 @@ describe("paidInvoicesInPeriod", () => {
       period,
     );
     expect(result.map((i) => i.id)).toEqual([2]);
+  });
+});
+
+describe("expensesInPeriod", () => {
+  it("includes undeclared expenses dated inside the period, excludes ones outside it", () => {
+    const period = quarterRange(2026, 1);
+    const result = expensesInPeriod(
+      [
+        expense({ id: 1, date: "2026-02-01" }),
+        expense({ id: 2, date: "2026-04-01" }),
+      ],
+      period,
+    );
+    expect(result.map((e) => e.id)).toEqual([1]);
+  });
+
+  it("includes an expense overridden into the period's quarter regardless of its own date", () => {
+    const period = quarterRange(2026, 3);
+    const result = expensesInPeriod(
+      [expense({ id: 1, date: "2026-06-15", declaredPeriod: "2026-Q3" })],
+      period,
+    );
+    expect(result.map((e) => e.id)).toEqual([1]);
+  });
+
+  it("excludes an overridden expense whose declaredPeriod doesn't match the period's quarter", () => {
+    const period = quarterRange(2026, 1);
+    const result = expensesInPeriod(
+      [expense({ id: 1, date: "2026-01-15", declaredPeriod: "2026-Q3" })],
+      period,
+    );
+    expect(result).toHaveLength(0);
   });
 });
 

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getDb } from "./client";
 import type { InvoiceLanguage, VatTreatment } from "./clients";
 import type { RectificationType } from "../types";
+import { amountsFromSubtotal, lineTotal } from "../lib/invoice";
 
 export type InvoiceStatus = "draft" | "issued" | "paid";
 
@@ -211,7 +212,7 @@ export async function saveDraft(id: number, patch: DraftPatch): Promise<void> {
     await db.execute(
       `INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, total)
        VALUES ($1, $2, $3, $4, $5)`,
-      [id, line.description, line.quantity, line.unitPrice, line.quantity * line.unitPrice],
+      [id, line.description, line.quantity, line.unitPrice, lineTotal(line)],
     );
   }
 }
@@ -351,10 +352,11 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
   return rows.map((row) => {
     const ivaRate = row.iva_rate ?? 0;
     const irpfRate = row.irpf_rate ?? 0;
-    const subtotal = row.subtotal ?? row.lines_subtotal;
-    const ivaAmount = row.iva_amount ?? (subtotal * ivaRate) / 100;
-    const irpfAmount = row.irpf_amount ?? (subtotal * irpfRate) / 100;
-    const total = row.total ?? subtotal + ivaAmount - irpfAmount;
+    const derived = amountsFromSubtotal(row.subtotal ?? row.lines_subtotal, ivaRate, irpfRate);
+    const subtotal = row.subtotal ?? derived.subtotal;
+    const ivaAmount = row.iva_amount ?? derived.ivaAmount;
+    const irpfAmount = row.irpf_amount ?? derived.irpfAmount;
+    const total = row.total ?? derived.total;
     return {
       id: row.id,
       clientId: row.client_id,

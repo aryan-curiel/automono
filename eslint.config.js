@@ -8,9 +8,13 @@ import prettier from "eslint-config-prettier";
 export default tseslint.config(
   { ignores: ["dist", "src-tauri/target", "src-tauri/gen"] },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
     files: ["**/*.{ts,tsx}"],
-    languageOptions: { ecmaVersion: 2020, globals: globals.browser },
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,

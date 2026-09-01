@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { FileArrowUp, FileImage, FilePdf, FileText, Info, X } from "@phosphor-icons/react";
 import { Button } from "./ui/Button";
@@ -42,6 +43,7 @@ interface BusinessDocumentsPanelProps {
 }
 
 export function BusinessDocumentsPanel({ onExtracted, showContext = true }: BusinessDocumentsPanelProps) {
+  const { t } = useTranslation();
   const [documents, setDocuments] = useState<BusinessDocumentRecord[]>([]);
   const [draggingOver, setDraggingOver] = useState(false);
   const [processing, setProcessing] = useState<{ index: number; total: number } | null>(null);
@@ -55,18 +57,18 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
   const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
-    listBusinessDocuments().then(setDocuments);
+    void listBusinessDocuments().then(setDocuments);
   }, []);
 
   useEffect(() => {
     if (!showContext) return;
-    getUserContext().then(setContextText);
+    void getUserContext().then(setContextText);
   }, [showContext]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
-    getCurrentWebview()
+    void getCurrentWebview()
       .onDragDropEvent((event) => {
         if (event.payload.type === "enter") {
           setDraggingOver(true);
@@ -150,13 +152,13 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
     setProcessing(null);
 
     if (failed > 0) {
-      setToast({ tone: "danger", message: `No se pudieron procesar ${failed} documento(s).` });
+      setToast({ tone: "danger", message: t("documentsPanel.failed", { count: failed }) });
     } else if (apiKey && extracted > 0) {
-      setToast({ tone: "success", message: `Datos extraídos de ${extracted} documento(s).` });
+      setToast({ tone: "success", message: t("documentsPanel.extracted", { count: extracted }) });
     } else if (!apiKey) {
       setToast({
         tone: "info",
-        message: "Documentos guardados. Configura una clave de IA en Ajustes → General para extraer datos automáticamente.",
+        message: t("documentsPanel.noApiKey"),
       });
     }
   }
@@ -174,7 +176,7 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
   async function handleOpen(filePath: string) {
     await openBusinessDocumentFile(filePath).catch((err) => {
       console.error("Failed to open business document:", err);
-      setToast({ tone: "danger", message: "No se pudo abrir el documento." });
+      setToast({ tone: "danger", message: t("documentsPanel.openFailed") });
     });
   }
 
@@ -197,7 +199,7 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
       const llmSettings = await getLlmSettings().catch(() => null);
       const apiKey = llmSettings ? activeApiKey(llmSettings) : null;
       if (!llmSettings || !apiKey) {
-        setToast({ tone: "info", message: "Configura una clave de IA en Ajustes → General para regenerar el contexto." });
+        setToast({ tone: "info", message: t("documentsPanel.contextRegenerateNoApiKey") });
         return;
       }
       const markdown = await synthesizeUserContext(
@@ -211,7 +213,7 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
       setContextSaved(true);
     } catch (err) {
       console.error("User context synthesis failed:", err);
-      setToast({ tone: "danger", message: "No se pudo regenerar el contexto. Inténtalo de nuevo." });
+      setToast({ tone: "danger", message: t("documentsPanel.contextRegenerateFailed") });
     } finally {
       setRegenerating(false);
     }
@@ -222,19 +224,19 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
       <div
         role="button"
         tabIndex={0}
-        onClick={handlePick}
-        onKeyDown={(e) => e.key === "Enter" && handlePick()}
+        onClick={() => void handlePick()}
+        onKeyDown={(e) => e.key === "Enter" && void handlePick()}
         className={`flex flex-col items-center justify-center gap-2 py-8 rounded-control border-2
                     border-dashed cursor-pointer transition-colors
                     ${draggingOver ? "border-accent bg-surface-alt" : "border-border hover:bg-surface-alt"}`}
       >
         <FileArrowUp size={22} weight="regular" className="text-ink-soft" />
         <div className="text-[13px] text-ink-soft text-center">
-          Arrastra tus documentos aquí, o haz clic para elegirlos
+          {t("documentsPanel.dropzone")}
         </div>
         {processing && (
           <div className="text-[12px] text-ink-soft">
-            Procesando {processing.index} de {processing.total}…
+            {t("documentsPanel.processing", { index: processing.index, total: processing.total })}
           </div>
         )}
       </div>
@@ -251,7 +253,7 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
                     <Popover content={doc.summary}>
                       <button
                         type="button"
-                        aria-label="Descripción"
+                        aria-label={t("documentsPanel.descriptionAriaLabel")}
                         className="text-ink-soft hover:text-ink cursor-pointer p-0.5 rounded-control"
                       >
                         <Info size={13} weight="regular" />
@@ -260,8 +262,8 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
                   )}
                   <button
                     type="button"
-                    aria-label="Eliminar"
-                    onClick={() => handleDelete(doc.id)}
+                    aria-label={t("documentsPanel.deleteAriaLabel")}
+                    onClick={() => void handleDelete(doc.id)}
                     className="text-ink-soft hover:text-danger cursor-pointer p-0.5 rounded-control"
                   >
                     <X size={13} weight="regular" />
@@ -269,9 +271,9 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleOpen(doc.filePath)}
+                  onClick={() => void handleOpen(doc.filePath)}
                   className="flex flex-col items-center gap-2 cursor-pointer mt-2 w-full"
-                  title="Abrir documento"
+                  title={t("documentsPanel.openTitle")}
                 >
                   <FileIcon size={30} weight="regular" className="text-ink-soft" />
                   <div className="text-[12px] font-medium text-center line-clamp-2">{title}</div>
@@ -284,10 +286,9 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
 
       {showContext && (
         <div className="mt-5 pt-4 border-t border-border">
-          <div className="font-bold text-sm mb-1.5">Contexto del usuario</div>
+          <div className="font-bold text-sm mb-1.5">{t("documentsPanel.contextTitle")}</div>
           <div className="text-[13px] text-ink-soft mb-3">
-            Un resumen en markdown de tu situación como autónomo, generado a partir de los
-            documentos. Puedes editarlo libremente.
+            {t("documentsPanel.contextDescription")}
           </div>
           <TextArea
             rows={12}
@@ -299,17 +300,17 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
             }}
           />
           <div className="flex items-center gap-2.5 mt-3">
-            <Button onClick={handleSaveContext} disabled={contextSaving}>
-              {contextSaving ? "Guardando…" : "Guardar"}
+            <Button onClick={() => void handleSaveContext()} disabled={contextSaving}>
+              {contextSaving ? t("documentsPanel.contextSaving") : t("documentsPanel.contextSave")}
             </Button>
             <Button
               variant="secondary"
-              onClick={handleRegenerateContext}
+              onClick={() => void handleRegenerateContext()}
               disabled={regenerating || documents.length === 0}
             >
-              {regenerating ? "Regenerando…" : "Regenerar desde documentos"}
+              {regenerating ? t("documentsPanel.contextRegenerating") : t("documentsPanel.contextRegenerate")}
             </Button>
-            {contextSaved && <span className="text-[13px] text-ink-soft">Guardado.</span>}
+            {contextSaved && <span className="text-[13px] text-ink-soft">{t("documentsPanel.contextSaved")}</span>}
           </div>
         </div>
       )}

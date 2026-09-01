@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "motion/react";
 import {
   House,
@@ -15,15 +16,15 @@ import type { Screen } from "../types";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
-  return parts.map((p) => p[0]!.toUpperCase()).join("") || "—";
+  return parts.map((p) => p[0].toUpperCase()).join("") || "—";
 }
 
-const NAV_ITEMS: { id: Screen; label: string; icon: PhosphorIcon }[] = [
-  { id: "dashboard", label: "Inicio", icon: House },
-  { id: "clientes", label: "Clientes", icon: UsersThree },
-  { id: "facturas", label: "Facturas", icon: Receipt },
-  { id: "gastos", label: "Gastos", icon: Wallet },
-  { id: "resumen-trimestral", label: "Resumen trimestral", icon: ChartPieSlice },
+const NAV_ITEMS: { id: Screen; labelKey: string; icon: PhosphorIcon }[] = [
+  { id: "dashboard", labelKey: "nav.dashboard", icon: House },
+  { id: "clientes", labelKey: "nav.clients", icon: UsersThree },
+  { id: "facturas", labelKey: "nav.invoices", icon: Receipt },
+  { id: "gastos", labelKey: "nav.expenses", icon: Wallet },
+  { id: "resumen-trimestral", labelKey: "nav.quarterlySummary", icon: ChartPieSlice },
 ];
 
 const GROUPED_SCREENS: Partial<Record<Screen, Screen>> = {
@@ -43,6 +44,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ screen, onNavigate }: SidebarProps) {
+  const { t } = useTranslation();
   const activeGroup = GROUPED_SCREENS[screen] ?? screen;
   const [profile, setProfile] = useState<BusinessProfileRecord | null>(null);
   const reduceMotion = useReducedMotion();
@@ -51,7 +53,7 @@ export function Sidebar({ screen, onNavigate }: SidebarProps) {
   // shared store, so the footer picks up Ajustes saves as soon as you navigate.
   useEffect(() => {
     let cancelled = false;
-    getBusinessProfile().then((p) => {
+    void getBusinessProfile().then((p) => {
       if (!cancelled) setProfile(p);
     });
     return () => {
@@ -97,7 +99,7 @@ export function Sidebar({ screen, onNavigate }: SidebarProps) {
                 }`}
               >
                 <Icon size={18} weight="regular" />
-                {item.label}
+                {t(item.labelKey)}
               </div>
             </button>
           );
@@ -112,7 +114,7 @@ export function Sidebar({ screen, onNavigate }: SidebarProps) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-[12.5px] text-white whitespace-nowrap overflow-hidden text-ellipsis">
-            {profile?.name || "Sin datos"}
+            {profile?.name || t("nav.noData")}
           </div>
           <div className="text-[11px] text-sidebar-text whitespace-nowrap overflow-hidden text-ellipsis">
             {profile?.nifCif || ""}
@@ -122,7 +124,7 @@ export function Sidebar({ screen, onNavigate }: SidebarProps) {
           type="button"
           onClick={() => onNavigate("ajustes")}
           aria-current={activeGroup === "ajustes" ? "page" : undefined}
-          aria-label="Ajustes"
+          aria-label={t("nav.settings")}
           className={`p-1.5 rounded-control shrink-0 cursor-pointer border-none
                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                        activeGroup === "ajustes"

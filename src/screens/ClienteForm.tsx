@@ -331,7 +331,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
         <Button variant="secondary" onClick={onCancel} disabled={saving}>
           {t("clients.actions.cancel")}
         </Button>
-        <Button onClick={handleSubmit} disabled={saving}>
+        <Button onClick={() => void handleSubmit()} disabled={saving}>
           {saving ? t("clients.actions.saving") : t("clients.actions.save")}
         </Button>
       </div>

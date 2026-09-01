@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { save } from "@tauri-apps/plugin-dialog";
 import {
   TrendUp,
@@ -69,10 +70,10 @@ const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "model
   "111": "modelo111Path",
 };
 
-function deltaLabel(delta: number | null): string | null {
+function deltaLabel(t: TFunction, delta: number | null): string | null {
   if (delta === null) return null;
   const sign = delta >= 0 ? "+" : "";
-  return `${sign}${delta.toFixed(0)}% vs año anterior`;
+  return t("resumenTrimestral.vsPriorYear", { sign, value: delta.toFixed(0) });
 }
 
 function parseQuarterKey(key: string): { year: number; quarter: 1 | 2 | 3 | 4 } {
@@ -255,7 +256,7 @@ export function ResumenTrimestral({
 
   const [altaKey, setAltaKey] = useState<string | null>(null);
   useEffect(() => {
-    getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
+    void getPreferences().then((prefs) => setAltaKey(quarterKeyOf(prefs.retaStartDate)));
   }, []);
 
   const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
@@ -277,7 +278,7 @@ export function ResumenTrimestral({
   const [lastDropToken, setLastDropToken] = useState(dropToken ?? 0);
 
   function refreshDeclarations() {
-    listDeclarations().then(setDeclarations);
+    void listDeclarations().then(setDeclarations);
   }
 
   useEffect(refreshDeclarations, []);
@@ -312,7 +313,7 @@ export function ResumenTrimestral({
 
   function reloadDeclaration() {
     if (focusedDeclarationId === null) return;
-    getDeclaration(focusedDeclarationId).then(
+    void getDeclaration(focusedDeclarationId).then(
       (d) => d && setDeclarationFetch({ id: focusedDeclarationId, detail: d }),
     );
   }
@@ -327,7 +328,7 @@ export function ResumenTrimestral({
   }
 
   useEffect(() => {
-    listExpenses({
+    void listExpenses({
       from: period.from,
       to: period.to,
       quarterKeys: quartersInRange(period.from, period.to),
@@ -336,7 +337,7 @@ export function ResumenTrimestral({
 
   const priorPeriod = priorYearPeriod(period);
   useEffect(() => {
-    listExpenses({
+    void listExpenses({
       from: priorPeriod.from,
       to: priorPeriod.to,
       quarterKeys: quartersInRange(priorPeriod.from, priorPeriod.to),
@@ -349,9 +350,10 @@ export function ResumenTrimestral({
   const priorInvoices = invoicesInPeriod(invoices, priorPeriod);
   const priorTotals = buildDeclarationSnapshot(priorInvoices, priorExpenses).totals;
   const revenueDelta = deltaLabel(
+    t,
     yoyDelta(projectionSnapshot.totals.invoicedBase, priorTotals.invoicedBase),
   );
-  const marginDelta = deltaLabel(yoyDelta(projectionSnapshot.totals.margin, priorTotals.margin));
+  const marginDelta = deltaLabel(t, yoyDelta(projectionSnapshot.totals.margin, priorTotals.margin));
 
   async function handleExportCsv() {
     setExportError(null);
@@ -447,14 +449,14 @@ export function ResumenTrimestral({
         actions={
           declaration ? (
             <>
-              <Button variant="secondary" onClick={handleDownloadZip} disabled={zipping}>
+              <Button variant="secondary" onClick={() => void handleDownloadZip()} disabled={zipping}>
                 <DownloadSimple size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
                 {zipping
                   ? t("declarations.detail.downloading")
                   : t("declarations.detail.downloadZip")}
               </Button>
               {declaration.status === "in_progress" && (
-                <Button onClick={handleMarkCompleted} disabled={!allModelosAttached || completing}>
+                <Button onClick={() => void handleMarkCompleted()} disabled={!allModelosAttached || completing}>
                   {completing
                     ? t("declarations.detail.completing")
                     : t("declarations.detail.markCompleted")}
@@ -478,7 +480,7 @@ export function ResumenTrimestral({
             </>
           ) : (
             <>
-              <Button variant="secondary" onClick={handleExportCsv} disabled={exporting}>
+              <Button variant="secondary" onClick={() => void handleExportCsv()} disabled={exporting}>
                 <DownloadSimple size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
                 {exporting ? t("resumenTrimestral.exportingCsv") : t("resumenTrimestral.exportCsv")}
               </Button>
@@ -598,7 +600,7 @@ export function ResumenTrimestral({
                       declaration.status === "completed" ? (
                         <Button
                           variant="secondary"
-                          onClick={() => handleOpenFile(path)}
+                          onClick={() => void handleOpenFile(path)}
                           disabled={!path}
                         >
                           {t("declarations.detail.openFile")}
@@ -608,7 +610,7 @@ export function ResumenTrimestral({
                           {path && (
                             <Badge tone="success">{t("declarations.detail.attached")}</Badge>
                           )}
-                          <Button variant="secondary" onClick={handleAttach}>
+                          <Button variant="secondary" onClick={() => void handleAttach()}>
                             {path
                               ? t("declarations.detail.replaceFile")
                               : t("declarations.detail.attachFile")}
@@ -645,7 +647,7 @@ export function ResumenTrimestral({
               <Button variant="secondary" onClick={() => setDeletePending(false)}>
                 {t("declarations.detail.cancel")}
               </Button>
-              <Button variant="ghost-danger" onClick={confirmDelete}>
+              <Button variant="ghost-danger" onClick={() => void confirmDelete()}>
                 {t("declarations.detail.delete")}
               </Button>
             </div>

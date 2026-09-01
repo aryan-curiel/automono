@@ -1,8 +1,4 @@
-function daysBetween(fromIso: string, toIso: string): number {
-  const [fy, fm, fd] = fromIso.split("-").map(Number);
-  const [ty, tm, td] = toIso.split("-").map(Number);
-  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
-}
+import { daysBetween } from "./dateRange";
 
 /** Days past `dueDateIso` as of `todayIso`, floored at 0 (not yet due isn't "negative overdue"). */
 export function daysOverdue(dueDateIso: string, todayIso: string): number {

@@ -6,6 +6,34 @@
     "viewDetail": "View detail",
     "retry": "Retry"
   },
+  "nav": {
+    "dashboard": "Home",
+    "clients": "Clients",
+    "invoices": "Invoices",
+    "expenses": "Expenses",
+    "quarterlySummary": "Quarterly summary",
+    "settings": "Settings",
+    "noData": "No data"
+  },
+  "commandPalette": {
+    "title": "Search",
+    "description": "Search clients, invoices, and contracts by name or number",
+    "placeholder": "Search clients, invoices, contracts…",
+    "noResults": "No results",
+    "typeClient": "Client",
+    "typeInvoice": "Invoice",
+    "typeContract": "Contract"
+  },
+  "periodSelector": {
+    "month": "Month",
+    "quarter": "Quarter",
+    "year": "Year",
+    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  },
+  "quarterTimeline": {
+    "previousQuarter": "Previous quarter",
+    "nextQuarter": "Next quarter"
+  },
   "dragDrop": {
     "title": "Add expense",
     "subtitle": "Drop the file to create an expense with this receipt",
@@ -26,7 +54,109 @@
     "llmApiKey": "API key",
     "llmModel": "Model",
     "llmSave": "Save",
-    "llmSaved": "Saved"
+    "llmSaved": "Saved",
+    "tabs": {
+      "general": "General",
+      "datos": "Details",
+      "documentos": "Documents",
+      "categorias": "Categories",
+      "backup": "Backup"
+    },
+    "appearanceTitle": "Appearance",
+    "darkMode": "Dark mode",
+    "on": "On",
+    "off": "Off",
+    "loading": "Loading…",
+    "loadError": "Failed to load the business details.",
+    "businessDataTitle": "Business details",
+    "fields": {
+      "name": "Name / Legal name",
+      "nifCif": "NIF",
+      "vatNumber": "VAT number",
+      "address": "Fiscal address",
+      "retaStartDate": "Self-employment start date",
+      "logo": "Logo",
+      "bankName": "Bank name",
+      "iban": "IBAN",
+      "bic": "BIC / SWIFT"
+    },
+    "logoUploading": "Uploading…",
+    "logoChange": "Change logo",
+    "logoUpload": "Upload logo",
+    "logoHelp": "Printed in the corner of the invoice.",
+    "bankDataTitle": "Bank details",
+    "save": "Save",
+    "saved": "Saved.",
+    "saveFailed": "Failed to save. Please try again.",
+    "logoUploadFailed": "Failed to upload the logo. Please try again.",
+    "errors": {
+      "nameRequired": "Name is required",
+      "nifCifInvalid": "NIF/CIF is not a valid format",
+      "vatNumberInvalid": "VAT number is not a valid format",
+      "ibanInvalid": "IBAN has an invalid format or check digits"
+    },
+    "documentsTabTitle": "Self-employment registration documents",
+    "documentsTabDescription": "Upload the tax registration certificate, RETA registration, and other registration paperwork. If an AI key is configured in the General tab, details are extracted and the Details tab's fields are filled in automatically.",
+    "documentsAppliedToast": "The Details tab's blank fields have been filled in — don't forget to save.",
+    "categoriesTitle": "Expense categories",
+    "categoriesSubtitle": "These are the options available when logging an expense.",
+    "categoryRename": "Rename",
+    "categoryDelete": "Delete",
+    "categoryAdd": "Add",
+    "categoryNamePlaceholder": "New category",
+    "categoryNameTaken": "A category with that name already exists.",
+    "categoryDeleteFailed": "Failed to delete the category.",
+    "categoryInUse_one": "This category is used in {{count}} expense. Change those expenses' category before deleting it.",
+    "categoryInUse_other": "This category is used in {{count}} expenses. Change those expenses' category before deleting it.",
+    "categoryDeleteTitle": "Delete category",
+    "categoryDeleteConfirm": "Delete the \"{{name}}\" category?",
+    "cancel": "Cancel",
+    "backupTitle": "Backup",
+    "backupDescription": "A copy of the database, invoices, and contracts is saved to a local folder that you sync with Drive/S3.",
+    "backupFolder": "Destination folder",
+    "backupChooseFolder": "Choose folder",
+    "backupOpenFolder": "Open folder",
+    "backupRetention": "Keep backups (days)",
+    "backupAuto": "Automatic backup",
+    "backupAutoHelp": "On app launch",
+    "backupInterval": "Repeat every (days)",
+    "backupLast": "Last backup: {{date}}",
+    "backupChooseFolderFirst": "Choose a destination folder first.",
+    "backupComplete": "Backup completed.",
+    "backupFailed": "Failed to complete the backup: {{error}}",
+    "backupNow": "Back up now",
+    "backupRunning": "Backing up…",
+    "backupRestore": "Restore from backup",
+    "backupRestoring": "Restoring…",
+    "backupNoneFound": "No backups were found in that folder.",
+    "backupReadFolderFailed": "Failed to read the folder: {{error}}",
+    "backupChooseRestoreTitle": "Choose a backup to restore",
+    "backupRestoreTitle": "Restore backup",
+    "backupRestoreConfirm": "This will overwrite your current data with the selected backup. Continue?",
+    "backupRestoreAction": "Restore",
+    "backupRestoreFailed": "Failed to restore: {{error}}"
+  },
+  "documentsPanel": {
+    "dropzone": "Drag your documents here, or click to choose them",
+    "processing": "Processing {{index}} of {{total}}…",
+    "failed_one": "Couldn't process {{count}} document.",
+    "failed_other": "Couldn't process {{count}} documents.",
+    "extracted_one": "Details extracted from {{count}} document.",
+    "extracted_other": "Details extracted from {{count}} documents.",
+    "noApiKey": "Documents saved. Configure an AI key in Settings → General to extract details automatically.",
+    "descriptionAriaLabel": "Description",
+    "deleteAriaLabel": "Delete",
+    "openTitle": "Open document",
+    "openFailed": "Failed to open the document.",
+    "contextTitle": "User context",
+    "contextDescription": "A markdown summary of your situation as a self-employed worker, generated from the documents. You can freely edit it.",
+    "contextSave": "Save",
+    "contextSaving": "Saving…",
+    "contextSaved": "Saved.",
+    "contextRegenerate": "Regenerate from documents",
+    "contextRegenerating": "Regenerating…",
+    "contextRegenerateNoApiKey": "Configure an AI key in Settings → General to regenerate the context.",
+    "contextRegenerateFailed": "Failed to regenerate the context. Please try again."
   },
   "clients": {
     "title": "Clients",
@@ -333,7 +463,8 @@
       "titleRequired": "Title is required.",
       "attachFailed": "Failed to attach the file. Please try again.",
       "saveFailed": "Failed to save the contract. Please try again.",
-      "loadFailed": "Failed to load the contract."
+      "loadFailed": "Failed to load the contract.",
+      "deleteFailed": "Failed to delete the contract. Please try again."
     },
     "detail": {
       "dataTitle": "Contract details"
@@ -516,6 +647,7 @@
     "allMonths": "All",
     "pagePrev": "Previous page",
     "pageNext": "Next page",
-    "pageIndicator": "{{page}} of {{count}}"
+    "pageIndicator": "{{page}} of {{count}}",
+    "vsPriorYear": "{{sign}}{{value}}% vs. prior year"
   }
 }

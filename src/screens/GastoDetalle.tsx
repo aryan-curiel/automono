@@ -67,17 +67,26 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
 
   async function confirmDelete() {
     if (!expense) return;
-    const filePaths = [expense.receiptFilePath].filter((p): p is string => !!p);
-    await deleteExpenseFiles(filePaths);
-    await deleteExpense(expense.id);
-    onDeleted();
+    try {
+      const filePaths = [expense.receiptFilePath].filter((p): p is string => !!p);
+      await deleteExpenseFiles(filePaths);
+      await deleteExpense(expense.id);
+      onDeleted();
+    } catch (err) {
+      setOpenError(String(err));
+      setDeletePending(false);
+    }
   }
 
   async function toggleDeclared() {
     if (!expense) return;
-    await updateExpense(expense.id, { declared: !expense.declared });
-    const updated = await getExpense(expense.id);
-    if (updated) setExpense(updated);
+    try {
+      await updateExpense(expense.id, { declared: !expense.declared });
+      const updated = await getExpense(expense.id);
+      if (updated) setExpense(updated);
+    } catch (err) {
+      setOpenError(String(err));
+    }
   }
 
   async function handleOpenFile(filePath: string | null | undefined) {
@@ -143,7 +152,7 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
                 <DotsThreeVertical size={16} weight="bold" />
               </MenuTrigger>
               <MenuContent>
-                <MenuItem onSelect={toggleDeclared}>
+                <MenuItem onSelect={() => void toggleDeclared()}>
                   {expense.declared
                     ? t("expenses.actions.unmarkDeclared")
                     : t("expenses.actions.markDeclared")}
@@ -189,7 +198,7 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
             <div className="flex items-center gap-2.5">
               <Button
                 variant="secondary"
-                onClick={() => handleOpenFile(expense.receiptFilePath)}
+                onClick={() => void handleOpenFile(expense.receiptFilePath)}
                 disabled={!expense.receiptFilePath}
               >
                 {t("expenses.actions.openFile")}
@@ -213,7 +222,7 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
           <Button variant="secondary" onClick={() => setDeletePending(false)}>
             {t("expenses.actions.cancel")}
           </Button>
-          <Button variant="ghost-danger" onClick={confirmDelete}>
+          <Button variant="ghost-danger" onClick={() => void confirmDelete()}>
             {t("expenses.actions.delete")}
           </Button>
         </div>

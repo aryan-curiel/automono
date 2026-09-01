@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { ErrorText } from "../components/ui/Field";
 import { InfoRow } from "../components/ui/InfoRow";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
+import { Sheet } from "../components/ui/Sheet";
 import { BackLink, PageHeader } from "../components/PageHeader";
 import { deleteContract, getContract, openContractFile } from "../db/contracts";
 import type { ContractRecord } from "../db/contracts";
@@ -33,6 +34,8 @@ export function ContratoDetalle({
   const [loadedId, setLoadedId] = useState<number | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const loading = loadedId !== contractId && !loadError;
 
   useEffect(() => {
@@ -54,11 +57,15 @@ export function ContratoDetalle({
     };
   }, [contractId]);
 
-  async function handleDelete() {
+  async function confirmDelete() {
     if (!contract) return;
-    if (!window.confirm(t("contracts.actions.confirmDelete", { title: contract.title }))) return;
-    await deleteContract(contract.id);
-    onDeleted();
+    setDeleteError(null);
+    try {
+      await deleteContract(contract.id);
+      onDeleted();
+    } catch {
+      setDeleteError(t("contracts.errors.deleteFailed"));
+    }
   }
 
   async function handleOpenFile() {
@@ -110,7 +117,7 @@ export function ContratoDetalle({
                 <DotsThreeVertical size={16} weight="bold" />
               </MenuTrigger>
               <MenuContent>
-                <MenuItem danger onSelect={handleDelete}>
+                <MenuItem danger onSelect={() => setDeletePending(true)}>
                   {t("contracts.actions.delete")}
                 </MenuItem>
               </MenuContent>
@@ -136,7 +143,11 @@ export function ContratoDetalle({
           label={t("contracts.fields.file")}
           value={
             <div className="flex items-center gap-2.5">
-              <Button variant="secondary" onClick={handleOpenFile} disabled={!contract.filePath}>
+              <Button
+                variant="secondary"
+                onClick={() => void handleOpenFile()}
+                disabled={!contract.filePath}
+              >
                 {t("contracts.actions.openFile")}
               </Button>
               {!contract.filePath && (
@@ -147,6 +158,25 @@ export function ContratoDetalle({
         />
       </Card>
       {openError && <ErrorText>{openError}</ErrorText>}
+
+      <Sheet
+        open={deletePending}
+        onOpenChange={setDeletePending}
+        title={t("contracts.actions.delete")}
+      >
+        <p className="text-[13px] text-ink-soft mb-4">
+          {t("contracts.actions.confirmDelete", { title: contract.title })}
+        </p>
+        {deleteError && <ErrorText>{deleteError}</ErrorText>}
+        <div className="flex gap-2.5 justify-end mt-4">
+          <Button variant="secondary" onClick={() => setDeletePending(false)}>
+            {t("contracts.actions.cancel")}
+          </Button>
+          <Button variant="ghost-danger" onClick={() => void confirmDelete()}>
+            {t("contracts.actions.delete")}
+          </Button>
+        </div>
+      </Sheet>
     </div>
   );
 }

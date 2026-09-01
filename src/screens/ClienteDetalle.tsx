@@ -63,7 +63,7 @@ export function ClienteDetalle({
   }, [clientId]);
 
   useEffect(() => {
-    listContracts({ clientId }).then(setContracts);
+    void listContracts({ clientId }).then(setContracts);
   }, [clientId]);
 
   async function confirmDelete() {
@@ -240,7 +240,7 @@ export function ClienteDetalle({
           <Button variant="secondary" onClick={() => setDeletePending(false)}>
             {t("clients.actions.cancel")}
           </Button>
-          <Button variant="ghost-danger" onClick={confirmDelete}>
+          <Button variant="ghost-danger" onClick={() => void confirmDelete()}>
             {t("clients.actions.delete")}
           </Button>
         </div>

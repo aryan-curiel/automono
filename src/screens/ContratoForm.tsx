@@ -83,7 +83,7 @@ export function ContratoForm({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    listClients().then(setClients);
+    void listClients().then(setClients);
   }, []);
 
   useEffect(() => {
@@ -254,7 +254,11 @@ export function ContratoForm({
 
         <FormRow label={t("contracts.fields.file")}>
           <div className="flex items-center gap-2.5">
-            <Button variant="secondary" onClick={handleAttachFile} disabled={attaching}>
+            <Button
+              variant="secondary"
+              onClick={() => void handleAttachFile()}
+              disabled={attaching}
+            >
               {attaching ? t("contracts.actions.attaching") : t("contracts.actions.attachFile")}
             </Button>
             {form.filePath && (
@@ -275,7 +279,7 @@ export function ContratoForm({
         <Button variant="secondary" onClick={onCancel} disabled={saving}>
           {t("contracts.actions.cancel")}
         </Button>
-        <Button onClick={handleSubmit} disabled={saving}>
+        <Button onClick={() => void handleSubmit()} disabled={saving}>
           {saving ? t("contracts.actions.saving") : t("contracts.actions.save")}
         </Button>
       </div>

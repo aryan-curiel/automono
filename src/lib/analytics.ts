@@ -1,5 +1,6 @@
 import type { InvoiceListItem } from "../db/invoices";
 import type { ExpenseRecord } from "../db/expenses";
+import { daysBetween } from "./dateRange";
 
 export interface ClientRevenue {
   clientId: number;
@@ -50,12 +51,6 @@ export interface AgingGroup {
 }
 
 const AGING_BUCKETS: AgingBucket[] = ["current", "0-30", "30-60", "60+"];
-
-function daysBetween(fromIso: string, toIso: string): number {
-  const [fy, fm, fd] = fromIso.split("-").map(Number);
-  const [ty, tm, td] = toIso.split("-").map(Number);
-  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
-}
 
 /** Groups issued (unpaid) invoices by how overdue they are, relative to `todayIso`. */
 export function agingReport(invoices: InvoiceListItem[], todayIso: string): AgingGroup[] {

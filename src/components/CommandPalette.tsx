@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { MagnifyingGlass, Receipt, UsersThree, FileText } from "@phosphor-icons/react";
@@ -14,10 +15,10 @@ const TYPE_ICON: Record<SearchResultType, typeof UsersThree> = {
   contract: FileText,
 };
 
-const TYPE_LABEL: Record<SearchResultType, string> = {
-  client: "Cliente",
-  invoice: "Factura",
-  contract: "Contrato",
+const TYPE_LABEL_KEY: Record<SearchResultType, string> = {
+  client: "commandPalette.typeClient",
+  invoice: "commandPalette.typeInvoice",
+  contract: "commandPalette.typeContract",
 };
 
 interface CommandPaletteProps {
@@ -37,6 +38,7 @@ export function CommandPalette({
   contracts,
   onSelect,
 }: CommandPaletteProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const reduceMotion = useReducedMotion();
@@ -113,9 +115,9 @@ export function CommandPalette({
                            bg-sheet-glass backdrop-blur-xl backdrop-saturate-150 border border-glass-border
                            shadow-sheet overflow-hidden supports-[not(backdrop-filter)]:bg-surface"
               >
-                <Dialog.Title className="sr-only">Buscar</Dialog.Title>
+                <Dialog.Title className="sr-only">{t("commandPalette.title")}</Dialog.Title>
                 <Dialog.Description className="sr-only">
-                  Busca clientes, facturas y contratos por nombre o número
+                  {t("commandPalette.description")}
                 </Dialog.Description>
                 <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
                   <MagnifyingGlass size={16} className="text-ink-soft shrink-0" />
@@ -124,14 +126,14 @@ export function CommandPalette({
                     value={query}
                     onChange={(e) => handleQueryChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Buscar clientes, facturas, contratos…"
+                    placeholder={t("commandPalette.placeholder")}
                     className="flex-1 bg-transparent border-none outline-none text-[14px] placeholder:text-ink-soft"
                   />
                 </div>
                 <div className="max-h-[320px] overflow-y-auto p-1.5">
                   {query.trim() && results.length === 0 && (
                     <div className="px-3 py-6 text-center text-[13px] text-ink-soft">
-                      Sin resultados
+                      {t("commandPalette.noResults")}
                     </div>
                   )}
                   {results.map((result, i) => {
@@ -150,7 +152,7 @@ export function CommandPalette({
                           <span className="text-ink-soft truncate">· {result.subtitle}</span>
                         )}
                         <span className="ml-auto text-[11px] text-ink-soft shrink-0">
-                          {TYPE_LABEL[result.type]}
+                          {t(TYPE_LABEL_KEY[result.type])}
                         </span>
                       </div>
                     );

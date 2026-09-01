@@ -1,8 +1,9 @@
 import type { InvoiceListItem } from "../db/invoices";
 import type { ExpenseRecord } from "../db/expenses";
-import type { Period } from "./dateRange";
+import { quartersInRange, type Period } from "./dateRange";
 import { csvRow } from "./csv";
 import { formatDate } from "./format";
+import { roundCents } from "./invoice";
 
 /** Invoices issued or paid (never drafts) with an issue date inside `period`. */
 export function invoicesInPeriod(invoices: InvoiceListItem[], period: Period): InvoiceListItem[] {
@@ -27,6 +28,19 @@ export function paidInvoicesInPeriod(
       inv.issueDate !== null &&
       inv.issueDate >= period.from &&
       inv.issueDate <= period.to,
+  );
+}
+
+/** Expenses belonging to `period`: dated inside it with no override, or explicitly overridden
+ * (via `declaredPeriod`) into one of the quarters `period` spans — mirrors `listExpenses`'
+ * `quarterKeys` SQL filter, so callers that already have the full expense list in memory (e.g.
+ * computing several declarations' snapshots at once) don't need a per-declaration query. */
+export function expensesInPeriod(expenses: ExpenseRecord[], period: Period): ExpenseRecord[] {
+  const quarterKeys = quartersInRange(period.from, period.to);
+  return expenses.filter((e) =>
+    e.declaredPeriod == null
+      ? e.date >= period.from && e.date <= period.to
+      : quarterKeys.includes(e.declaredPeriod),
   );
 }
 
@@ -92,19 +106,17 @@ export function buildDeclarationSnapshot(
     byRate.set(inv.ivaRate, bucket);
   });
 
-  const invoicedBase = invoices.reduce((s, inv) => s + inv.subtotal, 0);
-  const irpfWithheld = invoices.reduce((s, inv) => s + inv.irpfAmount, 0);
-  const expensesDeductibleBase = expenses.reduce(
-    (s, e) => s + e.amount * (e.deductiblePct / 100),
-    0,
+  const invoicedBase = roundCents(invoices.reduce((s, inv) => s + inv.subtotal, 0));
+  const irpfWithheld = roundCents(invoices.reduce((s, inv) => s + inv.irpfAmount, 0));
+  const expensesDeductibleBase = roundCents(
+    expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0),
   );
-  const expensesIvaDeductible = expenses.reduce(
-    (s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100),
-    0,
+  const expensesIvaDeductible = roundCents(
+    expenses.reduce((s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100), 0),
   );
-  const expensesIrpfWithheld = expenses.reduce((s, e) => s + (e.irpfAmount ?? 0), 0);
-  const netIrpfIncome = invoicedBase - expensesDeductibleBase;
-  const margin = netIrpfIncome - irpfWithheld;
+  const expensesIrpfWithheld = roundCents(expenses.reduce((s, e) => s + (e.irpfAmount ?? 0), 0));
+  const netIrpfIncome = roundCents(invoicedBase - expensesDeductibleBase);
+  const margin = roundCents(netIrpfIncome - irpfWithheld);
 
   return {
     invoices: invoices.map((inv) => ({
@@ -135,7 +147,11 @@ export function buildDeclarationSnapshot(
     })),
     totals: {
       invoicedBase,
-      ivaByRate: [...byRate.entries()].map(([rate, { base, iva }]) => ({ rate, base, iva })),
+      ivaByRate: [...byRate.entries()].map(([rate, { base, iva }]) => ({
+        rate,
+        base: roundCents(base),
+        iva: roundCents(iva),
+      })),
       irpfWithheld,
       expensesDeductibleBase,
       expensesIvaDeductible,

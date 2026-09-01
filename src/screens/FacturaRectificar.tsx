@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { X } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ErrorText, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { PageHeader } from "../components/PageHeader";
+import { InvoiceLinesEditor } from "../components/InvoiceLinesEditor";
 import { invoiceNumberLabel } from "../lib/invoice";
 import { formatEUR } from "../lib/format";
 import { getClient } from "../db/clients";
@@ -15,6 +15,7 @@ import { createRectification, getInvoiceWithLines } from "../db/invoices";
 import type { InvoiceListItem, InvoiceRecord } from "../db/invoices";
 import type { RectificationType } from "../types";
 import { irpfApplicable } from "../features/clients";
+import { mkLine, useInvoiceLines } from "../features/invoices/lines";
 
 interface FacturaRectificarProps {
   original: InvoiceListItem;
@@ -25,22 +26,6 @@ interface FacturaRectificarProps {
   onReasonChange: (reason: string) => void;
   onCancel: () => void;
   onEmit: (invoice: InvoiceRecord) => void;
-}
-
-interface DraftLine {
-  key: string;
-  description: string;
-  quantity: string;
-  unitPrice: string;
-}
-
-function mkLine(description: string, quantity: number, unitPrice: number): DraftLine {
-  return {
-    key: `${Date.now()}-${Math.random()}`,
-    description,
-    quantity: String(quantity),
-    unitPrice: String(unitPrice),
-  };
 }
 
 export function FacturaRectificar({
@@ -58,14 +43,14 @@ export function FacturaRectificar({
   const [originalLines, setOriginalLines] = useState<
     { description: string; quantity: number; unitPrice: number }[] | null
   >(null);
-  const [lines, setLines] = useState<DraftLine[]>([mkLine("", 1, 0)]);
+  const { lines, setLines, updateLine, removeLine, addLine } = useInvoiceLines();
   const [linesDerivedFor, setLinesDerivedFor] = useState<RectificationType | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getClient(original.clientId), getInvoiceWithLines(original.id)]).then(
+    void Promise.all([getClient(original.clientId), getInvoiceWithLines(original.id)]).then(
       ([c, detail]) => {
         if (cancelled) return;
         setClient(c);
@@ -104,17 +89,6 @@ export function FacturaRectificar({
   const irpf = (subtotal * original.irpfRate) / 100;
   const irpfForeignClient = !irpfApplicable(original.clientCountry);
   const total = subtotal + iva - irpf;
-
-  function updateLine(idx: number, field: "description" | "quantity" | "unitPrice", value: string) {
-    setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
-  }
-
-  function removeLine(idx: number) {
-    setLines((ls) => {
-      const next = ls.filter((_, i) => i !== idx);
-      return next.length ? next : [mkLine("", 1, 0)];
-    });
-  }
 
   async function handleEmit() {
     setSubmitError(null);
@@ -157,7 +131,7 @@ export function FacturaRectificar({
         backLabel={origNumber}
         onBack={onCancel}
         actions={
-          <Button onClick={handleEmit} disabled={submitting}>
+          <Button onClick={() => void handleEmit()} disabled={submitting}>
             {submitting ? t("invoices.actions.issuing") : t("invoices.actions.issueRectification")}
           </Button>
         }
@@ -171,8 +145,8 @@ export function FacturaRectificar({
           <FormRow label={t("invoices.fields.type")}>
             <SegmentedControl
               options={[
-                { value: "full" as RectificationType, label: t("invoices.rectType.full") },
-                { value: "partial" as RectificationType, label: t("invoices.rectType.partial") },
+                { value: "full", label: t("invoices.rectType.full") },
+                { value: "partial", label: t("invoices.rectType.partial") },
               ]}
               value={rectType}
               onChange={(v) => (v === "full" ? onSetFull() : onSetPartial())}
@@ -226,57 +200,13 @@ export function FacturaRectificar({
         <div className="mb-3.5 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
           {helpText}
         </div>
-        <div className="font-bold text-[13px] mb-2.5">{t("invoices.lines.title")}</div>
-        <div className="grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 font-semibold text-xs uppercase text-ink-soft pb-1.5">
-          <div>{t("invoices.lines.description")}</div>
-          <div>{t("invoices.lines.quantity")}</div>
-          <div className="text-right">{t("invoices.lines.price")}</div>
-          <div className="text-right">{t("invoices.lines.total")}</div>
-          <div />
-        </div>
-        {lines.map((l, idx) => (
-          <div
-            key={l.key}
-            className="group grid grid-cols-[2.4fr_.7fr_1fr_1fr_28px] gap-2 items-center rounded-control -mx-2 px-2 py-1 transition-colors hover:bg-surface-alt"
-          >
-            <TextInput
-              value={l.description}
-              onChange={(e) => updateLine(idx, "description", e.target.value)}
-              disabled={submitting}
-            />
-            <TextInput
-              mono
-              value={l.quantity}
-              onChange={(e) => updateLine(idx, "quantity", e.target.value)}
-              disabled={submitting}
-            />
-            <TextInput
-              mono
-              className="text-right"
-              value={l.unitPrice}
-              onChange={(e) => updateLine(idx, "unitPrice", e.target.value)}
-              disabled={submitting}
-            />
-            <div className="font-semibold text-[13px] font-mono py-2 text-right">
-              {formatEUR((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0))}
-            </div>
-            <button
-              onClick={() => !submitting && removeLine(idx)}
-              className="p-1 rounded-control text-ink-soft hover:bg-border cursor-pointer opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              aria-label={t("invoices.lines.remove")}
-            >
-              <X size={14} weight="bold" />
-            </button>
-          </div>
-        ))}
-        <Button
-          variant="dashed"
-          className="mt-1.5"
-          onClick={() => setLines((ls) => [...ls, mkLine("", 1, 0)])}
+        <InvoiceLinesEditor
+          lines={lines}
+          onUpdateLine={updateLine}
+          onRemoveLine={removeLine}
+          onAddLine={addLine}
           disabled={submitting}
-        >
-          {t("invoices.lines.add")}
-        </Button>
+        />
 
         {submitError && !reasonError && <ErrorText>{submitError}</ErrorText>}
       </Card>

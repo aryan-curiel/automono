@@ -1,4 +1,5 @@
 import type { DeclarationSnapshot } from "./quarterlyDeclaration";
+import { roundCents as round2 } from "./invoice";
 
 export type Modelo = "303" | "130" | "111";
 
@@ -24,10 +25,6 @@ export interface CasillaExpectation {
 /** A rounding tolerance wider than plain float error, since real receipts/invoices are rounded
  * to the cent independently of AutoMono's own float math. */
 const TOLERANCE = 0.02;
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 /**
  * AutoMono's own calculated value for every AEAT box the app can actually compute, per modelo.

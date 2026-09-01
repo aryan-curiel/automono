@@ -62,3 +62,25 @@ open an invoice at least once to generate its PDF before bundling).
   invoices, and contracts.
 - **Client running balance** — total invoiced vs. paid per client on
   `ClienteDetalle`.
+
+## 5. Proposed (not yet built)
+
+From the full-app review — checked against the "done" list above and
+`FUTURE_FEATURES.md` (Verifactu) to avoid overlap.
+
+- **Recurring expense detection** — mirror the existing recurring-*invoice* nudge
+  (`src/lib/recurring.ts`) for expenses that repeat monthly (rent, software
+  subscriptions).
+- **Overdue invoice OS notification** — the aging card (task 1) is passive, only
+  visible if the Dashboard is open; a native macOS notification when an invoice
+  crosses overdue would close that loop.
+- **Client statement PDF** — the running balance above is already computed
+  (`clientBalance`) but only shown on-screen; export it as a formatted PDF for a
+  client who asks "what do I owe you."
+- **Bulk actions on Facturas/Gastos lists** — multi-select to mark several
+  invoices paid, or export several receipts, at once.
+- **Full data export/import (JSON)** — for moving to a new Mac. The current
+  backup is folder-based and tied to the macOS app-data directory, not a
+  portable single-file migration path.
+- **In-app update checker** — via `tauri-plugin-updater`; there's currently no
+  update mechanism for a non-App-Store distributed app.

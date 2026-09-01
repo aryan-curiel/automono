@@ -16,6 +16,14 @@ function lastDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
+/** Whole days from `fromIso` to `toIso` (negative if `toIso` is earlier), via UTC to avoid DST
+ * drift. */
+export function daysBetween(fromIso: string, toIso: string): number {
+  const [fy, fm, fd] = fromIso.split("-").map(Number);
+  const [ty, tm, td] = toIso.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
+}
+
 export function monthRange(year: number, month: number, locale = "es"): Period {
   const label = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(
     new Date(year, month - 1, 1),

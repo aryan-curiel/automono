@@ -194,7 +194,7 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
           <Button variant="secondary" onClick={() => setDeletePending(null)}>
             {t("clients.actions.cancel")}
           </Button>
-          <Button variant="ghost-danger" onClick={confirmDelete}>
+          <Button variant="ghost-danger" onClick={() => void confirmDelete()}>
             {t("clients.actions.delete")}
           </Button>
         </div>

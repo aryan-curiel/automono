@@ -104,7 +104,7 @@ export function ModeloReviewModal({
   useEffect(() => {
     if (!open || files.length === 0) return;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       const llmSettings = await getLlmSettings().catch(() => null);
       const apiKey = llmSettings ? activeApiKey(llmSettings) : null;
 
@@ -351,7 +351,7 @@ export function ModeloReviewModal({
               {t("declarations.review.cancel")}
             </Button>
             <Button
-              onClick={() => handleApprove(activeIndex)}
+              onClick={() => void handleApprove(activeIndex)}
               disabled={!tab.report || tab.approving}
             >
               {tab.approving

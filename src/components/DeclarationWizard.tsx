@@ -73,7 +73,7 @@ export function DeclarationWizard({
 
   useEffect(() => {
     if (!open) return;
-    listExpenses({
+    void listExpenses({
       from: period.from,
       to: period.to,
       quarterKeys: quartersInRange(period.from, period.to),
@@ -251,7 +251,7 @@ export function DeclarationWizard({
                 <Button variant="secondary" onClick={() => goTo(2)}>
                   {t("declarations.wizard.actions.back")}
                 </Button>
-                <Button onClick={handleCreate} disabled={creating}>
+                <Button onClick={() => void handleCreate()} disabled={creating}>
                   {creating
                     ? t("declarations.wizard.actions.creating")
                     : t("declarations.wizard.actions.create")}

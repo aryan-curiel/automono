@@ -1,5 +1,6 @@
 use std::io;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde::Serialize;
 use sqlx::{Row, SqlitePool};
@@ -9,7 +10,15 @@ use tauri_plugin_sql::{DbInstances, DbPool};
 
 const DB_NAME: &str = "sqlite:automono.db";
 const DB_FILE_NAME: &str = "automono.db";
-const BACKUP_SUBDIRS: [&str; 3] = ["contracts", "expenses", "invoices"];
+const CONTEXT_FILE_NAME: &str = "contexto_usuario.md";
+const BACKUP_SUBDIRS: [&str; 6] = [
+    "contracts",
+    "expenses",
+    "invoices",
+    "declarations",
+    "documentos_autonomo",
+    "branding",
+];
 
 struct BackupSettings {
     folder_path: String,
@@ -114,6 +123,10 @@ async fn run_backup(
             copy_dir_recursive(&src, &backup_dir.join(sub)).map_err(|e| e.to_string())?;
         }
     }
+    let context_src = data_dir.join(CONTEXT_FILE_NAME);
+    if context_src.is_file() {
+        std::fs::copy(&context_src, backup_dir.join(CONTEXT_FILE_NAME)).map_err(|e| e.to_string())?;
+    }
 
     sqlx::query(
         "UPDATE backup_settings SET last_backup_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id = 1",
@@ -136,8 +149,9 @@ async fn run_backup(
     Ok(backup_dir)
 }
 
-/// Best-effort backup fired from `on_window_event`'s `CloseRequested`. Never blocks the window
-/// from closing on failure — errors are logged, not propagated.
+/// Best-effort backup fired from `on_window_event`'s `CloseRequested`, which blocks the window
+/// from closing until this returns — bounded by a timeout so an unreachable backup folder (e.g.
+/// a disconnected network share) can't hang app shutdown indefinitely.
 pub async fn backup_on_close(app: &AppHandle) {
     let Some(pool) = pool_from_app(app).await else {
         return;
@@ -148,9 +162,11 @@ pub async fn backup_on_close(app: &AppHandle) {
     if settings.folder_path.trim().is_empty() {
         return;
     }
-    if let Err(e) = run_backup(app, &pool, Path::new(&settings.folder_path), settings.retention_days).await
-    {
-        eprintln!("backup on close failed: {e}");
+    let backup = run_backup(app, &pool, Path::new(&settings.folder_path), settings.retention_days);
+    match tokio::time::timeout(Duration::from_secs(10), backup).await {
+        Ok(Err(e)) => eprintln!("backup on close failed: {e}"),
+        Err(_) => eprintln!("backup on close timed out after 10s"),
+        Ok(Ok(_)) => {}
     }
 }
 
@@ -184,6 +200,14 @@ pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result
         .app_config_dir()
         .map_err(|e| e.to_string())?
         .join(DB_FILE_NAME);
+    // Drop any stale WAL/SHM/journal sidecars so SQLite doesn't replay old frames against the
+    // freshly-restored file on next open.
+    for suffix in ["-wal", "-shm", "-journal"] {
+        let sidecar = db_dest.with_file_name(format!("{DB_FILE_NAME}{suffix}"));
+        if sidecar.exists() {
+            std::fs::remove_file(&sidecar).map_err(|e| e.to_string())?;
+        }
+    }
     std::fs::copy(&db_src, &db_dest).map_err(|e| e.to_string())?;
 
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -196,6 +220,10 @@ pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result
             }
             copy_dir_recursive(&src, &dst).map_err(|e| e.to_string())?;
         }
+    }
+    let context_src = backup_dir.join(CONTEXT_FILE_NAME);
+    if context_src.is_file() {
+        std::fs::copy(&context_src, data_dir.join(CONTEXT_FILE_NAME)).map_err(|e| e.to_string())?;
     }
     Ok(())
 }

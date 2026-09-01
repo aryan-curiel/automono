@@ -8,9 +8,13 @@ use crate::pdf::sanitize_filename;
 
 /// The year prefix of an ISO date (`"2026-08-02"` -> `"2026"`), used to bucket attachments by
 /// year so a whole tax year can be handed to a gestor as one folder. Falls back to "0000" for
-/// a malformed/empty date rather than failing the attach.
+/// a malformed/empty date (or one whose first 4 bytes aren't digits — e.g. `"../.."` — which
+/// would otherwise turn into a `..` path segment) rather than failing the attach.
 pub(crate) fn year_of(date: &str) -> &str {
-    date.get(0..4).unwrap_or("0000")
+    match date.get(0..4) {
+        Some(prefix) if prefix.bytes().all(|b| b.is_ascii_digit()) => prefix,
+        _ => "0000",
+    }
 }
 
 /// Copies `source` into `dest_dir` as `base_name` (plus `source`'s extension), so the file
@@ -31,11 +35,17 @@ pub(crate) fn copy_into(source: &Path, dest_dir: &Path, base_name: &str) -> io::
     };
     let mut dest_path = dest_dir.join(file_name(""));
     let mut n = 1u32;
-    while dest_path.exists() {
-        dest_path = dest_dir.join(file_name(&format!("_{n}")));
-        n += 1;
-    }
-    std::fs::copy(source, &dest_path)?;
+    let mut dest_file = loop {
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&dest_path) {
+            Ok(file) => break file,
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                dest_path = dest_dir.join(file_name(&format!("_{n}")));
+                n += 1;
+            }
+            Err(e) => return Err(e),
+        }
+    };
+    io::copy(&mut std::fs::File::open(source)?, &mut dest_file)?;
     Ok(dest_path)
 }
 
@@ -80,6 +90,14 @@ pub async fn open_contract_file_cmd(app: AppHandle, file_path: String) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn year_of_rejects_non_digit_prefixes() {
+        assert_eq!(year_of("2026-08-02"), "2026");
+        assert_eq!(year_of(""), "0000");
+        assert_eq!(year_of("../../etc/passwd"), "0000");
+        assert_eq!(year_of("ab"), "0000");
+    }
 
     #[test]
     fn copy_into_preserves_content() {

@@ -118,7 +118,7 @@ export default function App() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
-    getCurrentWebview()
+    void getCurrentWebview()
       .onDragDropEvent((event) => {
         // The Documentos tab in Ajustes (and onboarding's document step) has its own drop
         // handling — this global listener must stay out of the way entirely there, or a
@@ -169,8 +169,8 @@ export default function App() {
   // results never go stale between a client/contract edit and the next search.
   useEffect(() => {
     if (!paletteOpen) return;
-    listClients().then(setPaletteClients);
-    listContracts().then(setPaletteContracts);
+    void listClients().then(setPaletteClients);
+    void listContracts().then(setPaletteContracts);
   }, [paletteOpen]);
 
   function handlePaletteSelect(result: SearchResult) {
@@ -193,19 +193,19 @@ export default function App() {
 
   useEffect(() => {
     if (!dbReady) return;
-    listInvoices()
+    void listInvoices()
       .then(setInvoices)
       .finally(() => setInvoicesLoading(false));
   }, [dbReady, screen]);
 
   useEffect(() => {
     if (!dbReady) return;
-    getBusinessProfile().then(setBusinessProfile);
+    void getBusinessProfile().then(setBusinessProfile);
   }, [dbReady]);
 
   useEffect(() => {
     if (!dbReady) return;
-    getPreferences().then((prefs) => {
+    void getPreferences().then((prefs) => {
       setPreferences(prefs);
       setTheme(prefs.theme);
       void i18n.changeLanguage(prefs.language);
@@ -214,7 +214,7 @@ export default function App() {
 
   useEffect(() => {
     if (!dbReady) return;
-    checkAutoBackup();
+    void checkAutoBackup();
   }, [dbReady]);
 
   useEffect(() => {
@@ -249,31 +249,44 @@ export default function App() {
 
   async function confirmMarkPaid() {
     if (selectedInvoiceId === null) return;
-    await markInvoicePaid(selectedInvoiceId);
-    setMarkingPaid(false);
-    const [list, detail] = await Promise.all([
-      listInvoices(),
-      getInvoiceWithLines(selectedInvoiceId),
-    ]);
-    setInvoices(list);
-    setInvoiceDetail(detail);
+    try {
+      await markInvoicePaid(selectedInvoiceId);
+      const [list, detail] = await Promise.all([
+        listInvoices(),
+        getInvoiceWithLines(selectedInvoiceId),
+      ]);
+      setInvoices(list);
+      setInvoiceDetail(detail);
+    } catch (err) {
+      setPdfErrorToast(String(err));
+    } finally {
+      setMarkingPaid(false);
+    }
   }
 
   async function handleDuplicateInvoice(id: number) {
-    const duplicate = await duplicateInvoice(id);
-    setInvoices(await listInvoices());
-    setEditInvoiceId(duplicate.id);
-    setScreen("factura-nueva");
+    try {
+      const duplicate = await duplicateInvoice(id);
+      setInvoices(await listInvoices());
+      setEditInvoiceId(duplicate.id);
+      setScreen("factura-nueva");
+    } catch (err) {
+      setPdfErrorToast(String(err));
+    }
   }
 
   async function handleDeleteInvoice(id: number) {
-    await deleteInvoice(id);
-    if (id === selectedInvoiceId) {
-      setSelectedInvoiceId(null);
-      setInvoiceDetail(null);
-      setScreen("facturas");
+    try {
+      await deleteInvoice(id);
+      if (id === selectedInvoiceId) {
+        setSelectedInvoiceId(null);
+        setInvoiceDetail(null);
+        setScreen("facturas");
+      }
+      setInvoices(await listInvoices());
+    } catch (err) {
+      setPdfErrorToast(String(err));
     }
-    setInvoices(await listInvoices());
   }
 
   async function handleDownloadPdf(force = false) {
@@ -313,7 +326,7 @@ export default function App() {
         onComplete={(finalPrefs) => {
           setPreferences(finalPrefs);
           setTheme(finalPrefs.theme);
-          getBusinessProfile().then(setBusinessProfile);
+          void getBusinessProfile().then(setBusinessProfile);
         }}
       />
     );
@@ -407,8 +420,8 @@ export default function App() {
                 setEditInvoiceId(null);
                 setScreen("factura-nueva");
               }}
-              onDeleteInvoice={handleDeleteInvoice}
-              onDuplicateInvoice={handleDuplicateInvoice}
+              onDeleteInvoice={(id) => void handleDeleteInvoice(id)}
+              onDuplicateInvoice={(id) => void handleDuplicateInvoice(id)}
             />
           )}
 
@@ -437,16 +450,16 @@ export default function App() {
               onBack={() => setScreen("facturas")}
               onOpenMarkPaid={() => setMarkingPaid(true)}
               onCancelMarkPaid={() => setMarkingPaid(false)}
-              onConfirmMarkPaid={confirmMarkPaid}
+              onConfirmMarkPaid={() => void confirmMarkPaid()}
               onStartRectification={() => {
                 setRectifyingId(invoiceDetail.invoice.id);
                 setRectType("partial");
                 setRectReason("");
                 setScreen("factura-rectificar");
               }}
-              onDownloadPdf={handleDownloadPdf}
-              onDelete={() => handleDeleteInvoice(invoiceDetail.invoice.id)}
-              onDuplicate={() => handleDuplicateInvoice(invoiceDetail.invoice.id)}
+              onDownloadPdf={(force) => void handleDownloadPdf(force)}
+              onDelete={() => void handleDeleteInvoice(invoiceDetail.invoice.id)}
+              onDuplicate={() => void handleDuplicateInvoice(invoiceDetail.invoice.id)}
               onEdit={() => {
                 setEditInvoiceId(invoiceDetail.invoice.id);
                 setScreen("factura-nueva");
@@ -471,11 +484,13 @@ export default function App() {
               reason={rectReason}
               onReasonChange={setRectReason}
               onCancel={() => setScreen("factura-detalle")}
-              onEmit={async (created) => {
-                const list = await listInvoices();
-                setInvoices(list);
-                setSelectedInvoiceId(created.id);
-                setScreen("factura-detalle");
+              onEmit={(created) => {
+                void (async () => {
+                  const list = await listInvoices();
+                  setInvoices(list);
+                  setSelectedInvoiceId(created.id);
+                  setScreen("factura-detalle");
+                })();
               }}
             />
           )}

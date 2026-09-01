@@ -31,9 +31,7 @@ rig = { version = "0.41", features = ["derive", "image", "pdf"] }
 schemars = "1.0"
 base64 = "0.22"
 zip = { version = "2", default-features = false, features = ["deflate"] }
-
-[dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Select } from "./ui/Field";
 import { SegmentedControl } from "./ui/SegmentedControl";
 import { monthRange, quarterRange, yearRange, type Period } from "../lib/dateRange";
@@ -10,21 +11,6 @@ interface PeriodSelectorProps {
   onChange: (period: Period, kind: Kind) => void;
   defaultKind?: Kind;
 }
-
-const MONTH_NAMES = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
-];
 
 const now = new Date();
 const defaultYear = now.getFullYear();
@@ -56,6 +42,8 @@ function computePeriod(kind: Kind, year: number, month: number, quarter: Quarter
 }
 
 export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelectorProps) {
+  const { t } = useTranslation();
+  const monthNames = t("periodSelector.months", { returnObjects: true }) as string[];
   const [kind, setKind] = useState<Kind>(defaultKind);
   const [year, setYear] = useState(defaultYear);
   const [month, setMonth] = useState(defaultMonth);
@@ -70,9 +58,9 @@ export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelect
           onChange(computePeriod(next, year, month, quarter), next);
         }}
         options={[
-          { value: "month", label: "Mes" },
-          { value: "quarter", label: "Trimestre" },
-          { value: "year", label: "Año" },
+          { value: "month", label: t("periodSelector.month") },
+          { value: "quarter", label: t("periodSelector.quarter") },
+          { value: "year", label: t("periodSelector.year") },
         ]}
       />
 
@@ -89,7 +77,7 @@ export function PeriodSelector({ onChange, defaultKind = "month" }: PeriodSelect
           >
             {monthOptions.map(({ year: y, month: m }) => (
               <option key={`${y}-${m}`} value={`${y}-${m}`}>
-                {MONTH_NAMES[m - 1]} {y}
+                {monthNames[m - 1]} {y}
               </option>
             ))}
           </Select>
