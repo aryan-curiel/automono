@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TrendUp, Clock, Wallet, Scales } from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
@@ -38,12 +38,9 @@ import type {
   Modelo,
 } from "../db/declarations";
 import type { Screen } from "../types";
+import { useCurrentQuarterKey } from "../hooks/useCurrentQuarterKey";
 
 const RECENT_QUARTERS = 4;
-const CURRENT_KEY = quarterKeyOf(defaultQuarterPeriod().from);
-const [CURRENT_YEAR_STR, CURRENT_QUARTER_STR] = CURRENT_KEY.split("-Q");
-const CURRENT_YEAR = Number(CURRENT_YEAR_STR);
-const CURRENT_QUARTER = Number(CURRENT_QUARTER_STR);
 
 /** The [from, to] date range of a "YYYY-QN" quarter key. */
 function quarterKeyRange(key: string): Period {
@@ -57,10 +54,6 @@ function recentQuarterKeys(currentKey: string, count: number): string[] {
   for (let i = 1; i < count; i++) keys.unshift(previousQuarterKey(keys[0]));
   return keys;
 }
-
-const QUARTER_KEYS = recentQuarterKeys(CURRENT_KEY, RECENT_QUARTERS);
-const QUARTER_WINDOW_FROM = quarterKeyRange(QUARTER_KEYS[0]).from;
-const QUARTER_WINDOW_TO = quarterKeyRange(QUARTER_KEYS[QUARTER_KEYS.length - 1]).to;
 
 /** The quarter an expense counts toward — its own date's quarter, unless overridden. Mirrors
  * the OR-match `listExpenses({ quarterKeys })` already applies server-side. */
@@ -98,6 +91,17 @@ export function Dashboard({
   const [altaKey, setAltaKey] = useState<string | null>(null);
   const [presents111, setPresents111] = useState(false);
 
+  const currentKey = useCurrentQuarterKey();
+  const [currentYearStr, currentQuarterStr] = currentKey.split("-Q");
+  const currentYear = Number(currentYearStr);
+  const currentQuarter = Number(currentQuarterStr);
+  const quarterKeys = useMemo(
+    () => recentQuarterKeys(currentKey, RECENT_QUARTERS),
+    [currentKey],
+  );
+  const quarterWindowFrom = quarterKeyRange(quarterKeys[0]).from;
+  const quarterWindowTo = quarterKeyRange(quarterKeys[quarterKeys.length - 1]).to;
+
   useEffect(() => {
     void getPreferences().then((prefs) => {
       setAltaKey(quarterKeyOf(prefs.retaStartDate));
@@ -109,11 +113,11 @@ export function Dashboard({
 
   useEffect(() => {
     void listExpenses({
-      from: QUARTER_WINDOW_FROM,
-      to: QUARTER_WINDOW_TO,
-      quarterKeys: QUARTER_KEYS,
+      from: quarterWindowFrom,
+      to: quarterWindowTo,
+      quarterKeys,
     }).then(setRecentExpenses);
-  }, []);
+  }, [quarterWindowFrom, quarterWindowTo, quarterKeys]);
 
   useEffect(() => {
     void listDeclarations().then(setDeclarations);
@@ -121,12 +125,12 @@ export function Dashboard({
 
   useEffect(() => {
     const current = declarations.find(
-      (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+      (d) => d.year === currentYear && d.quarter === currentQuarter,
     );
     const detail =
       current?.status === "in_progress" ? getDeclaration(current.id) : Promise.resolve(null);
     void detail.then(setCurrentDeclarationDetail);
-  }, [declarations]);
+  }, [declarations, currentYear, currentQuarter]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const soonIso = new Date(new Date(todayIso).getTime() + 14 * 24 * 60 * 60 * 1000)
@@ -148,14 +152,14 @@ export function Dashboard({
   const topClients = revenueByClient(invoicesThisYear).slice(0, 5);
   const taxDeadlines = nextTaxDeadlines(todayIso, 2);
 
-  const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === CURRENT_KEY);
+  const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === currentKey);
   const expensesThisQuarter = quarterExpenses.reduce(
     (s, e) => s + e.amount * (e.deductiblePct / 100),
     0,
   );
   const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
 
-  const expensesByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
+  const expensesByQuarter = new Map(quarterKeys.map((key) => [key, 0] as [string, number]));
   for (const expense of recentExpenses) {
     const key = expenseQuarterKey(expense);
     if (expensesByQuarter.has(key)) {
@@ -167,16 +171,16 @@ export function Dashboard({
   }
 
   const currentDeclaration = declarations.find(
-    (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+    (d) => d.year === currentYear && d.quarter === currentQuarter,
   );
   const statusByKey = new Map<string, DeclarationStatus>(
     declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
   );
 
-  const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
+  const prevQuarterKey = quarterKeys[quarterKeys.length - 2];
 
   const ivaInvoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
+    quarterKeys.map((key) => {
       const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
         (s, inv) => s + inv.ivaAmount,
         0,
@@ -184,7 +188,7 @@ export function Dashboard({
       return [key, total] as const;
     }),
   );
-  const ivaDeductibleByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
+  const ivaDeductibleByQuarter = new Map(quarterKeys.map((key) => [key, 0] as [string, number]));
   for (const expense of recentExpenses) {
     const key = expenseQuarterKey(expense);
     if (ivaDeductibleByQuarter.has(key)) {
@@ -196,7 +200,7 @@ export function Dashboard({
     }
   }
   const ivaNetByQuarter = new Map(
-    QUARTER_KEYS.map(
+    quarterKeys.map(
       (key) =>
         [
           key,
@@ -204,14 +208,14 @@ export function Dashboard({
         ] as const,
     ),
   );
-  const ivaTrendData = QUARTER_KEYS.map((key) => ({
+  const ivaTrendData = quarterKeys.map((key) => ({
     key,
     label: quarterKeyLabel(key),
     value: ivaNetByQuarter.get(key) ?? 0,
   }));
 
   const grossInvoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
+    quarterKeys.map((key) => {
       const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
         (s, inv) => s + inv.total,
         0,
@@ -220,7 +224,7 @@ export function Dashboard({
     }),
   );
   const paidByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
+    quarterKeys.map((key) => {
       const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
         (s, inv) => s + inv.total,
         0,
@@ -231,7 +235,7 @@ export function Dashboard({
 
   // Only quarters from the RETA alta date onward — before that the freelancer
   // wasn't registered, so plotting €0 there just adds an empty gutter.
-  const trendData = QUARTER_KEYS.filter(
+  const trendData = quarterKeys.filter(
     (key) => altaKey === null || compareQuarterKeys(key, altaKey) >= 0,
   ).map((key) => {
     const invoiced = grossInvoicedByQuarter.get(key) ?? 0;
@@ -244,11 +248,11 @@ export function Dashboard({
       expenses,
       net: invoiced - expenses,
       status:
-        declared ?? (key === CURRENT_KEY ? ("in_progress" as const) : ("none" as const)),
+        declared ?? (key === currentKey ? ("in_progress" as const) : ("none" as const)),
     };
   });
 
-  const paidPendingData = QUARTER_KEYS.map((key) => {
+  const paidPendingData = quarterKeys.map((key) => {
     const total = grossInvoicedByQuarter.get(key) ?? 0;
     const paid = paidByQuarter.get(key) ?? 0;
     return {
@@ -279,7 +283,7 @@ export function Dashboard({
 
   const topExpenseCategory = expenseByCategory(recentExpenses)[0]?.category;
   const categoryTrendByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
+    quarterKeys.map((key) => {
       const total = recentExpenses
         .filter(
           (e) =>
@@ -290,7 +294,7 @@ export function Dashboard({
       return [key, total] as const;
     }),
   );
-  const categoryTrendData = QUARTER_KEYS.map((key) => ({
+  const categoryTrendData = quarterKeys.map((key) => ({
     key,
     label: quarterKeyLabel(key),
     value: categoryTrendByQuarter.get(key) ?? 0,
@@ -331,15 +335,15 @@ export function Dashboard({
   }
 
   const facturadoDelta = kpiDelta(
-    (grossInvoicedByQuarter.get(CURRENT_KEY) ?? 0) - (grossInvoicedByQuarter.get(prevQuarterKey) ?? 0),
+    (grossInvoicedByQuarter.get(currentKey) ?? 0) - (grossInvoicedByQuarter.get(prevQuarterKey) ?? 0),
   );
   const gastosDelta = kpiDelta(
-    (expensesByQuarter.get(CURRENT_KEY) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0),
+    (expensesByQuarter.get(currentKey) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0),
     true,
   );
   const netoDelta = kpiDelta(
-    (grossInvoicedByQuarter.get(CURRENT_KEY) ?? 0) -
-      (expensesByQuarter.get(CURRENT_KEY) ?? 0) -
+    (grossInvoicedByQuarter.get(currentKey) ?? 0) -
+      (expensesByQuarter.get(currentKey) ?? 0) -
       ((grossInvoicedByQuarter.get(prevQuarterKey) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0)),
   );
 
@@ -393,7 +397,7 @@ export function Dashboard({
         <div className="flex items-start justify-between gap-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5 mb-2">
-              <span className="font-bold text-sm">{quarterKeyLabel(CURRENT_KEY)}</span>
+              <span className="font-bold text-sm">{quarterKeyLabel(currentKey)}</span>
               <Badge
                 tone={
                   currentDeclaration?.status === "completed"

@@ -42,13 +42,13 @@ import {
   type Modelo,
 } from "../db/declarations";
 import {
-  defaultQuarterPeriod,
   priorYearPeriod,
   quarterKeyOf,
   quarterMonths,
   quarterRange,
   quartersInRange,
 } from "../lib/dateRange";
+import { useCurrentQuarterKey } from "../hooks/useCurrentQuarterKey";
 import { getPreferences } from "../db/preferences";
 import { yoyDelta } from "../lib/analytics";
 import { formatEUR, formatDate } from "../lib/format";
@@ -81,8 +81,6 @@ function parseQuarterKey(key: string): { year: number; quarter: 1 | 2 | 3 | 4 } 
   const [yearStr, q] = key.split("-Q");
   return { year: Number(yearStr), quarter: Number(q) as 1 | 2 | 3 | 4 };
 }
-
-const CURRENT_KEY = quarterKeyOf(defaultQuarterPeriod().from);
 
 interface ResumenTrimestralProps {
   invoices: InvoiceListItem[];
@@ -251,7 +249,8 @@ export function ResumenTrimestral({
   initialQuarterKey,
 }: ResumenTrimestralProps) {
   const { t } = useTranslation();
-  const [focusedKey, setFocusedKey] = useState(initialQuarterKey ?? CURRENT_KEY);
+  const currentKey = useCurrentQuarterKey();
+  const [focusedKey, setFocusedKey] = useState(initialQuarterKey ?? currentKey);
   const { year, quarter } = parseQuarterKey(focusedKey);
   const period = quarterRange(year, quarter);
 
@@ -511,7 +510,7 @@ export function ResumenTrimestral({
 
       <QuarterTimeline
         focusedKey={focusedKey}
-        currentKey={CURRENT_KEY}
+        currentKey={currentKey}
         altaKey={altaKey}
         declarations={declarations}
         onSelect={setFocusedKey}
