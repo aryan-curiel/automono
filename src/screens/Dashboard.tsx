@@ -405,20 +405,32 @@ export function Dashboard({
     };
   }
 
-  const facturadoDelta = kpiDelta(
-    (grossInvoicedByQuarter.get(currentKey) ?? 0) -
-      (grossInvoicedByQuarter.get(prevQuarterKey) ?? 0),
-  );
-  const gastosDelta = kpiDelta(
-    (expensesByQuarter.get(currentKey) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0),
-    true,
-  );
-  const netoDelta = kpiDelta(
-    (grossInvoicedByQuarter.get(currentKey) ?? 0) -
-      (expensesByQuarter.get(currentKey) ?? 0) -
-      ((grossInvoicedByQuarter.get(prevQuarterKey) ?? 0) -
-        (expensesByQuarter.get(prevQuarterKey) ?? 0)),
-  );
+  // Before the RETA alta quarter the freelancer wasn't registered, so the previous
+  // quarter is zero/partial and a QoQ delta against it reads as a full-value swing.
+  // Suppress the delta chip in that case (the trend chart already skips those quarters).
+  const prevQuarterBeforeAlta =
+    altaKey !== null && compareQuarterKeys(prevQuarterKey, altaKey) < 0;
+
+  const facturadoDelta = prevQuarterBeforeAlta
+    ? undefined
+    : kpiDelta(
+        (grossInvoicedByQuarter.get(currentKey) ?? 0) -
+          (grossInvoicedByQuarter.get(prevQuarterKey) ?? 0),
+      );
+  const gastosDelta = prevQuarterBeforeAlta
+    ? undefined
+    : kpiDelta(
+        (expensesByQuarter.get(currentKey) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0),
+        true,
+      );
+  const netoDelta = prevQuarterBeforeAlta
+    ? undefined
+    : kpiDelta(
+        (grossInvoicedByQuarter.get(currentKey) ?? 0) -
+          (expensesByQuarter.get(currentKey) ?? 0) -
+          ((grossInvoicedByQuarter.get(prevQuarterKey) ?? 0) -
+            (expensesByQuarter.get(prevQuarterKey) ?? 0)),
+      );
 
   const kpis = [
     {
