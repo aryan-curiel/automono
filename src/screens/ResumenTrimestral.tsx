@@ -57,9 +57,12 @@ import { cumulativeModelo130 } from "../lib/modeloReport";
 import {
   buildDeclarationCsv,
   buildDeclarationSnapshot,
-  invoicesInPeriod,
+  expensesForBasis,
+  invoicesForBasis,
+  type DeclarationBasis,
 } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
+import { BasisNote } from "../components/BasisNote";
 
 const PAGE_SIZE = 4;
 /** Row height (py-2 + 13px line + border) × PAGE_SIZE, so the card doesn't resize between quarters. */
@@ -256,13 +259,16 @@ export function ResumenTrimestral({
 
   const [altaKey, setAltaKey] = useState<string | null>(null);
   const [presents111, setPresents111] = useState(false);
+  const [criterioCaja, setCriterioCaja] = useState(false);
   useEffect(() => {
     void getPreferences().then((prefs) => {
       setAltaKey(quarterKeyOf(prefs.retaStartDate));
       setPresents111(prefs.presentsModelo111);
+      setCriterioCaja(prefs.criterioCaja);
     });
   }, []);
   const activeModelos = requiredModelos(presents111);
+  const basis: DeclarationBasis = criterioCaja ? "cash" : "accrual";
 
   const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
   type DeclarationFetch =
@@ -361,11 +367,19 @@ export function ResumenTrimestral({
     }).then(setYtdExpenses);
   }, [ytdPeriod.from, ytdPeriod.to]);
 
-  const qInvoices = invoicesInPeriod(invoices, period);
-  const projectionSnapshot = buildDeclarationSnapshot(qInvoices, expenses);
+  const qInvoices = invoicesForBasis(invoices, period, basis);
+  const projectionSnapshot = buildDeclarationSnapshot(
+    qInvoices,
+    expensesForBasis(expenses, period, basis),
+    basis,
+  );
 
-  const priorInvoices = invoicesInPeriod(invoices, priorPeriod);
-  const priorTotals = buildDeclarationSnapshot(priorInvoices, priorExpenses).totals;
+  const priorInvoices = invoicesForBasis(invoices, priorPeriod, basis);
+  const priorTotals = buildDeclarationSnapshot(
+    priorInvoices,
+    expensesForBasis(priorExpenses, priorPeriod, basis),
+    basis,
+  ).totals;
   const revenueDelta = deltaLabel(
     t,
     yoyDelta(projectionSnapshot.totals.invoicedBase, priorTotals.invoicedBase),
@@ -535,6 +549,9 @@ export function ResumenTrimestral({
 
       {declaration ? (
         <>
+          <div className="mb-3">
+            <BasisNote basis={declaration.snapshot.basis ?? "accrual"} />
+          </div>
           <div className="grid grid-cols-5 gap-3.5 mb-6">
             <KpiTile
               label={t("declarations.detail.invoicedBase")}
@@ -691,6 +708,9 @@ export function ResumenTrimestral({
         </>
       ) : (
         <>
+          <div className="mb-3">
+            <BasisNote basis={basis} />
+          </div>
           <div className="grid grid-cols-5 gap-3.5 mb-6">
             <KpiTile
               label={t("declarations.detail.invoicedBase")}
@@ -809,6 +829,7 @@ export function ResumenTrimestral({
         expenses={expenses}
         year={year}
         quarter={quarter}
+        basis={basis}
         onCreated={refreshDeclarations}
       />
     </div>

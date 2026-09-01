@@ -558,6 +558,22 @@
     "errors": {
       "loadFailed": "No se pudo cargar la declaración."
     },
+    "basis": {
+      "accrual": {
+        "label": "Criterio de devengo",
+        "hint": "Incluye todas las facturas emitidas del trimestre, estén cobradas o no, y los gastos por su fecha. Es el criterio estándar para el Modelo 303/130."
+      },
+      "cash": {
+        "label": "Criterio de caja",
+        "hint": "Solo incluye facturas cobradas y gastos por su fecha de pago."
+      }
+    },
+    "prefill": {
+      "title": "Casillas para el Modelo {{modelo}}",
+      "copy": "Copiar valor",
+      "informational": "informativo",
+      "disclaimer": "Valores calculados por AutoMono a partir de tus datos. Contrástalos con tus registros antes de presentar el modelo en la Sede Electrónica de la AEAT."
+    },
     "wizard": {
       "title": "Nueva declaración trimestral",
       "step2": {

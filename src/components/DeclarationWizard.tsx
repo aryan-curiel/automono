@@ -10,10 +10,16 @@ import type { ExpenseRecord } from "../db/expenses";
 import { createDeclaration } from "../db/declarations";
 import { quarterRange } from "../lib/dateRange";
 import { DEFAULT_GDJ_RATE } from "../lib/modeloReport";
-import { buildDeclarationSnapshot, invoicesInPeriod } from "../lib/quarterlyDeclaration";
+import {
+  buildDeclarationSnapshot,
+  expensesForBasis,
+  invoicesForBasis,
+  type DeclarationBasis,
+} from "../lib/quarterlyDeclaration";
 import { formatEUR, formatDate } from "../lib/format";
 import type { InvoiceListItem } from "../db/invoices";
 import { EXIT_SPRING } from "../lib/motion";
+import { BasisNote } from "./BasisNote";
 
 type Step = 1 | 2 | 3;
 type Quarter = 1 | 2 | 3 | 4;
@@ -41,6 +47,8 @@ interface DeclarationWizardProps {
   expenses: ExpenseRecord[];
   year: number;
   quarter: Quarter;
+  /** Tax basis the parent screen resolved from the `criterioCaja` preference. */
+  basis: DeclarationBasis;
   onCreated: () => void;
 }
 
@@ -51,6 +59,7 @@ export function DeclarationWizard({
   expenses,
   year,
   quarter,
+  basis,
   onCreated,
 }: DeclarationWizardProps) {
   const { t } = useTranslation();
@@ -92,9 +101,11 @@ export function DeclarationWizard({
     });
   }
 
-  const periodInvoices = invoicesInPeriod(invoices, period);
-  const includedExpenses = expenses.filter((e) => !excludedExpenseIds.has(e.id));
-  const snapshot = buildDeclarationSnapshot(periodInvoices, includedExpenses);
+  const periodInvoices = invoicesForBasis(invoices, period, basis);
+  const includedExpenses = expensesForBasis(expenses, period, basis).filter(
+    (e) => !excludedExpenseIds.has(e.id),
+  );
+  const snapshot = buildDeclarationSnapshot(periodInvoices, includedExpenses, basis);
 
   async function handleCreate() {
     setCreating(true);
@@ -155,6 +166,9 @@ export function DeclarationWizard({
 
           {step === 1 && (
             <>
+              <div className="mb-3">
+                <BasisNote basis={basis} />
+              </div>
               <div className="max-h-80 overflow-y-auto">
                 {periodInvoices.length === 0 && (
                   <p className="text-[13px] text-ink-soft py-4">
