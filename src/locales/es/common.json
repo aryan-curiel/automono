@@ -553,9 +553,9 @@
     "wizard": {
       "title": "Nueva declaración trimestral",
       "step2": {
-        "title": "Confirma las facturas cobradas",
-        "empty": "No hay facturas cobradas en este trimestre.",
-        "total": "Total cobrado"
+        "title": "Confirma las facturas del trimestre",
+        "empty": "No hay facturas en este trimestre.",
+        "total": "Total facturado"
       },
       "step3": {
         "title": "Confirma los gastos",

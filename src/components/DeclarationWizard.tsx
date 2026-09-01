@@ -8,7 +8,7 @@ import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { createDeclaration } from "../db/declarations";
 import { quarterRange, quartersInRange } from "../lib/dateRange";
-import { buildDeclarationSnapshot, paidInvoicesInPeriod } from "../lib/quarterlyDeclaration";
+import { buildDeclarationSnapshot, invoicesInPeriod } from "../lib/quarterlyDeclaration";
 import { formatEUR, formatDate } from "../lib/format";
 import type { InvoiceListItem } from "../db/invoices";
 import { EXIT_SPRING } from "../lib/motion";
@@ -94,9 +94,9 @@ export function DeclarationWizard({
     });
   }
 
-  const paidInvoices = paidInvoicesInPeriod(invoices, period);
+  const periodInvoices = invoicesInPeriod(invoices, period);
   const includedExpenses = expenses.filter((e) => !excludedExpenseIds.has(e.id));
-  const snapshot = buildDeclarationSnapshot(paidInvoices, includedExpenses);
+  const snapshot = buildDeclarationSnapshot(periodInvoices, includedExpenses);
 
   async function handleCreate() {
     setCreating(true);
@@ -158,12 +158,12 @@ export function DeclarationWizard({
           {step === 1 && (
             <>
               <div className="max-h-80 overflow-y-auto">
-                {paidInvoices.length === 0 && (
+                {periodInvoices.length === 0 && (
                   <p className="text-[13px] text-ink-soft py-4">
                     {t("declarations.wizard.step2.empty")}
                   </p>
                 )}
-                {paidInvoices.map((inv) => (
+                {periodInvoices.map((inv) => (
                   <div
                     key={inv.id}
                     className="flex justify-between py-2 border-b border-border last:border-b-0 text-[13px]"
@@ -226,7 +226,7 @@ export function DeclarationWizard({
                 <div className="flex justify-between">
                   <span>{t("declarations.wizard.step4.invoices")}</span>
                   <span className="font-mono font-medium">
-                    {paidInvoices.length} · {formatEUR(snapshot.totals.invoicedBase)}
+                    {periodInvoices.length} · {formatEUR(snapshot.totals.invoicedBase)}
                   </span>
                 </div>
                 <div className="flex justify-between">
