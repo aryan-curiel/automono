@@ -12,7 +12,9 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-pub const ANTHROPIC_MODEL: &str = "claude-opus-4-8";
+/// Default Anthropic model when the user hasn't set one in Ajustes. Receipt/modelo extraction is
+/// a "read a handful of fields" job — Haiku is far cheaper than Opus at comparable accuracy.
+pub const ANTHROPIC_MODEL: &str = "claude-haiku-4-5";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Provider {
@@ -32,12 +34,20 @@ impl Provider {
     }
 }
 
-/// Everything needed to reach a configured provider: which one, its API key, and (for
-/// OpenRouter only, which has no single default) the model to route to.
+/// Everything needed to reach a configured provider: which one, its API key, and the model to
+/// use. `model` is optional for Anthropic/OpenAI (each has a sensible default constant) and
+/// required for OpenRouter, which is a router across many vendors with no single default.
 pub struct ProviderConfig {
     pub provider: Provider,
     pub api_key: String,
     pub model: Option<String>,
+}
+
+impl ProviderConfig {
+    /// The user-configured model if set to something non-blank, else `default`.
+    fn model_or<'a>(&'a self, default: &'a str) -> &'a str {
+        self.model.as_deref().map(str::trim).filter(|m| !m.is_empty()).unwrap_or(default)
+    }
 }
 
 /// Sends a single piece of multimodal user content to the configured provider and parses
@@ -52,13 +62,15 @@ where
         Provider::Anthropic => {
             let client =
                 anthropic::Client::builder().api_key(&config.api_key).build().map_err(|e| e.to_string())?;
-            let extractor = client.extractor::<T>(ANTHROPIC_MODEL).preamble(preamble).build();
+            let extractor =
+                client.extractor::<T>(config.model_or(ANTHROPIC_MODEL)).preamble(preamble).build();
             extractor.extract(message).await.map_err(|e| e.to_string())
         }
         Provider::OpenAi => {
             let client =
                 openai::Client::builder().api_key(&config.api_key).build().map_err(|e| e.to_string())?;
-            let extractor = client.extractor::<T>(openai::GPT_5_2).preamble(preamble).build();
+            let extractor =
+                client.extractor::<T>(config.model_or(openai::GPT_5_2)).preamble(preamble).build();
             extractor.extract(message).await.map_err(|e| e.to_string())
         }
         Provider::OpenRouter => {
@@ -112,5 +124,17 @@ mod tests {
         assert_eq!(Provider::parse("openai"), Ok(Provider::OpenAi));
         assert_eq!(Provider::parse("openrouter"), Ok(Provider::OpenRouter));
         assert!(Provider::parse("bogus").is_err());
+    }
+
+    #[test]
+    fn model_or_prefers_configured_model_then_falls_back_to_default() {
+        let cfg = |model: Option<&str>| ProviderConfig {
+            provider: Provider::Anthropic,
+            api_key: "k".into(),
+            model: model.map(str::to_string),
+        };
+        assert_eq!(cfg(Some("claude-opus-5")).model_or(ANTHROPIC_MODEL), "claude-opus-5");
+        assert_eq!(cfg(Some("  ")).model_or(ANTHROPIC_MODEL), ANTHROPIC_MODEL);
+        assert_eq!(cfg(None).model_or(ANTHROPIC_MODEL), ANTHROPIC_MODEL);
     }
 }

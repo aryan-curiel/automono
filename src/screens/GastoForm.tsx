@@ -18,7 +18,7 @@ import {
 import type { ExpenseRecord, NewExpense, ReceiptFields } from "../db/expenses";
 import { listExpenseCategories } from "../db/expenseCategories";
 import type { ExpenseCategoryRecord } from "../db/expenseCategories";
-import { activeApiKey, getLlmSettings } from "../db/llmSettings";
+import { activeApiKey, activeModel, getLlmSettings } from "../db/llmSettings";
 import { nextQuarterKey, quarterKeyLabel, quarterKeyOf } from "../lib/dateRange";
 
 interface GastoFormProps {
@@ -190,7 +190,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
             source,
             llmSettings.provider,
             apiKey,
-            llmSettings.openrouterModel,
+            activeModel(llmSettings),
             categoryNames,
           ).catch((err) => {
             // Falls back to the regex extractor below, which has no concept of category at all

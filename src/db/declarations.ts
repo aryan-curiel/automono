@@ -253,6 +253,14 @@ interface ModeloFieldsRaw {
   pago_fraccionado: number | null;
   base_retenciones: number | null;
   retenciones_ingresadas: number | null;
+  /** True when the figures came from the weak regex scan — no LLM configured, or the LLM
+   * call errored. The review modal warns the user the file-side numbers are less reliable. */
+  used_fallback: boolean;
+}
+
+export interface ModeloExtraction {
+  fields: ModeloFields;
+  usedFallback: boolean;
 }
 
 /** Extracts the modelo's own headline figures for comparison — via the configured LLM provider
@@ -264,7 +272,7 @@ export async function extractModeloFields(
   provider: string | null,
   apiKey: string | null,
   model: string | null,
-): Promise<ModeloFields> {
+): Promise<ModeloExtraction> {
   const raw = await invoke<ModeloFieldsRaw>("extract_modelo_fields_cmd", {
     filePath,
     modelo,
@@ -273,13 +281,16 @@ export async function extractModeloFields(
     model,
   });
   return {
-    ivaDevengado: raw.iva_devengado,
-    ivaDeducible: raw.iva_deducible,
-    resultadoLiquidacion: raw.resultado_liquidacion,
-    rendimientoNeto: raw.rendimiento_neto,
-    pagoFraccionado: raw.pago_fraccionado,
-    baseRetenciones: raw.base_retenciones,
-    retencionesIngresadas: raw.retenciones_ingresadas,
+    fields: {
+      ivaDevengado: raw.iva_devengado,
+      ivaDeducible: raw.iva_deducible,
+      resultadoLiquidacion: raw.resultado_liquidacion,
+      rendimientoNeto: raw.rendimiento_neto,
+      pagoFraccionado: raw.pago_fraccionado,
+      baseRetenciones: raw.base_retenciones,
+      retencionesIngresadas: raw.retenciones_ingresadas,
+    },
+    usedFallback: raw.used_fallback,
   };
 }
 

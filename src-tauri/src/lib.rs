@@ -225,6 +225,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0034_preferences_modelo_111.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 34,
+            description: "llm_settings_provider_models",
+            sql: include_str!("../migrations/0035_llm_settings_provider_models.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
