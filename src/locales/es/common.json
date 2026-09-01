@@ -566,7 +566,9 @@
         "invoices": "Facturas",
         "expenses": "Gastos",
         "irpfWithheld": "IRPF retenido",
-        "netIncome": "Ingreso neto estimado"
+        "netIncome": "Ingreso neto estimado",
+        "gdjRate": "Gastos de difícil justificación",
+        "gdjRateHint": "5% del rendimiento neto en estimación directa simplificada (7% en 2023)."
       },
       "actions": {
         "back": "Atrás",

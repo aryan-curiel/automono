@@ -4,10 +4,13 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Receipt, Wallet, ClipboardText } from "@phosphor-icons/react";
 import { Sheet } from "./ui/Sheet";
 import { Button } from "./ui/Button";
+import { Label } from "./ui/Field";
+import { SegmentedControl } from "./ui/SegmentedControl";
 import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { createDeclaration } from "../db/declarations";
 import { quarterRange, quartersInRange } from "../lib/dateRange";
+import { DEFAULT_GDJ_RATE } from "../lib/modeloReport";
 import { buildDeclarationSnapshot, invoicesInPeriod } from "../lib/quarterlyDeclaration";
 import { formatEUR, formatDate } from "../lib/format";
 import type { InvoiceListItem } from "../db/invoices";
@@ -53,6 +56,7 @@ export function DeclarationWizard({
   const [direction, setDirection] = useState(1);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [excludedExpenseIds, setExcludedExpenseIds] = useState<Set<number>>(new Set());
+  const [gdjRate, setGdjRate] = useState<number>(DEFAULT_GDJ_RATE);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   // Tracks the Sheet's open state so a closed->open transition resets the flow to step 1 with
@@ -64,6 +68,7 @@ export function DeclarationWizard({
     setStep(1);
     setDirection(1);
     setExcludedExpenseIds(new Set());
+    setGdjRate(DEFAULT_GDJ_RATE);
     setCreateError(null);
   } else if (!open && wasOpen) {
     setWasOpen(false);
@@ -102,7 +107,7 @@ export function DeclarationWizard({
     setCreating(true);
     setCreateError(null);
     try {
-      await createDeclaration(year, quarter, snapshot);
+      await createDeclaration(year, quarter, snapshot, gdjRate);
       onCreated();
       onOpenChange(false);
     } catch (e) {
@@ -245,6 +250,22 @@ export function DeclarationWizard({
                   <span>{t("declarations.wizard.step4.netIncome")}</span>
                   <span className="font-mono">{formatEUR(snapshot.totals.netIrpfIncome)}</span>
                 </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-border">
+                <Label>{t("declarations.wizard.step4.gdjRate")}</Label>
+                <SegmentedControl
+                  value={String(gdjRate)}
+                  onChange={(v) => setGdjRate(Number(v))}
+                  options={[
+                    { value: "0", label: "0%" },
+                    { value: "2", label: "2%" },
+                    { value: "5", label: "5%" },
+                    { value: "7", label: "7%" },
+                  ]}
+                />
+                <p className="text-xs text-ink-soft mt-1.5">
+                  {t("declarations.wizard.step4.gdjRateHint")}
+                </p>
               </div>
               {createError && <p className="text-danger text-xs mt-3">{createError}</p>}
               <div className="flex justify-between mt-5">
