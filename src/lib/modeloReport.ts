@@ -38,7 +38,7 @@ export interface CasillaExpectation {
 const TOLERANCE = 0.02;
 
 /** 5% is the estimación directa simplificada default; kept in sync with the SQL column default
- *  in `0033_declaration_gdj_rate.sql`. */
+ *  in `0032_declaration_gdj_rate.sql`. */
 export const DEFAULT_GDJ_RATE = 5;
 /** Annual ceiling on the "gastos de difícil justificación" reduction (€). */
 export const GDJ_ANNUAL_CAP = 2000;

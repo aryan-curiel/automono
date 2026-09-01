@@ -150,99 +150,97 @@ fn all_migrations() -> Vec<Migration> {
         Migration {
             version: 21,
             description: "expense_irpf_retention",
-            sql: include_str!("../migrations/0022_expense_irpf_retention.sql"),
+            sql: include_str!("../migrations/0021_expense_irpf_retention.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 22,
             description: "expense_declared_period",
-            sql: include_str!("../migrations/0023_expense_declared_period.sql"),
+            sql: include_str!("../migrations/0022_expense_declared_period.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 23,
             description: "llm_settings",
-            sql: include_str!("../migrations/0024_llm_settings.sql"),
+            sql: include_str!("../migrations/0023_llm_settings.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 24,
             description: "llm_settings_providers",
-            sql: include_str!("../migrations/0025_llm_settings_providers.sql"),
+            sql: include_str!("../migrations/0024_llm_settings_providers.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 25,
             description: "quarterly_declarations",
-            sql: include_str!("../migrations/0026_quarterly_declarations.sql"),
+            sql: include_str!("../migrations/0025_quarterly_declarations.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 26,
             description: "reta_monthly_cuota",
-            sql: include_str!("../migrations/0027_reta_monthly_cuota.sql"),
+            sql: include_str!("../migrations/0026_reta_monthly_cuota.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 27,
             description: "reta_start_date",
-            sql: include_str!("../migrations/0028_reta_start_date.sql"),
+            sql: include_str!("../migrations/0027_reta_start_date.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 28,
             description: "expense_declared",
-            sql: include_str!("../migrations/0029_expense_declared.sql"),
+            sql: include_str!("../migrations/0028_expense_declared.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 29,
             description: "business_documents",
-            sql: include_str!("../migrations/0030_business_documents.sql"),
+            sql: include_str!("../migrations/0029_business_documents.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 30,
             description: "business_documents_generic",
-            sql: include_str!("../migrations/0031_business_documents_generic.sql"),
+            sql: include_str!("../migrations/0030_business_documents_generic.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 31,
             description: "expense_iva_deductible_pct",
-            sql: include_str!("../migrations/0032_expense_iva_deductible_pct.sql"),
+            sql: include_str!("../migrations/0031_expense_iva_deductible_pct.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 32,
             description: "declaration_gdj_rate",
-            sql: include_str!("../migrations/0033_declaration_gdj_rate.sql"),
+            sql: include_str!("../migrations/0032_declaration_gdj_rate.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 33,
             description: "preferences_modelo_111",
-            sql: include_str!("../migrations/0034_preferences_modelo_111.sql"),
+            sql: include_str!("../migrations/0033_preferences_modelo_111.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 34,
             description: "llm_settings_provider_models",
-            sql: include_str!("../migrations/0035_llm_settings_provider_models.sql"),
+            sql: include_str!("../migrations/0034_llm_settings_provider_models.sql"),
             kind: MigrationKind::Up,
         },
-        // NOTE: `version` lags the filename by one — there is no `0021` migration file (issue #15).
-        // The guard test asserts `migrations[i].version == i + 1` over the sorted file list.
         Migration {
             version: 35,
             description: "preferences_criterio_caja",
-            sql: include_str!("../migrations/0036_preferences_criterio_caja.sql"),
+            sql: include_str!("../migrations/0035_preferences_criterio_caja.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 36,
             description: "expense_paid_date",
-            sql: include_str!("../migrations/0037_expense_paid_date.sql"),
+            sql: include_str!("../migrations/0036_expense_paid_date.sql"),
             kind: MigrationKind::Up,
         },
     ]
@@ -331,10 +329,21 @@ mod tests {
         );
 
         for (i, file) in files.iter().enumerate() {
-            let expected_version = (i + 1) as i64;
+            // Filenames must be a gap-free `0001..` run, and the leading `NNNN` must equal the
+            // registered `version` — so a skipped or duplicated number (issue #15) fails loudly
+            // instead of silently shifting every later migration's version by one.
+            let file_number: i64 = file[..4]
+                .parse()
+                .unwrap_or_else(|_| panic!("migrations/{file} must start with a 4-digit number"));
             assert_eq!(
-                migrations[i].version, expected_version,
-                "migrations/{file} should be registered as version {expected_version}",
+                file_number,
+                (i + 1) as i64,
+                "migrations/{file} breaks the sequential numbering (expected {:04})",
+                i + 1,
+            );
+            assert_eq!(
+                migrations[i].version, file_number,
+                "migrations/{file} should be registered as version {file_number}",
             );
         }
     }
