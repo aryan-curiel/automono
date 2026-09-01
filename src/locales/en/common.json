@@ -4,7 +4,11 @@
   },
   "common": {
     "viewDetail": "View detail",
-    "retry": "Retry"
+    "retry": "Retry",
+    "unsavedChangesTitle": "Discard unsaved changes?",
+    "unsavedChangesBody": "If you leave now you'll lose any changes you haven't saved.",
+    "keepEditing": "Keep editing",
+    "discardChanges": "Discard"
   },
   "nav": {
     "dashboard": "Home",

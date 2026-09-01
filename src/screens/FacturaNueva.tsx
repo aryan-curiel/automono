@@ -13,15 +13,18 @@ import { getPreferences } from "../db/preferences";
 import { formatEUR } from "../lib/format";
 import { irpfApplicable, IRPF_REDUCED_RATE } from "../features/clients";
 import { mkLine, useInvoiceLines } from "../features/invoices/lines";
+import { useUnsavedGuard } from "../hooks/useUnsavedGuard";
 
 interface FacturaNuevaProps {
   editInvoiceId?: number;
   onBack: () => void;
   onSaved: (id: number) => void;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
-export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaProps) {
+export function FacturaNueva({ editInvoiceId, onBack, onSaved, onDirtyChange }: FacturaNuevaProps) {
   const { t } = useTranslation();
+  const { markDirty, resetDirty } = useUnsavedGuard(onDirtyChange);
   const [clients, setClients] = useState<ClientRecord[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [clientId, setClientId] = useState<number | null>(null);
@@ -164,6 +167,7 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaPro
     setSaving(true);
     try {
       const id = await persistDraft();
+      resetDirty();
       onSaved(id);
     } catch {
       setSaveError(t("invoices.errors.saveDraftFailed"));
@@ -182,6 +186,7 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaPro
     try {
       const id = await persistDraft();
       await issueInvoice(id, issueDate);
+      resetDirty();
       onBack();
     } catch {
       setSaveError(t("invoices.errors.issueFailed"));
@@ -218,7 +223,9 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaPro
   const busy = saving || issuing;
 
   return (
-    <div className="px-8 pb-15">
+    // onChange bubbles from every field/line input below — any user edit marks the
+    // form dirty so App can confirm before navigating away.
+    <div className="px-8 pb-15" onChange={markDirty}>
       <PageHeader
         title={editInvoiceId ? t("invoices.editInvoice") : t("invoices.newInvoice")}
         backLabel={t("invoices.title")}

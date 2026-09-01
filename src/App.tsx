@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Sidebar } from "./components/Sidebar";
 import { CommandPalette } from "./components/CommandPalette";
 import { DragDropOverlay } from "./components/DragDropOverlay";
 import { BackLink } from "./components/PageHeader";
+import { Button } from "./components/ui/Button";
+import { Sheet } from "./components/ui/Sheet";
 import { Toast } from "./components/ui/Toast";
 import { TooltipProvider } from "./components/ui/Tooltip";
 import { getDb } from "./db/client";
@@ -74,6 +77,19 @@ export default function App() {
   } | null>(null);
   const screenRef = useRef(screen);
   const preferencesRef = useRef(preferences);
+
+  // Unsaved-changes guard. The mounted form (GastoForm / FacturaNueva) reports its
+  // dirty state here; navigation reachable while a form is on screen routes through
+  // `guardNav`, which defers the action behind a confirm dialog when the form is dirty.
+  const formDirtyRef = useRef(false);
+  const setFormDirty = useCallback((dirty: boolean) => {
+    formDirtyRef.current = dirty;
+  }, []);
+  const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
+  const guardNav = useCallback((action: () => void) => {
+    if (formDirtyRef.current) setPendingNav(() => action);
+    else action();
+  }, []);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
@@ -115,6 +131,22 @@ export default function App() {
     screenRef.current = screen;
   }, [screen]);
 
+  // Confirm before closing the window with an unsaved form open.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    const win = getCurrentWindow();
+    void win
+      .onCloseRequested((event) => {
+        if (!formDirtyRef.current) return;
+        event.preventDefault();
+        setPendingNav(() => () => void win.destroy());
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+    return () => unlisten?.();
+  }, []);
+
   useEffect(() => {
     preferencesRef.current = preferences;
   }, [preferences]);
@@ -155,12 +187,14 @@ export default function App() {
         }
         const path = event.payload.paths[0];
         if (!path || !isSupportedExpenseFile(path)) return;
-        setPendingDropPath(path);
-        setDropToken((n) => n + 1);
-        // Keep the origin as a real "somewhere else" — dropping onto an expense screen itself
-        // shouldn't make the form return to another copy of the form.
-        if (!screenRef.current.startsWith("gasto")) setExpenseReturnTo(screenRef.current);
-        setScreen("gasto-nuevo");
+        guardNav(() => {
+          setPendingDropPath(path);
+          setDropToken((n) => n + 1);
+          // Keep the origin as a real "somewhere else" — dropping onto an expense screen itself
+          // shouldn't make the form return to another copy of the form.
+          if (!screenRef.current.startsWith("gasto")) setExpenseReturnTo(screenRef.current);
+          setScreen("gasto-nuevo");
+        });
       })
       .then((fn) => {
         if (cancelled) fn();
@@ -170,7 +204,7 @@ export default function App() {
       cancelled = true;
       unlisten?.();
     };
-  }, []);
+  }, [guardNav]);
 
   // ponytail: re-fetches on every open (cheap local queries) instead of a shared store, so
   // results never go stale between a client/contract edit and the next search.
@@ -181,15 +215,17 @@ export default function App() {
   }, [paletteOpen]);
 
   function handlePaletteSelect(result: SearchResult) {
-    if (result.type === "client") {
-      setSelectedClientId(result.id);
-      setScreen("cliente-detalle");
-    } else if (result.type === "invoice") {
-      openInvoice(result.id);
-    } else {
-      setSelectedContractId(result.id);
-      setScreen("contrato-detalle");
-    }
+    guardNav(() => {
+      if (result.type === "client") {
+        setSelectedClientId(result.id);
+        setScreen("cliente-detalle");
+      } else if (result.type === "invoice") {
+        openInvoice(result.id);
+      } else {
+        setSelectedContractId(result.id);
+        setScreen("contrato-detalle");
+      }
+    });
   }
 
   useEffect(() => {
@@ -350,10 +386,12 @@ export default function App() {
       <div className="flex h-screen bg-bg text-ink transition-colors overflow-hidden">
         <Sidebar
           screen={screen}
-          onNavigate={(next) => {
-            setDashboardQuarterKey(null);
-            setScreen(next);
-          }}
+          onNavigate={(next) =>
+            guardNav(() => {
+              setDashboardQuarterKey(null);
+              setScreen(next);
+            })
+          }
         />
 
         <div className="flex-1 overflow-y-auto min-w-0">
@@ -484,8 +522,9 @@ export default function App() {
           {screen === "factura-nueva" && (
             <FacturaNueva
               editInvoiceId={editInvoiceId ?? undefined}
-              onBack={() => setScreen("facturas")}
+              onBack={() => guardNav(() => setScreen("facturas"))}
               onSaved={openInvoice}
+              onDirtyChange={setFormDirty}
             />
           )}
 
@@ -565,7 +604,8 @@ export default function App() {
               mode="create"
               initialFilePath={pendingDropPath ?? undefined}
               onSaved={() => setScreen(expenseReturnTo)}
-              onCancel={() => setScreen(expenseReturnTo)}
+              onCancel={() => guardNav(() => setScreen(expenseReturnTo))}
+              onDirtyChange={setFormDirty}
             />
           )}
 
@@ -577,7 +617,8 @@ export default function App() {
                 setSelectedExpenseId(expense.id);
                 setScreen("gasto-detalle");
               }}
-              onCancel={() => setScreen("gasto-detalle")}
+              onCancel={() => guardNav(() => setScreen("gasto-detalle"))}
+              onDirtyChange={setFormDirty}
             />
           )}
 
@@ -625,6 +666,32 @@ export default function App() {
           supported={dragOver?.supported ?? false}
           context={dragOver?.context ?? "expense"}
         />
+
+        <Sheet
+          open={pendingNav !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingNav(null);
+          }}
+          title={t("common.unsavedChangesTitle")}
+        >
+          <p className="text-[13px] text-ink-soft mb-4">{t("common.unsavedChangesBody")}</p>
+          <div className="flex gap-2.5 justify-end">
+            <Button variant="secondary" onClick={() => setPendingNav(null)}>
+              {t("common.keepEditing")}
+            </Button>
+            <Button
+              variant="ghost-danger"
+              onClick={() => {
+                const nav = pendingNav;
+                formDirtyRef.current = false;
+                setPendingNav(null);
+                nav?.();
+              }}
+            >
+              {t("common.discardChanges")}
+            </Button>
+          </div>
+        </Sheet>
       </div>
     </TooltipProvider>
   );

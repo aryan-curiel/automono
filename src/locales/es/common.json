@@ -4,7 +4,11 @@
   },
   "common": {
     "viewDetail": "Ver detalle",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "unsavedChangesTitle": "¿Descartar cambios sin guardar?",
+    "unsavedChangesBody": "Si sales ahora perderás los cambios que no hayas guardado.",
+    "keepEditing": "Seguir editando",
+    "discardChanges": "Descartar"
   },
   "nav": {
     "dashboard": "Inicio",

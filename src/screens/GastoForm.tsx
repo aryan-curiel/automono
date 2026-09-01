@@ -20,6 +20,7 @@ import { listExpenseCategories } from "../db/expenseCategories";
 import type { ExpenseCategoryRecord } from "../db/expenseCategories";
 import { activeApiKey, activeModel, getLlmSettings } from "../db/llmSettings";
 import { nextQuarterKey, quarterKeyLabel, quarterKeyOf } from "../lib/dateRange";
+import { useUnsavedGuard } from "../hooks/useUnsavedGuard";
 
 interface GastoFormProps {
   mode: "create" | "edit";
@@ -27,6 +28,7 @@ interface GastoFormProps {
   initialFilePath?: string;
   onSaved: (expense: ExpenseRecord) => void;
   onCancel: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 interface FormState {
@@ -114,8 +116,16 @@ function computedIrpfAmount(form: FormState, autoManaged: boolean): string {
 
 type FieldErrors = Partial<Record<"date" | "amount", string>>;
 
-export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel }: GastoFormProps) {
+export function GastoForm({
+  mode,
+  expenseId,
+  initialFilePath,
+  onSaved,
+  onCancel,
+  onDirtyChange,
+}: GastoFormProps) {
   const { t } = useTranslation();
+  const { markDirty, resetDirty } = useUnsavedGuard(onDirtyChange);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [loading, setLoading] = useState(mode === "edit");
   const [loadError, setLoadError] = useState(false);
@@ -265,13 +275,14 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
           description: f.description || extracted?.vendorGuess || f.description,
           category: f.category || extracted?.category || f.category,
         }));
+        markDirty();
       } catch {
         setSaveError(t("expenses.errors.attachFailed"));
       } finally {
         setAttaching(false);
       }
     },
-    [t],
+    [t, markDirty],
   );
 
   async function handleAttachFile() {
@@ -323,10 +334,12 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
     try {
       if (mode === "create") {
         const created = await createExpense(payload);
+        resetDirty();
         onSaved(created);
       } else {
         await updateExpense(expenseId!, payload);
         const updated = await getExpense(expenseId!);
+        resetDirty();
         if (updated) onSaved(updated);
       }
     } catch {
@@ -353,7 +366,10 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
   }
 
   return (
-    <div className="px-8 pb-15">
+    // onChange bubbles from every field below — any user edit marks the form dirty
+    // so App can confirm before navigating away. Programmatic changes (receipt
+    // autofill) call markDirty() directly since they don't fire a DOM change event.
+    <div className="px-8 pb-15" onChange={markDirty}>
       <PageHeader
         title={mode === "create" ? t("expenses.newExpense") : t("expenses.editExpense")}
         backLabel={t("expenses.title")}
