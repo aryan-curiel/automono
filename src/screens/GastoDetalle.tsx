@@ -13,6 +13,7 @@ import {
   deleteExpense,
   deleteExpenseFiles,
   getExpense,
+  ivaDeductiblePctOf,
   openExpenseFile,
   updateExpense,
 } from "../db/expenses";
@@ -119,7 +120,10 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
 
   if (!expense) return null;
 
-  const deductibleIva = (expense.ivaAmount ?? 0) * (expense.deductiblePct / 100);
+  // Deductible portion of the expense base — matches the "deducible" column in the Gastos list.
+  const deductibleAmount = expense.amount * (expense.deductiblePct / 100);
+  const ivaDeductiblePct = ivaDeductiblePctOf(expense);
+  const deductibleIva = (expense.ivaAmount ?? 0) * (ivaDeductiblePct / 100);
 
   return (
     <div className="px-8 pb-15">
@@ -182,9 +186,16 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
         />
         <InfoRow
           label={t("expenses.fields.deductiblePct")}
-          value={`${expense.deductiblePct}% (${formatEUR(deductibleIva)})`}
+          value={`${expense.deductiblePct}% (${formatEUR(deductibleAmount)})`}
           mono
         />
+        {expense.ivaAmount != null && expense.ivaAmount > 0 && (
+          <InfoRow
+            label={t("expenses.summary.deductibleIva")}
+            value={`${ivaDeductiblePct}% (${formatEUR(deductibleIva)})`}
+            mono
+          />
+        )}
         {expense.irpfAmount !== null && (
           <InfoRow
             label={t("expenses.fields.irpfRate")}

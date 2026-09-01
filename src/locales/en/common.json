@@ -246,16 +246,12 @@
     },
     "recurring": {
       "title": "Recurring invoices",
-      "lastInvoiced": "Invoiced last month: {{amount}}",
-      "generate": "Generate invoice",
+      "lastMonth": "Invoiced last month",
+      "generateShort": "Generate",
       "generating": "Generating…"
     },
     "recentInvoices": {
       "title": "Recent invoices"
-    },
-    "upcomingDue": {
-      "title": "Upcoming due dates",
-      "due": "Due {{date}}"
     },
     "aging": {
       "title": "Aging receivables",
@@ -493,6 +489,8 @@
       "amount": "Amount",
       "ivaAmount": "VAT amount",
       "deductiblePct": "Deductible %",
+      "ivaDeductiblePct": "Deductible VAT %",
+      "ivaDeductiblePctHint": "Leave blank to use the general deductible %. Set it separately when they differ, e.g. a mixed-use vehicle (50% VAT) or home-office utilities (0% VAT).",
       "irpfRate": "IRPF retention %",
       "irpfAmount": "Amount withheld (IRPF)",
       "file": "Invoice or receipt",

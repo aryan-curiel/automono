@@ -8,7 +8,7 @@ import { KpiTile } from "../components/ui/KpiTile";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector, type Kind } from "../components/PeriodSelector";
-import { listExpenses, updateExpense } from "../db/expenses";
+import { ivaDeductiblePctOf, listExpenses, updateExpense } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { defaultQuarterPeriod, quartersInRange, type Period } from "../lib/dateRange";
 import { formatDate, formatEUR } from "../lib/format";
@@ -52,7 +52,10 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
   const deductibleTotal = expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
-  const ivaTotal = expenses.reduce((s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100), 0);
+  const ivaTotal = expenses.reduce(
+    (s, e) => s + (e.ivaAmount ?? 0) * (ivaDeductiblePctOf(e) / 100),
+    0,
+  );
 
   return (
     <div className="px-8 pb-15">

@@ -11,6 +11,10 @@ export interface ExpenseRecord {
   amount: number;
   ivaAmount: number | null;
   deductiblePct: number;
+  /** % of the input IVA that's deductible on Modelo 303. Null means "same as `deductiblePct`" —
+   * the common case; set it separately only when IVA and IRPF deductibility diverge, e.g. a
+   * mixed-use vehicle (50% IVA / 0% IRPF) or home-office supplies. Use `ivaDeductiblePctOf`. */
+  ivaDeductiblePct: number | null;
   irpfRate: number | null;
   irpfAmount: number | null;
   receiptFilePath: string | null;
@@ -24,6 +28,15 @@ export interface ExpenseRecord {
 
 export type NewExpense = Omit<ExpenseRecord, "id">;
 
+/** The % of an expense's input IVA that's actually deductible on Modelo 303 — falls back to the
+ * general deductible % when not set separately. */
+export function ivaDeductiblePctOf(e: {
+  deductiblePct: number;
+  ivaDeductiblePct: number | null;
+}): number {
+  return e.ivaDeductiblePct ?? e.deductiblePct;
+}
+
 interface ExpenseRow {
   id: number;
   date: string;
@@ -32,6 +45,7 @@ interface ExpenseRow {
   amount: number;
   iva_amount: number | null;
   deductible_pct: number;
+  iva_deductible_pct: number | null;
   irpf_rate: number | null;
   irpf_amount: number | null;
   receipt_file_path: string | null;
@@ -48,6 +62,7 @@ function mapRow(row: ExpenseRow): ExpenseRecord {
     amount: row.amount,
     ivaAmount: row.iva_amount,
     deductiblePct: row.deductible_pct,
+    ivaDeductiblePct: row.iva_deductible_pct,
     irpfRate: row.irpf_rate,
     irpfAmount: row.irpf_amount,
     receiptFilePath: row.receipt_file_path,
@@ -107,8 +122,8 @@ export async function getExpense(id: number): Promise<ExpenseRecord | null> {
 export async function createExpense(input: NewExpense): Promise<ExpenseRecord> {
   const db = await getDb();
   const result = await db.execute(
-    `INSERT INTO expenses (date, category, description, amount, iva_amount, deductible_pct, irpf_rate, irpf_amount, receipt_file_path, declared_period, declared)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    `INSERT INTO expenses (date, category, description, amount, iva_amount, deductible_pct, iva_deductible_pct, irpf_rate, irpf_amount, receipt_file_path, declared_period, declared)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       input.date,
       input.category,
@@ -116,6 +131,7 @@ export async function createExpense(input: NewExpense): Promise<ExpenseRecord> {
       input.amount,
       input.ivaAmount,
       input.deductiblePct,
+      input.ivaDeductiblePct,
       input.irpfRate,
       input.irpfAmount,
       input.receiptFilePath,
@@ -135,6 +151,7 @@ const COLUMN_BY_KEY: Record<keyof NewExpense, string> = {
   amount: "amount",
   ivaAmount: "iva_amount",
   deductiblePct: "deductible_pct",
+  ivaDeductiblePct: "iva_deductible_pct",
   irpfRate: "irpf_rate",
   irpfAmount: "irpf_amount",
   receiptFilePath: "receipt_file_path",

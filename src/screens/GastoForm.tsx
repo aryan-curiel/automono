@@ -36,6 +36,8 @@ interface FormState {
   amount: string;
   ivaAmount: string;
   deductiblePct: string;
+  /** "" means "same as deductiblePct"; otherwise a separate IVA-deductible % (Modelo 303). */
+  ivaDeductiblePct: string;
   irpfRate: string;
   irpfAmount: string;
   receiptFilePath: string | null;
@@ -51,6 +53,7 @@ function emptyForm(): FormState {
     amount: "",
     ivaAmount: "",
     deductiblePct: "100",
+    ivaDeductiblePct: "",
     irpfRate: "",
     irpfAmount: "",
     receiptFilePath: null,
@@ -66,6 +69,8 @@ function toFormState(expense: ExpenseRecord): FormState {
     amount: String(expense.amount),
     ivaAmount: expense.ivaAmount !== null ? String(expense.ivaAmount) : "",
     deductiblePct: String(expense.deductiblePct),
+    ivaDeductiblePct:
+      expense.ivaDeductiblePct !== null ? String(expense.ivaDeductiblePct) : "",
     irpfRate: expense.irpfRate !== null ? String(expense.irpfRate) : "",
     irpfAmount: expense.irpfAmount !== null ? String(expense.irpfAmount) : "",
     receiptFilePath: expense.receiptFilePath,
@@ -290,6 +295,7 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
       amount: Number(form.amount),
       ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
       deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
+      ivaDeductiblePct: form.ivaDeductiblePct.trim() ? Number(form.ivaDeductiblePct) : null,
       irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
       irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
       receiptFilePath: form.receiptFilePath,
@@ -439,6 +445,24 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
             onChange={(e) => set("deductiblePct", e.target.value)}
           />
         </FormRow>
+
+        {Number(form.ivaAmount) > 0 && (
+          <FormRow label={t("expenses.fields.ivaDeductiblePct")}>
+            <TextInput
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              mono
+              placeholder={form.deductiblePct.trim() || "100"}
+              value={form.ivaDeductiblePct}
+              onChange={(e) => set("ivaDeductiblePct", e.target.value)}
+            />
+            <p className="text-xs text-ink-soft mt-1">
+              {t("expenses.fields.ivaDeductiblePctHint")}
+            </p>
+          </FormRow>
+        )}
 
         <FormRow label={t("expenses.fields.irpfRate")}>
           {attaching ? (

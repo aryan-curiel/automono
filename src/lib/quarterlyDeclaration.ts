@@ -1,5 +1,5 @@
 import type { InvoiceListItem } from "../db/invoices";
-import type { ExpenseRecord } from "../db/expenses";
+import { ivaDeductiblePctOf, type ExpenseRecord } from "../db/expenses";
 import { quartersInRange, type Period } from "./dateRange";
 import { csvRow } from "./csv";
 import { formatDate } from "./format";
@@ -65,6 +65,8 @@ export interface DeclarationExpenseLine {
   category: string | null;
   amount: number;
   deductiblePct: number;
+  /** Effective % of input IVA deducted (already resolved from the general % when not set). */
+  ivaDeductiblePct: number;
   ivaAmount: number;
   irpfRate: number;
   irpfAmount: number;
@@ -112,7 +114,7 @@ export function buildDeclarationSnapshot(
     expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0),
   );
   const expensesIvaDeductible = roundCents(
-    expenses.reduce((s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100), 0),
+    expenses.reduce((s, e) => s + (e.ivaAmount ?? 0) * (ivaDeductiblePctOf(e) / 100), 0),
   );
   const expensesIrpfWithheld = roundCents(expenses.reduce((s, e) => s + (e.irpfAmount ?? 0), 0));
   const netIrpfIncome = roundCents(invoicedBase - expensesDeductibleBase);
@@ -140,6 +142,7 @@ export function buildDeclarationSnapshot(
       category: e.category,
       amount: e.amount,
       deductiblePct: e.deductiblePct,
+      ivaDeductiblePct: ivaDeductiblePctOf(e),
       ivaAmount: e.ivaAmount ?? 0,
       irpfRate: e.irpfRate ?? 0,
       irpfAmount: e.irpfAmount ?? 0,
@@ -198,6 +201,7 @@ export function buildDeclarationCsv(snapshot: DeclarationSnapshot): string {
       "Importe",
       "IVA",
       "% deducible",
+      "% deducible IVA",
       "% IRPF",
       "IRPF",
     ]),
@@ -211,6 +215,7 @@ export function buildDeclarationCsv(snapshot: DeclarationSnapshot): string {
         e.amount,
         e.ivaAmount,
         e.deductiblePct,
+        e.ivaDeductiblePct ?? e.deductiblePct,
         e.irpfRate,
         e.irpfAmount,
       ]),
