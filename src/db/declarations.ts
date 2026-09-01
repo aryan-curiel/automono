@@ -33,6 +33,8 @@ export interface DeclarationDetail {
   quarter: number;
   status: DeclarationStatus;
   snapshot: DeclarationSnapshot;
+  /** "Gastos de difícil justificación" rate (%) chosen at creation — drives the Modelo 130 calc. */
+  gdjRate: number;
   modelo303Path: string | null;
   modelo130Path: string | null;
   modelo111Path: string | null;
@@ -44,6 +46,7 @@ interface DeclarationRow {
   quarter: number;
   status: DeclarationStatus;
   snapshot_json: string;
+  gdj_rate: number;
   modelo_303_path: string | null;
   modelo_130_path: string | null;
   modelo_111_path: string | null;
@@ -56,6 +59,7 @@ function mapRow(row: DeclarationRow): DeclarationDetail {
     quarter: row.quarter,
     status: row.status,
     snapshot: JSON.parse(row.snapshot_json) as DeclarationSnapshot,
+    gdjRate: row.gdj_rate,
     modelo303Path: row.modelo_303_path,
     modelo130Path: row.modelo_130_path,
     modelo111Path: row.modelo_111_path,
@@ -130,11 +134,12 @@ export async function createDeclaration(
   year: number,
   quarter: number,
   snapshot: DeclarationSnapshot,
+  gdjRate: number,
 ): Promise<number> {
   const db = await getDb();
   const result = await db.execute(
-    "INSERT INTO quarterly_declarations (year, quarter, snapshot_json) VALUES ($1, $2, $3)",
-    [year, quarter, JSON.stringify(snapshot)],
+    "INSERT INTO quarterly_declarations (year, quarter, snapshot_json, gdj_rate) VALUES ($1, $2, $3, $4)",
+    [year, quarter, JSON.stringify(snapshot), gdjRate],
   );
   return result.lastInsertId!;
 }

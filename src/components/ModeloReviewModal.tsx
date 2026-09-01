@@ -12,7 +12,7 @@ import {
   type Modelo,
 } from "../db/declarations";
 import { activeApiKey, getLlmSettings } from "../db/llmSettings";
-import { buildModeloReport, type ModeloReportRow } from "../lib/modeloReport";
+import { buildModeloReport, type Modelo130Ytd, type ModeloReportRow } from "../lib/modeloReport";
 import type { DeclarationSnapshot } from "../lib/quarterlyDeclaration";
 import { formatEUR } from "../lib/format";
 
@@ -59,6 +59,9 @@ interface ModeloReviewModalProps {
   year: number;
   quarter: number;
   snapshot: DeclarationSnapshot;
+  /** Cumulative YTD Modelo 130 figures for the focused declaration — used for the 130 comparison
+   * rows instead of the isolated-quarter estimate. */
+  modelo130Ytd?: Modelo130Ytd;
   onAttached: () => void;
 }
 
@@ -75,6 +78,7 @@ export function ModeloReviewModal({
   year,
   quarter,
   snapshot,
+  modelo130Ytd,
   onAttached,
 }: ModeloReviewModalProps) {
   const { t } = useTranslation();
@@ -131,12 +135,18 @@ export function ModeloReviewModal({
           );
           if (cancelled) return;
 
-          const report = buildModeloReport(detection.modelo, snapshot, fields, {
-            expectedYear: year,
-            expectedQuarter: quarter,
-            detectedYear: detection.year,
-            detectedQuarter: detection.quarter,
-          });
+          const report = buildModeloReport(
+            detection.modelo,
+            snapshot,
+            fields,
+            {
+              expectedYear: year,
+              expectedQuarter: quarter,
+              detectedYear: detection.year,
+              detectedQuarter: detection.quarter,
+            },
+            modelo130Ytd,
+          );
           setTabs((prev) =>
             prev.map((tab, idx) => (idx === i ? { ...tab, step: "done", report } : tab)),
           );

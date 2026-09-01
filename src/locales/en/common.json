@@ -566,7 +566,9 @@
         "invoices": "Invoices",
         "expenses": "Expenses",
         "irpfWithheld": "IRPF withheld",
-        "netIncome": "Estimated net income"
+        "netIncome": "Estimated net income",
+        "gdjRate": "Hard-to-justify expenses",
+        "gdjRateHint": "5% of net income under estimación directa simplificada (7% in 2023)."
       },
       "actions": {
         "back": "Back",
