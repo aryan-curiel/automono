@@ -1,4 +1,5 @@
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { barPath } from "../../lib/chartScale";
+import { ChartFrame } from "./ChartFrame";
 
 export interface StackedQuarterBarDatum {
   key: string;
@@ -18,10 +19,10 @@ export interface StackedQuarterBarChartProps {
 }
 
 /** A two-series stacked column chart for a fixed set of quarters, with a hand-rolled
- * legend (dot + label) matching this app's existing small-caption legend style rather
- * than Recharts' default legend chrome. Segment `a` stacks on the baseline (bottom,
- * square on both ends — neither touches the bar's free/data end); `b` stacks on top
- * of it and owns the only rounded corners, since its top is the bar's true data-end. */
+ * legend (dot + label) matching this app's small-caption legend style. Segment `a`
+ * stacks on the baseline (square on both ends); `b` stacks on top of it with a 2px
+ * surface gap and owns the only rounded corners, since its top is the bar's true
+ * data-end. Hand-rolled inline SVG — no charting dependency. */
 export function StackedQuarterBarChart({
   data,
   aColor,
@@ -33,45 +34,40 @@ export function StackedQuarterBarChart({
 }: StackedQuarterBarChartProps) {
   return (
     <>
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="var(--color-border)" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: "var(--color-ink-soft)" }}
-            tickLine={false}
-            axisLine={{ stroke: "var(--color-border)" }}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: "var(--color-ink-soft)" }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={formatValue}
-            allowDecimals={false}
-            width="auto"
-          />
-          <Tooltip
-            cursor={{ fill: "var(--color-surface-alt)" }}
-            formatter={(value) => formatValue(Number(value))}
-            labelStyle={{ color: "var(--color-ink)", fontWeight: 600, marginBottom: 4 }}
-            contentStyle={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
-          <Bar dataKey="a" name={aLabel} stackId="quarter" fill={aColor} maxBarSize={24} />
-          <Bar
-            dataKey="b"
-            name={bLabel}
-            stackId="quarter"
-            fill={bColor}
-            radius={[4, 4, 0, 0]}
-            maxBarSize={24}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+      <ChartFrame
+        height={height}
+        values={data.map((d) => d.a + d.b)}
+        count={data.length}
+        labels={data.map((d) => d.label)}
+        formatTick={formatValue}
+        ariaLabel={`${data
+          .map((d) => `${d.label}: ${aLabel} ${formatValue(d.a)}, ${bLabel} ${formatValue(d.b)}`)
+          .join("; ")}`}
+        tooltipTitle={(i) => data[i].label}
+        tooltipRows={(i) => [
+          { color: aColor, label: aLabel, value: formatValue(data[i].a) },
+          { color: bColor, label: bLabel, value: formatValue(data[i].b) },
+        ]}
+      >
+        {(g) => {
+          const bw = Math.min(24, g.band * 0.5);
+          return data.map((d, i) => {
+            const x = g.cx(i) - bw / 2;
+            const yA = g.y(d.a);
+            const yB = g.y(d.a + d.b);
+            const bBottom = d.a > 0 ? yA - 2 : g.baseline;
+            const dim = g.hover === null || g.hover === i ? 1 : 0.55;
+            return (
+              <g key={d.key} fillOpacity={dim}>
+                {d.a > 0 && <path d={barPath(x, bw, yA, g.baseline, 4, "none")} fill={aColor} />}
+                {d.b > 0 && yB < bBottom && (
+                  <path d={barPath(x, bw, yB, bBottom, 4, "top")} fill={bColor} />
+                )}
+              </g>
+            );
+          });
+        }}
+      </ChartFrame>
       <div className="flex items-center gap-4 mt-1 text-[11px] text-ink-soft">
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: aColor }} />
