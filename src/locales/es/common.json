@@ -621,6 +621,7 @@
         "unrecognized": "Este PDF no se reconoce como Modelo 303, 130 o 111.",
         "generic": "No se pudo procesar este archivo."
       },
+      "basicExtractionOnly": "Comprobado solo con extracción básica: las cifras leídas del archivo pueden ser menos fiables.",
       "reportTitle": "Informe de comparación",
       "columnCalculated": "Calculado",
       "columnFile": "En el archivo",

@@ -217,6 +217,17 @@ fn fix_303_devengado_if_misread(fields: &mut ModeloFields) {
     }
 }
 
+/// Extraction result plus a flag telling the frontend the figures came from the weak regex scan
+/// (either no LLM was configured, or the LLM call errored) so `ModeloReviewModal` can warn that
+/// the file-side numbers are less reliable. `#[serde(flatten)]` keeps the `ModeloFields` shape
+/// unchanged on the wire — the frontend just reads one extra key.
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ModeloExtraction {
+    #[serde(flatten)]
+    pub fields: ModeloFields,
+    pub used_fallback: bool,
+}
+
 #[tauri::command]
 pub async fn extract_modelo_fields_cmd(
     file_path: String,
@@ -224,7 +235,7 @@ pub async fn extract_modelo_fields_cmd(
     provider: Option<String>,
     api_key: Option<String>,
     model: Option<String>,
-) -> Result<ModeloFields, String> {
+) -> Result<ModeloExtraction, String> {
     let text = extract_text(Path::new(&file_path));
 
     let configured = provider.zip(api_key).filter(|(_, key)| !key.trim().is_empty());
@@ -234,13 +245,21 @@ pub async fn extract_modelo_fields_cmd(
             let base64_data = base64::engine::general_purpose::STANDARD.encode(&bytes);
             let config = llm::ProviderConfig { provider, api_key, model };
             let preamble = build_modelo_preamble(&modelo);
-            if let Ok(mut fields) =
-                llm::extract::<ModeloFields>(&config, &preamble, llm::pdf_content(base64_data)).await
+            match llm::extract::<ModeloFields>(&config, &preamble, llm::pdf_content(base64_data)).await
             {
-                if modelo == "303" {
-                    fix_303_devengado_if_misread(&mut fields);
+                Ok(mut fields) => {
+                    if modelo == "303" {
+                        fix_303_devengado_if_misread(&mut fields);
+                    }
+                    return Ok(ModeloExtraction { fields, used_fallback: false });
                 }
-                return Ok(fields);
+                Err(e) => {
+                    // Same as receipt_extract's fallback logging — a silent drop to the regex
+                    // scanner otherwise hides why the figures look weaker.
+                    eprintln!(
+                        "modelo {modelo} LLM extraction failed, falling back to basic text scan: {e}"
+                    );
+                }
             }
         }
     }
@@ -249,7 +268,7 @@ pub async fn extract_modelo_fields_cmd(
     if modelo == "303" {
         fix_303_devengado_if_misread(&mut fields);
     }
-    Ok(fields)
+    Ok(ModeloExtraction { fields, used_fallback: true })
 }
 
 #[cfg(test)]

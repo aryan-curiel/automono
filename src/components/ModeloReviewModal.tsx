@@ -11,7 +11,7 @@ import {
   extractModeloFields,
   type Modelo,
 } from "../db/declarations";
-import { activeApiKey, getLlmSettings } from "../db/llmSettings";
+import { activeApiKey, activeModel, getLlmSettings } from "../db/llmSettings";
 import { buildModeloReport, type Modelo130Ytd, type ModeloReportRow } from "../lib/modeloReport";
 import type { DeclarationSnapshot } from "../lib/quarterlyDeclaration";
 import { formatEUR } from "../lib/format";
@@ -29,6 +29,8 @@ interface TabState {
   error: string | null;
   modelo: Modelo | null;
   report: ModeloReportRow[] | null;
+  /** The file's figures came from the weak regex scan, not the LLM — shown as a caveat. */
+  usedFallback: boolean;
   approving: boolean;
 }
 
@@ -100,6 +102,7 @@ export function ModeloReviewModal({
         error: null,
         modelo: null,
         report: null,
+        usedFallback: false,
         approving: false,
       })),
     );
@@ -127,12 +130,12 @@ export function ModeloReviewModal({
             ),
           );
 
-          const fields = await extractModeloFields(
+          const { fields, usedFallback } = await extractModeloFields(
             path,
             detection.modelo,
             llmSettings?.provider ?? null,
             apiKey,
-            llmSettings?.openrouterModel ?? null,
+            llmSettings ? activeModel(llmSettings) : null,
           );
           if (cancelled) return;
 
@@ -149,7 +152,9 @@ export function ModeloReviewModal({
             modelo130Ytd,
           );
           setTabs((prev) =>
-            prev.map((tab, idx) => (idx === i ? { ...tab, step: "done", report } : tab)),
+            prev.map((tab, idx) =>
+              idx === i ? { ...tab, step: "done", report, usedFallback } : tab,
+            ),
           );
         } catch (e) {
           if (cancelled) return;
@@ -310,6 +315,13 @@ export function ModeloReviewModal({
           </div>
 
           {tab.error && <div className="text-sm text-danger mb-4">{tab.error}</div>}
+
+          {tab.report && tab.usedFallback && (
+            <div className="flex items-start gap-2 text-[13px] text-warn mb-3">
+              <WarningCircle size={15} weight="fill" className="shrink-0 mt-px" />
+              <span>{t("declarations.review.basicExtractionOnly")}</span>
+            </div>
+          )}
 
           {tab.report && (
             <>

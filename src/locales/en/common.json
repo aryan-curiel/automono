@@ -621,6 +621,7 @@
         "unrecognized": "This PDF isn't recognized as Modelo 303, 130 or 111.",
         "generic": "Couldn't process this file."
       },
+      "basicExtractionOnly": "Checked with basic extraction only — the figures read from the file may be less reliable.",
       "reportTitle": "Comparison report",
       "columnCalculated": "Calculated",
       "columnFile": "In file",
