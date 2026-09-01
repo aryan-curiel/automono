@@ -174,6 +174,9 @@ export function GastoDetalle({ expenseId, onBack, onEditExpense, onDeleted }: Ga
         <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide pt-4 pb-2">
           {t("expenses.detail.dataTitle")}
         </div>
+        {expense.provider && (
+          <InfoRow label={t("expenses.fields.provider")} value={expense.provider} />
+        )}
         <InfoRow
           label={t("expenses.fields.category")}
           value={expense.category || t("expenses.fields.noCategory")}

@@ -26,6 +26,7 @@ function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
     clientCountry: "DE",
     vatTreatment: "reverse_charge_eu",
     clientVatNumber: "DE123456789",
+    clientNif: "DE12345678Z",
     ...overrides,
   };
 }

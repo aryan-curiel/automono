@@ -16,6 +16,7 @@
     "invoices": "Facturas",
     "expenses": "Gastos",
     "quarterlySummary": "Resumen trimestral",
+    "annualSummary": "Resumen anual",
     "settings": "Ajustes",
     "noData": "Sin datos"
   },
@@ -506,6 +507,8 @@
     "fields": {
       "date": "Fecha",
       "paidDate": "Fecha de pago",
+      "provider": "Proveedor",
+      "providerPlaceholder": "Nombre del proveedor",
       "category": "Categoría",
       "description": "Descripción",
       "amount": "Importe",
@@ -599,6 +602,24 @@
       "noVatNumber": "Sin NIF-IVA",
       "total": "Total",
       "disclaimer": "Operaciones intracomunitarias del trimestre (clientes con inversión del sujeto pasivo UE). Contrástalo con tus registros antes de presentar el Modelo 349."
+    },
+    "modelo347": {
+      "title": "Modelo 347 · operaciones con terceros",
+      "subtitle": "Contrapartes con un total anual superior a 3.005,06 € (IVA incluido)",
+      "type": "Tipo",
+      "typeSales": "Ventas",
+      "typePurchases": "Compras",
+      "name": "Nombre",
+      "nif": "NIF",
+      "noNif": "Sin NIF",
+      "total": "Total anual",
+      "grandTotal": "Total",
+      "empty": "Ninguna contraparte supera los 3.005,06 € en {{year}}.",
+      "export": "Exportar CSV",
+      "exportError": "No se pudo exportar el CSV.",
+      "yearPrev": "Año anterior",
+      "yearNext": "Año siguiente",
+      "disclaimer": "Cálculo anual a partir de tus facturas (por cliente) y gastos (por proveedor). Se excluyen las operaciones intracomunitarias (Modelo 349) y las sujetas a retención de IRPF (Modelo 190/180). Contrástalo con tus registros antes de presentar el Modelo 347."
     },
     "wizard": {
       "title": "Nueva declaración trimestral",

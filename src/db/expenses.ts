@@ -8,6 +8,9 @@ export interface ExpenseRecord {
   date: string;
   category: string | null;
   description: string | null;
+  /** Counterparty (proveedor) the expense was paid to. Free text; used to group expenses per
+   * provider for the Modelo 347 annual summary. */
+  provider: string | null;
   amount: number;
   ivaAmount: number | null;
   deductiblePct: number;
@@ -46,6 +49,7 @@ interface ExpenseRow {
   date: string;
   category: string | null;
   description: string | null;
+  provider: string | null;
   amount: number;
   iva_amount: number | null;
   deductible_pct: number;
@@ -64,6 +68,7 @@ function mapRow(row: ExpenseRow): ExpenseRecord {
     date: row.date,
     category: row.category,
     description: row.description,
+    provider: row.provider,
     amount: row.amount,
     ivaAmount: row.iva_amount,
     deductiblePct: row.deductible_pct,
@@ -128,12 +133,13 @@ export async function getExpense(id: number): Promise<ExpenseRecord | null> {
 export async function createExpense(input: NewExpense): Promise<ExpenseRecord> {
   const db = await getDb();
   const result = await db.execute(
-    `INSERT INTO expenses (date, category, description, amount, iva_amount, deductible_pct, iva_deductible_pct, irpf_rate, irpf_amount, receipt_file_path, declared_period, declared, paid_date)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    `INSERT INTO expenses (date, category, description, provider, amount, iva_amount, deductible_pct, iva_deductible_pct, irpf_rate, irpf_amount, receipt_file_path, declared_period, declared, paid_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
     [
       input.date,
       input.category,
       input.description,
+      input.provider,
       input.amount,
       input.ivaAmount,
       input.deductiblePct,
@@ -155,6 +161,7 @@ const COLUMN_BY_KEY: Record<keyof NewExpense, string> = {
   date: "date",
   category: "category",
   description: "description",
+  provider: "provider",
   amount: "amount",
   ivaAmount: "iva_amount",
   deductiblePct: "deductible_pct",

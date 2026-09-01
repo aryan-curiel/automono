@@ -34,6 +34,7 @@ interface GastoFormProps {
 interface FormState {
   date: string;
   category: string;
+  provider: string;
   description: string;
   amount: string;
   ivaAmount: string;
@@ -53,6 +54,7 @@ function emptyForm(): FormState {
   return {
     date: "",
     category: "",
+    provider: "",
     description: "",
     amount: "",
     ivaAmount: "",
@@ -70,6 +72,7 @@ function toFormState(expense: ExpenseRecord): FormState {
   return {
     date: expense.date,
     category: expense.category ?? "",
+    provider: expense.provider ?? "",
     description: expense.description ?? "",
     amount: String(expense.amount),
     ivaAmount: expense.ivaAmount !== null ? String(expense.ivaAmount) : "",
@@ -272,6 +275,7 @@ export function GastoForm({
           irpfAmount:
             f.irpfAmount ||
             (extracted?.irpfAmount != null ? String(extracted.irpfAmount) : f.irpfAmount),
+          provider: f.provider || extracted?.vendorGuess || f.provider,
           description: f.description || extracted?.vendorGuess || f.description,
           category: f.category || extracted?.category || f.category,
         }));
@@ -317,6 +321,7 @@ export function GastoForm({
     const payload: NewExpense = {
       date: form.date,
       category: form.category.trim() || null,
+      provider: form.provider.trim() || null,
       description: form.description.trim() || null,
       amount: Number(form.amount),
       ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
@@ -416,6 +421,18 @@ export function GastoForm({
               </option>
             ))}
           </Select>
+        </FormRow>
+
+        <FormRow label={t("expenses.fields.provider")}>
+          {attaching ? (
+            <FieldSkeleton />
+          ) : (
+            <TextInput
+              value={form.provider}
+              onChange={(e) => set("provider", e.target.value)}
+              placeholder={t("expenses.fields.providerPlaceholder")}
+            />
+          )}
         </FormRow>
 
         <FormRow label={t("expenses.fields.category")}>

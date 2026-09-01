@@ -35,6 +35,7 @@ function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
     clientCountry: null,
     vatTreatment: null,
     clientVatNumber: null,
+    clientNif: null,
     ...overrides,
   };
 }
@@ -45,6 +46,7 @@ function expense(overrides: Partial<ExpenseRecord>): ExpenseRecord {
     date: "2026-01-10",
     category: "Software",
     description: null,
+    provider: null,
     amount: 50,
     ivaAmount: null,
     deductiblePct: 100,

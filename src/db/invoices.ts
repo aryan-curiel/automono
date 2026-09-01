@@ -330,6 +330,8 @@ export interface InvoiceListItem {
   clientCountry: string | null;
   vatTreatment: VatTreatment | null;
   clientVatNumber: string | null;
+  /** Spanish NIF/CIF (snapshot-preferred) — the counterparty tax id for the Modelo 347 summary. */
+  clientNif: string | null;
 }
 
 interface InvoiceListRow extends InvoiceRow {
@@ -384,6 +386,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       clientCountry: row.client_country_snapshot ?? row.live_client_country,
       vatTreatment: row.vat_treatment ?? row.live_client_vat_treatment,
       clientVatNumber: row.client_vat_number_snapshot ?? row.live_client_vat_number,
+      clientNif: row.client_nif_snapshot ?? row.live_client_nif,
     };
   });
 }

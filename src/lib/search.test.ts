@@ -48,6 +48,7 @@ function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
     clientCountry: null,
     vatTreatment: null,
     clientVatNumber: null,
+    clientNif: null,
     ...overrides,
   };
 }

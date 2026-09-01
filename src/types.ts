@@ -25,4 +25,5 @@ export type Screen =
   | "gasto-editar"
   | "gasto-detalle"
   | "resumen-trimestral"
+  | "resumen-anual"
   | "ajustes";

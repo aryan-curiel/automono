@@ -16,6 +16,7 @@
     "invoices": "Invoices",
     "expenses": "Expenses",
     "quarterlySummary": "Quarterly summary",
+    "annualSummary": "Annual summary",
     "settings": "Settings",
     "noData": "No data"
   },
@@ -506,6 +507,8 @@
     "fields": {
       "date": "Date",
       "paidDate": "Payment date",
+      "provider": "Provider",
+      "providerPlaceholder": "Provider name",
       "category": "Category",
       "description": "Description",
       "amount": "Amount",
@@ -599,6 +602,24 @@
       "noVatNumber": "No VAT number",
       "total": "Total",
       "disclaimer": "This quarter's intra-community operations (clients with EU reverse charge). Check against your own records before filing Modelo 349."
+    },
+    "modelo347": {
+      "title": "Modelo 347 · third-party operations",
+      "subtitle": "Counterparties with an annual total over €3,005.06 (VAT included)",
+      "type": "Type",
+      "typeSales": "Sales",
+      "typePurchases": "Purchases",
+      "name": "Name",
+      "nif": "Tax ID",
+      "noNif": "No tax ID",
+      "total": "Annual total",
+      "grandTotal": "Total",
+      "empty": "No counterparty exceeds €3,005.06 in {{year}}.",
+      "export": "Export CSV",
+      "exportError": "Failed to export the CSV.",
+      "yearPrev": "Previous year",
+      "yearNext": "Next year",
+      "disclaimer": "Annual figure derived from your invoices (per client) and expenses (per provider). Intra-community operations (Modelo 349) and those subject to IRPF withholding (Modelo 190/180) are excluded. Check against your own records before filing Modelo 347."
     },
     "wizard": {
       "title": "New quarterly declaration",

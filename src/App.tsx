@@ -30,6 +30,7 @@ import { Gastos } from "./screens/Gastos";
 import { GastoDetalle } from "./screens/GastoDetalle";
 import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
+import { ResumenAnual } from "./screens/ResumenAnual";
 import { Ajustes } from "./screens/Ajustes";
 import { Onboarding } from "./screens/Onboarding";
 import {
@@ -646,6 +647,7 @@ export default function App() {
               initialQuarterKey={dashboardQuarterKey ?? undefined}
             />
           )}
+          {screen === "resumen-anual" && <ResumenAnual invoices={invoices} />}
           {screen === "ajustes" && <Ajustes theme={theme} onToggleTheme={handleToggleTheme} />}
         </div>
 

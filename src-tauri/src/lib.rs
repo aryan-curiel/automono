@@ -250,6 +250,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0037_contract_billing_cadence.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 38,
+            description: "expense_provider",
+            sql: include_str!("../migrations/0038_expense_provider.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
