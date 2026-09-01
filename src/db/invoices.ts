@@ -49,6 +49,10 @@ export interface InvoiceRecord {
   rectificationReason: string | null;
   rectificationType: RectificationType | null;
   pdfPath: string | null;
+  /** Cumulative amount received against this invoice. Absent/0 until a payment is recorded. */
+  amountPaid?: number;
+  /** Date of the most recent payment recorded, ISO `YYYY-MM-DD`, or null. */
+  paidDate?: string | null;
 }
 
 interface InvoiceRow {
@@ -87,6 +91,8 @@ interface InvoiceRow {
   rectification_reason: string | null;
   rectification_type: RectificationType | null;
   pdf_path: string | null;
+  amount_paid: number;
+  paid_date: string | null;
 }
 
 // invoices.* only carries client_*_snapshot columns, and vat_treatment/vat_note_text,
@@ -151,6 +157,8 @@ function mapInvoiceRow(row: InvoiceRow): InvoiceRecord {
     rectificationReason: row.rectification_reason,
     rectificationType: row.rectification_type,
     pdfPath: row.pdf_path,
+    amountPaid: row.amount_paid ?? 0,
+    paidDate: row.paid_date,
   };
 }
 
@@ -294,9 +302,40 @@ export async function openOrGeneratePdf(id: number, force = false): Promise<stri
   return invoke<string>("get_or_generate_invoice_pdf_cmd", { invoiceId: id, force });
 }
 
-export async function markInvoicePaid(id: number): Promise<void> {
+export async function markInvoicePaid(
+  id: number,
+  paidDate: string = new Date().toISOString().slice(0, 10),
+): Promise<void> {
   const db = await getDb();
-  await db.execute("UPDATE invoices SET status = 'paid' WHERE id = $1 AND status = 'issued'", [id]);
+  await db.execute(
+    "UPDATE invoices SET status = 'paid', amount_paid = total, paid_date = $2 WHERE id = $1 AND status = 'issued'",
+    [id, paidDate],
+  );
+}
+
+/**
+ * Records a (possibly partial) payment against an issued invoice: adds `amount` to the
+ * running `amount_paid`, stamps `paid_date`, and flips the invoice to 'paid' once the
+ * cumulative amount reaches its total. Amounts and dates are the only mutable fields on an
+ * issued invoice (the 0008 lock trigger ignores them), so this is safe post-issue.
+ *
+ * ponytail: two columns, no per-payment ledger — the running total + last date is all the
+ * aging/collections views need. Add a `payments` child table if payment history is ever wanted.
+ */
+export async function recordPayment(
+  id: number,
+  amount: number,
+  paidDate: string = new Date().toISOString().slice(0, 10),
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE invoices
+     SET amount_paid = amount_paid + $2,
+         paid_date = $3,
+         status = CASE WHEN amount_paid + $2 >= total - 0.005 THEN 'paid' ELSE status END
+     WHERE id = $1 AND status = 'issued'`,
+    [id, amount, paidDate],
+  );
 }
 
 export async function deleteInvoice(id: number): Promise<void> {
@@ -332,6 +371,10 @@ export interface InvoiceListItem {
   clientVatNumber: string | null;
   /** Spanish NIF/CIF (snapshot-preferred) — the counterparty tax id for the Modelo 347 summary. */
   clientNif: string | null;
+  /** Cumulative amount received against this invoice. Absent/0 until a payment is recorded. */
+  amountPaid?: number;
+  /** Date of the most recent payment recorded, ISO `YYYY-MM-DD`, or null. */
+  paidDate?: string | null;
 }
 
 interface InvoiceListRow extends InvoiceRow {
@@ -387,6 +430,8 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       vatTreatment: row.vat_treatment ?? row.live_client_vat_treatment,
       clientVatNumber: row.client_vat_number_snapshot ?? row.live_client_vat_number,
       clientNif: row.client_nif_snapshot ?? row.live_client_nif,
+      amountPaid: row.amount_paid ?? 0,
+      paidDate: row.paid_date,
     };
   });
 }

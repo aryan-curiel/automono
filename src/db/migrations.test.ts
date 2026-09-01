@@ -91,4 +91,44 @@ describe("migrations", () => {
     };
     expect(row.criterio_caja).toBe(0);
   });
+
+  it("adds invoices.amount_paid (default 0) and a nullable invoices.paid_date, and lets an issued invoice take a payment", () => {
+    const db = freshDb();
+    db.exec("INSERT INTO invoice_series (prefix) VALUES ('PAY')");
+    const seriesId = (
+      db.prepare("SELECT id FROM invoice_series WHERE prefix = 'PAY'").get() as { id: number }
+    ).id;
+    db.exec(
+      `INSERT INTO clients (name, nif_cif, series_id, vat_treatment) VALUES ('A', 'X1', ${seriesId}, 'standard')`,
+    );
+    const clientId = (
+      db.prepare("SELECT id FROM clients WHERE series_id = ?").get(seriesId) as { id: number }
+    ).id;
+    db.exec(
+      `INSERT INTO invoices (client_id, series_prefix, invoice_number, status, is_rectification, total)
+       VALUES (${clientId}, 'PAY', 1, 'issued', 0, 100)`,
+    );
+
+    const cols = db.prepare("PRAGMA table_info(invoices)").all() as {
+      name: string;
+      notnull: number;
+      dflt_value: string | null;
+    }[];
+    const amountPaid = cols.find((c) => c.name === "amount_paid");
+    expect(amountPaid).toMatchObject({ notnull: 1, dflt_value: "0" });
+    expect(cols.find((c) => c.name === "paid_date")).toMatchObject({ notnull: 0 });
+
+    // The 0008 immutability trigger must not block a partial payment on an issued invoice.
+    expect(() =>
+      db.exec(
+        "UPDATE invoices SET amount_paid = 40, paid_date = '2026-03-01' WHERE series_prefix = 'PAY'",
+      ),
+    ).not.toThrow();
+    // ...nor flipping it to paid once settled.
+    expect(() =>
+      db.exec(
+        "UPDATE invoices SET amount_paid = 100, paid_date = '2026-03-05', status = 'paid' WHERE series_prefix = 'PAY'",
+      ),
+    ).not.toThrow();
+  });
 });

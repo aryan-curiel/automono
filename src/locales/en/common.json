@@ -14,6 +14,7 @@
     "dashboard": "Home",
     "clients": "Clients",
     "invoices": "Invoices",
+    "collections": "Collections",
     "expenses": "Expenses",
     "quarterlySummary": "Quarterly summary",
     "annualSummary": "Annual summary",
@@ -310,6 +311,42 @@
         "titleEmpty": "Top expense category"
       }
     }
+  },
+  "collections": {
+    "title": "Collections",
+    "subtitle": "{{amount}} outstanding",
+    "loading": "Loading…",
+    "empty": "Nothing outstanding — every issued invoice is paid.",
+    "invoiceCount_one": "{{count}} invoice",
+    "invoiceCount_other": "{{count}} invoices",
+    "buckets": {
+      "current": "Not due yet",
+      "d0_30": "1–30 days overdue",
+      "d30_60": "31–60 days overdue",
+      "d60_plus": "60+ days overdue"
+    },
+    "columns": {
+      "due": "Due",
+      "overdue": "Overdue",
+      "outstanding": "Outstanding"
+    },
+    "notDue": "Not due",
+    "daysOverdue_one": "{{count}} day",
+    "daysOverdue_other": "{{count}} days",
+    "ofTotal": "of {{total}}",
+    "recordPayment": "Record payment",
+    "copyReminder": "Copy payment reminder",
+    "copyLetter": "Copy Ley 3/2004 letter",
+    "recordPaymentTitle": "Record a payment",
+    "recordPaymentFor": "Invoice {{number}} — {{outstanding}} outstanding.",
+    "recordPaymentForShort": "Invoice {{number}}",
+    "amount": "Amount",
+    "paymentDate": "Payment date",
+    "savePayment": "Save payment",
+    "reminderTitle": "Payment reminder",
+    "letterTitle": "Late-payment interest claim (Ley 3/2004)",
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "invoices": {
     "title": "Invoices",

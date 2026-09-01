@@ -33,6 +33,8 @@ function invoice(overrides: Partial<InvoiceListItem>): InvoiceListItem {
     vatTreatment: null,
     clientVatNumber: null,
     clientNif: null,
+    amountPaid: 0,
+    paidDate: null,
     ...overrides,
   };
 }
@@ -113,6 +115,21 @@ describe("agingReport", () => {
       { bucket: "30-60", total: 30, invoices: [expect.objectContaining({ id: 3 })] },
       { bucket: "60+", total: 40, invoices: [expect.objectContaining({ id: 4 })] },
     ]);
+  });
+
+  it("counts only the outstanding amount for partially-paid invoices, and drops fully-paid ones", () => {
+    const groups = agingReport(
+      [
+        invoice({ id: 1, status: "issued", dueDate: "2026-07-20", total: 100, amountPaid: 30 }), // 70 left
+        invoice({ id: 2, status: "issued", dueDate: "2026-07-20", total: 100, amountPaid: 100 }), // settled
+      ],
+      "2026-08-02",
+    );
+    expect(groups.find((g) => g.bucket === "0-30")).toEqual({
+      bucket: "0-30",
+      total: 70,
+      invoices: [expect.objectContaining({ id: 1 })],
+    });
   });
 
   it("ignores invoices without a due date", () => {

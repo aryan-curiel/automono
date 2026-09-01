@@ -14,6 +14,7 @@
     "dashboard": "Inicio",
     "clients": "Clientes",
     "invoices": "Facturas",
+    "collections": "Cobros",
     "expenses": "Gastos",
     "quarterlySummary": "Resumen trimestral",
     "annualSummary": "Resumen anual",
@@ -310,6 +311,42 @@
         "titleEmpty": "Mayor categoría de gasto"
       }
     }
+  },
+  "collections": {
+    "title": "Cobros",
+    "subtitle": "{{amount}} pendiente de cobro",
+    "loading": "Cargando…",
+    "empty": "Nada pendiente — todas las facturas emitidas están cobradas.",
+    "invoiceCount_one": "{{count}} factura",
+    "invoiceCount_other": "{{count}} facturas",
+    "buckets": {
+      "current": "Aún no vencidas",
+      "d0_30": "1–30 días de retraso",
+      "d30_60": "31–60 días de retraso",
+      "d60_plus": "60+ días de retraso"
+    },
+    "columns": {
+      "due": "Vencimiento",
+      "overdue": "Retraso",
+      "outstanding": "Pendiente"
+    },
+    "notDue": "No vencida",
+    "daysOverdue_one": "{{count}} día",
+    "daysOverdue_other": "{{count}} días",
+    "ofTotal": "de {{total}}",
+    "recordPayment": "Registrar cobro",
+    "copyReminder": "Copiar recordatorio de pago",
+    "copyLetter": "Copiar carta Ley 3/2004",
+    "recordPaymentTitle": "Registrar un cobro",
+    "recordPaymentFor": "Factura {{number}} — {{outstanding}} pendiente.",
+    "recordPaymentForShort": "Factura {{number}}",
+    "amount": "Importe",
+    "paymentDate": "Fecha de cobro",
+    "savePayment": "Guardar cobro",
+    "reminderTitle": "Recordatorio de pago",
+    "letterTitle": "Reclamación de intereses de demora (Ley 3/2004)",
+    "copy": "Copiar",
+    "copied": "Copiado"
   },
   "invoices": {
     "title": "Facturas",

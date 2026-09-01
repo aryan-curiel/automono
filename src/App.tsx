@@ -21,6 +21,7 @@ import { Clientes } from "./screens/Clientes";
 import { ClienteDetalle } from "./screens/ClienteDetalle";
 import { ClienteForm } from "./screens/ClienteForm";
 import { Facturas } from "./screens/Facturas";
+import { Cobros } from "./screens/Cobros";
 import { FacturaDetalle } from "./screens/FacturaDetalle";
 import { FacturaNueva } from "./screens/FacturaNueva";
 import { FacturaRectificar } from "./screens/FacturaRectificar";
@@ -479,6 +480,16 @@ export default function App() {
               }}
               onDeleteInvoice={(id) => void handleDeleteInvoice(id)}
               onDuplicateInvoice={(id) => void handleDuplicateInvoice(id)}
+            />
+          )}
+
+          {screen === "cobros" && businessProfile && (
+            <Cobros
+              invoices={invoices}
+              loading={invoicesLoading}
+              businessProfile={businessProfile}
+              onOpenInvoice={openInvoice}
+              onPaymentRecorded={() => void listInvoices().then(setInvoices)}
             />
           )}
 

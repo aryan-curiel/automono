@@ -52,7 +52,17 @@ export interface AgingGroup {
 
 const AGING_BUCKETS: AgingBucket[] = ["current", "0-30", "30-60", "60+"];
 
-/** Groups issued (unpaid) invoices by how overdue they are, relative to `todayIso`. */
+/** Outstanding (unpaid) amount on an invoice: total minus whatever's been received. */
+export function outstandingAmount(inv: InvoiceListItem): number {
+  return inv.total - (inv.amountPaid ?? 0);
+}
+
+/**
+ * Groups issued invoices with money still owed by how overdue they are, relative to `todayIso`.
+ * Buckets: `current` (not due yet), `0-30` (1–30 days late), `30-60` (31–60), `60+`.
+ * `total` per group is the sum of *outstanding* amounts, so a partially-paid invoice only
+ * counts for what's left. Fully-paid invoices drop out even if their status hasn't flipped.
+ */
 export function agingReport(invoices: InvoiceListItem[], todayIso: string): AgingGroup[] {
   const grouped: Record<AgingBucket, InvoiceListItem[]> = {
     current: [],
@@ -62,6 +72,7 @@ export function agingReport(invoices: InvoiceListItem[], todayIso: string): Agin
   };
   for (const inv of invoices) {
     if (inv.status !== "issued" || !inv.dueDate) continue;
+    if (outstandingAmount(inv) <= 0.005) continue;
     const overdue = daysBetween(inv.dueDate, todayIso);
     const bucket: AgingBucket =
       overdue <= 0 ? "current" : overdue <= 30 ? "0-30" : overdue <= 60 ? "30-60" : "60+";
@@ -70,7 +81,7 @@ export function agingReport(invoices: InvoiceListItem[], todayIso: string): Agin
   return AGING_BUCKETS.map((bucket) => ({
     bucket,
     invoices: grouped[bucket],
-    total: grouped[bucket].reduce((s, i) => s + i.total, 0),
+    total: grouped[bucket].reduce((s, i) => s + outstandingAmount(i), 0),
   }));
 }
 
