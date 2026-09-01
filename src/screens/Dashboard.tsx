@@ -7,7 +7,7 @@ import { Button } from "../components/ui/Button";
 import { KpiTile } from "../components/ui/KpiTile";
 import type { KpiDelta } from "../components/ui/KpiTile";
 import { PageHeader } from "../components/PageHeader";
-import { listExpenses } from "../db/expenses";
+import { ivaDeductiblePctOf, listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { getPreferences } from "../db/preferences";
 import { invoiceNumberLabel } from "../lib/invoice";
@@ -140,7 +140,6 @@ export function Dashboard({
   );
 
   const recentInvoices = invoices.slice(0, 4);
-  const upcomingDue = invoices.filter((inv) => inv.status === "issued").slice(0, 3);
   const topClients = revenueByClient(invoicesThisYear).slice(0, 5);
   const taxDeadlines = nextTaxDeadlines(todayIso, 2);
 
@@ -186,7 +185,8 @@ export function Dashboard({
     if (ivaDeductibleByQuarter.has(key)) {
       ivaDeductibleByQuarter.set(
         key,
-        ivaDeductibleByQuarter.get(key)! + (expense.ivaAmount ?? 0) * (expense.deductiblePct / 100),
+        ivaDeductibleByQuarter.get(key)! +
+          (expense.ivaAmount ?? 0) * (ivaDeductiblePctOf(expense) / 100),
       );
     }
   }
@@ -224,17 +224,22 @@ export function Dashboard({
     }),
   );
 
-  const trendData = QUARTER_KEYS.map((key) => {
+  // Only quarters from the RETA alta date onward — before that the freelancer
+  // wasn't registered, so plotting €0 there just adds an empty gutter.
+  const trendData = QUARTER_KEYS.filter(
+    (key) => altaKey === null || compareQuarterKeys(key, altaKey) >= 0,
+  ).map((key) => {
     const invoiced = grossInvoicedByQuarter.get(key) ?? 0;
     const expenses = expensesByQuarter.get(key) ?? 0;
+    const declared = statusByKey.get(key);
     return {
       key,
       label: quarterKeyLabel(key),
       invoiced,
       expenses,
       net: invoiced - expenses,
-      status: statusByKey.get(key) ?? ("none" as const),
-      locked: altaKey !== null && compareQuarterKeys(key, altaKey) < 0,
+      status:
+        declared ?? (key === CURRENT_KEY ? ("in_progress" as const) : ("none" as const)),
     };
   });
 
@@ -469,36 +474,6 @@ export function Dashboard({
         </Card>
       </div>
 
-      {recurring.length > 0 && (
-        <Card className="p-6 mb-4">
-          <div className="font-bold text-sm mb-4">{t("dashboard.recurring.title")}</div>
-          {recurring.map((c) => (
-            <div
-              key={c.clientId}
-              className="flex items-center justify-between gap-3 py-2.5 border-b border-border last:border-b-0"
-            >
-              <div className="min-w-0">
-                <div className="font-semibold text-[13px] truncate">{c.clientName}</div>
-                <div className="text-xs text-ink-soft truncate">
-                  {t("dashboard.recurring.lastInvoiced", {
-                    amount: formatEUR(c.lastInvoiceTotal),
-                  })}
-                </div>
-              </div>
-              <Button
-                variant="secondary"
-                onClick={() => void handleGenerateRecurring(c.lastInvoiceId)}
-                disabled={generatingFor === c.lastInvoiceId}
-              >
-                {generatingFor === c.lastInvoiceId
-                  ? t("dashboard.recurring.generating")
-                  : t("dashboard.recurring.generate")}
-              </Button>
-            </div>
-          ))}
-        </Card>
-      )}
-
       <div className="grid grid-cols-[1.5fr_1fr] gap-4">
         <Card className="p-6">
           <div className="font-bold text-sm mb-4">{t("dashboard.recentInvoices.title")}</div>
@@ -540,20 +515,32 @@ export function Dashboard({
         </Card>
 
         <Card className="p-6">
-          <div className="font-bold text-sm mb-4">{t("dashboard.upcomingDue.title")}</div>
-          {upcomingDue.length === 0 && (
+          <div className="font-bold text-sm mb-4">{t("dashboard.recurring.title")}</div>
+          {recurring.length === 0 && (
             <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
           )}
-          {upcomingDue.map((inv) => (
-            <div key={inv.id} className="py-2.5 border-b border-border last:border-b-0">
-              <div className="font-semibold text-[13px]">{inv.clientName}</div>
-              <div className="flex justify-between mt-0.5">
+          {recurring.map((c) => (
+            <div key={c.clientId} className="py-2.5 border-b border-border last:border-b-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-[13px] truncate min-w-0">{c.clientName}</span>
+                <span className="font-semibold text-[12.5px] font-mono shrink-0">
+                  {formatEUR(c.lastInvoiceTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-1">
                 <span className="text-xs text-ink-soft">
-                  {t("dashboard.upcomingDue.due", { date: formatDate(inv.dueDate) })}
+                  {t("dashboard.recurring.lastMonth")}
                 </span>
-                <span className="font-semibold text-[12.5px] font-mono">
-                  {formatEUR(inv.total)}
-                </span>
+                <Button
+                  variant="secondary"
+                  className="px-2.5 py-1 text-xs shrink-0"
+                  onClick={() => void handleGenerateRecurring(c.lastInvoiceId)}
+                  disabled={generatingFor === c.lastInvoiceId}
+                >
+                  {generatingFor === c.lastInvoiceId
+                    ? t("dashboard.recurring.generating")
+                    : t("dashboard.recurring.generateShort")}
+                </Button>
               </div>
             </div>
           ))}

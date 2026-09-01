@@ -43,6 +43,7 @@ function expense(overrides: Partial<ExpenseRecord>): ExpenseRecord {
     amount: 50,
     ivaAmount: null,
     deductiblePct: 100,
+    ivaDeductiblePct: null,
     irpfRate: null,
     irpfAmount: null,
     receiptFilePath: null,

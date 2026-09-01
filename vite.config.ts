@@ -8,6 +8,15 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [react(), tailwindcss()],
 
+  // Tauri loads the bundle from the local filesystem — chunk size is irrelevant
+  // and code-splitting buys nothing. Silence both build-time notices.
+  build: {
+    chunkSizeWarningLimit: 2000,
+    rolldownOptions: {
+      checks: { pluginTimings: false },
+    },
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

@@ -207,6 +207,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0031_business_documents_generic.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 31,
+            description: "expense_iva_deductible_pct",
+            sql: include_str!("../migrations/0032_expense_iva_deductible_pct.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

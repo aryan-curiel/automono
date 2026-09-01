@@ -60,6 +60,9 @@ export default function App() {
   const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
   const [newContractClientId, setNewContractClientId] = useState<number | undefined>(undefined);
   const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
+  // Screen to return to after the expense form closes (save or cancel), so creating a gasto
+  // lands back where it was started from instead of forcing the detail view on the user.
+  const [expenseReturnTo, setExpenseReturnTo] = useState<Screen>("gastos");
   const [pendingDropPath, setPendingDropPath] = useState<string | null>(null);
   const [dropToken, setDropToken] = useState(0);
   const [declarationDropPaths, setDeclarationDropPaths] = useState<string[] | null>(null);
@@ -153,6 +156,9 @@ export default function App() {
         if (!path || !isSupportedExpenseFile(path)) return;
         setPendingDropPath(path);
         setDropToken((n) => n + 1);
+        // Keep the origin as a real "somewhere else" — dropping onto an expense screen itself
+        // shouldn't make the form return to another copy of the form.
+        if (!screenRef.current.startsWith("gasto")) setExpenseReturnTo(screenRef.current);
         setScreen("gasto-nuevo");
       })
       .then((fn) => {
@@ -236,7 +242,10 @@ export default function App() {
   // "+ Nueva factura"/"+ Nuevo gasto"), so no stale value can leak through either path.
   function navigateFromDashboard(next: Screen) {
     if (next === "factura-nueva") setEditInvoiceId(null);
-    if (next === "gasto-nuevo") setPendingDropPath(null);
+    if (next === "gasto-nuevo") {
+      setPendingDropPath(null);
+      setExpenseReturnTo("dashboard");
+    }
     setScreen(next);
   }
 
@@ -539,6 +548,7 @@ export default function App() {
               }}
               onNewExpense={() => {
                 setPendingDropPath(null);
+                setExpenseReturnTo("gastos");
                 setScreen("gasto-nuevo");
               }}
             />
@@ -549,11 +559,8 @@ export default function App() {
               key={`gasto-nuevo-${dropToken}`}
               mode="create"
               initialFilePath={pendingDropPath ?? undefined}
-              onSaved={(expense) => {
-                setSelectedExpenseId(expense.id);
-                setScreen("gasto-detalle");
-              }}
-              onCancel={() => setScreen("gastos")}
+              onSaved={() => setScreen(expenseReturnTo)}
+              onCancel={() => setScreen(expenseReturnTo)}
             />
           )}
 

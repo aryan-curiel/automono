@@ -246,16 +246,12 @@
     },
     "recurring": {
       "title": "Facturas recurrentes",
-      "lastInvoiced": "Facturado el mes pasado: {{amount}}",
-      "generate": "Generar factura",
+      "lastMonth": "Facturado el mes pasado",
+      "generateShort": "Generar",
       "generating": "Generando…"
     },
     "recentInvoices": {
       "title": "Facturas recientes"
-    },
-    "upcomingDue": {
-      "title": "Próximos vencimientos",
-      "due": "Vence {{date}}"
     },
     "aging": {
       "title": "Antigüedad de cobros",
@@ -493,6 +489,8 @@
       "amount": "Importe",
       "ivaAmount": "Importe IVA",
       "deductiblePct": "% deducible",
+      "ivaDeductiblePct": "% deducible IVA",
+      "ivaDeductiblePctHint": "Déjalo vacío si es el mismo que el % deducible general. Indícalo aparte cuando difieran, p. ej. un vehículo de uso mixto (50% IVA) o suministros del hogar (0% IVA).",
       "irpfRate": "% Retención IRPF",
       "irpfAmount": "Importe retenido (IRPF)",
       "file": "Factura o recibo",

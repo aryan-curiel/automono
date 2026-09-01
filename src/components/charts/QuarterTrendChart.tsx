@@ -4,7 +4,6 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,7 +17,6 @@ export interface QuarterTrendDatum {
   expenses: number;
   net: number;
   status: "completed" | "in_progress" | "none";
-  locked: boolean;
 }
 
 export interface QuarterTrendChartProps {
@@ -37,12 +35,9 @@ const STATUS_DOT_COLOR: Record<QuarterTrendDatum["status"], string> = {
   none: "var(--color-ink-soft)",
 };
 
-/** Custom X-axis tick: a status dot (or a hand-drawn padlock when the quarter is
- * locked out by the RETA start date) above the quarter label, the whole thing
- * clickable — replaces the plain axis label to keep this chart's pre-existing
- * per-quarter navigation. Drawn as raw SVG rather than the Phosphor `Lock` icon
- * component, which would nest a second `<svg>` inside a Recharts-rendered tick
- * for no real benefit at this size (~8px). */
+/** Custom X-axis tick: a declaration-status dot above the quarter label, the
+ * whole thing clickable — replaces the plain axis label to keep this chart's
+ * pre-existing per-quarter navigation. */
 function QuarterTick({
   x,
   y,
@@ -59,43 +54,30 @@ function QuarterTick({
   const datum = data[index];
   if (!datum) return null;
 
-  const handleActivate = datum.locked ? undefined : () => onSelectQuarter(datum.key);
-
   return (
     <g
       transform={`translate(${x},${y})`}
-      onClick={handleActivate}
-      onKeyDown={
-        handleActivate
-          ? (e: ReactKeyboardEvent<SVGGElement>) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleActivate();
-              }
-            }
-          : undefined
-      }
-      tabIndex={datum.locked ? undefined : 0}
-      role={datum.locked ? undefined : "button"}
+      onClick={() => onSelectQuarter(datum.key)}
+      onKeyDown={(e: ReactKeyboardEvent<SVGGElement>) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelectQuarter(datum.key);
+        }
+      }}
+      tabIndex={0}
+      role="button"
       aria-label={datum.label}
-      style={{ cursor: datum.locked ? "default" : "pointer" }}
+      style={{ cursor: "pointer" }}
       className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
     >
       <rect x={-24} y={2} width={48} height={26} fill="transparent" />
-      {datum.locked ? (
-        <g transform="translate(-4,8)" fill="none" stroke="var(--color-ink-soft)" strokeWidth={1.2}>
-          <rect x={0} y={3} width={8} height={6} rx={1} />
-          <path d="M1.5 3 V1.5 a2.5 2.5 0 0 1 5 0 V3" />
-        </g>
-      ) : (
-        <circle
-          cx={0}
-          cy={11}
-          r={2.5}
-          fill={STATUS_DOT_COLOR[datum.status]}
-          fillOpacity={datum.status === "none" ? 0.4 : 1}
-        />
-      )}
+      <circle
+        cx={0}
+        cy={11}
+        r={2.5}
+        fill={STATUS_DOT_COLOR[datum.status]}
+        fillOpacity={datum.status === "none" ? 0.4 : 1}
+      />
       <text x={0} y={24} textAnchor="middle" fontSize={11} fill="var(--color-ink-soft)">
         {datum.label}
       </text>
@@ -115,8 +97,6 @@ export function QuarterTrendChart({
   onSelectQuarter,
   height = 220,
 }: QuarterTrendChartProps) {
-  const hasNegativeNet = data.some((d) => d.net < 0);
-
   return (
     <>
       <ResponsiveContainer width="100%" height={height}>
@@ -146,7 +126,6 @@ export function QuarterTrendChart({
             allowDecimals={false}
             width="auto"
           />
-          {hasNegativeNet && <ReferenceLine y={0} stroke="var(--color-border)" />}
           <Tooltip
             cursor={{ fill: "var(--color-surface-alt)" }}
             formatter={(value) => formatValue(Number(value))}

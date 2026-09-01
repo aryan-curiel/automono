@@ -43,6 +43,7 @@ function expense(overrides: Partial<ExpenseRecord>): ExpenseRecord {
     amount: 50,
     ivaAmount: null,
     deductiblePct: 100,
+    ivaDeductiblePct: null,
     irpfRate: null,
     irpfAmount: null,
     receiptFilePath: null,
@@ -149,6 +150,31 @@ describe("buildDeclarationSnapshot", () => {
     expect(snapshot.totals.irpfWithheld).toBe(150);
     expect(snapshot.totals.netIrpfIncome).toBe(750); // 1000 - 250
     expect(snapshot.totals.margin).toBe(600); // 750 - 150
+  });
+
+  it("uses a separate ivaDeductiblePct for the input-VAT total when it diverges from the base %", () => {
+    const snapshot = buildDeclarationSnapshot(
+      [],
+      [
+        // Mixed-use vehicle: 0% IRPF-deductible base, 50% deductible input VAT.
+        expense({ amount: 1000, deductiblePct: 0, ivaDeductiblePct: 50, ivaAmount: 210 }),
+        // Home-office supplies: 25% base, 0% input VAT.
+        expense({ amount: 100, deductiblePct: 25, ivaDeductiblePct: 0, ivaAmount: 21 }),
+      ],
+    );
+    expect(snapshot.totals.expensesDeductibleBase).toBe(25); // 1000*0 + 100*0.25
+    expect(snapshot.totals.expensesIvaDeductible).toBe(105); // 210*0.5 + 21*0
+    expect(snapshot.expenses[0].ivaDeductiblePct).toBe(50);
+    expect(snapshot.expenses[1].ivaDeductiblePct).toBe(0);
+  });
+
+  it("falls back to deductiblePct for input VAT when ivaDeductiblePct is null", () => {
+    const snapshot = buildDeclarationSnapshot(
+      [],
+      [expense({ amount: 100, deductiblePct: 30, ivaDeductiblePct: null, ivaAmount: 21 })],
+    );
+    expect(snapshot.totals.expensesIvaDeductible).toBe(6.3); // 21 * 0.30
+    expect(snapshot.expenses[0].ivaDeductiblePct).toBe(30);
   });
 
   it("respects a declaredPeriod override already applied by the caller's filtering", () => {
