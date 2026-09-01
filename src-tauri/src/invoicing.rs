@@ -5,6 +5,14 @@ use tauri_plugin_sql::{DbInstances, DbPool};
 
 const DB_NAME: &str = "sqlite:automono.db";
 
+/// Rounds a monetary amount to the nearest cent, mirroring the frontend's
+/// `roundCents` (`src/lib/invoice.ts`) so stored issued/rectified amounts match
+/// what the app computes everywhere else and don't carry binary-float noise into
+/// the declaration snapshot, gestor CSV, or PDF.
+fn round_cents(amount: f64) -> f64 {
+    (amount * 100.0).round() / 100.0
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuedInvoice {
@@ -129,18 +137,23 @@ pub async fn issue_invoice(
         .bind(invoice_id)
         .fetch_all(&mut *tx)
         .await?;
-    let subtotal: f64 = lines
-        .iter()
-        .map(|r| {
-            let quantity: f64 = r.get("quantity");
-            let unit_price: f64 = r.get("unit_price");
-            quantity * unit_price
-        })
-        .sum();
+    // Same rounding order as the frontend's `amountsFromSubtotal`: round each
+    // line total to cents, sum, round the subtotal, then derive iva/irpf/total
+    // each to 2 decimals.
+    let subtotal: f64 = round_cents(
+        lines
+            .iter()
+            .map(|r| {
+                let quantity: f64 = r.get("quantity");
+                let unit_price: f64 = r.get("unit_price");
+                round_cents(quantity * unit_price)
+            })
+            .sum(),
+    );
 
-    let iva_amount = subtotal * iva_rate / 100.0;
-    let irpf_amount = irpf_rate.map(|rate| subtotal * rate / 100.0);
-    let total = subtotal + iva_amount - irpf_amount.unwrap_or(0.0);
+    let iva_amount = round_cents(subtotal * iva_rate / 100.0);
+    let irpf_amount = irpf_rate.map(|rate| round_cents(subtotal * rate / 100.0));
+    let total = round_cents(subtotal + iva_amount - irpf_amount.unwrap_or(0.0));
 
     sqlx::query("UPDATE invoice_series SET next_invoice_number = next_invoice_number + 1 WHERE id = ?")
         .bind(series_id)
@@ -319,10 +332,11 @@ pub async fn create_rectification(
     let invoice_prefix: String = client.get("invoice_prefix");
     let next_number: i64 = client.get("next_rectification_number");
 
-    let subtotal: f64 = lines.iter().map(|l| l.quantity * l.unit_price).sum();
-    let iva_amount = subtotal * iva_rate / 100.0;
-    let irpf_amount = irpf_rate.map(|rate| subtotal * rate / 100.0);
-    let total = subtotal + iva_amount - irpf_amount.unwrap_or(0.0);
+    let subtotal: f64 =
+        round_cents(lines.iter().map(|l| round_cents(l.quantity * l.unit_price)).sum());
+    let iva_amount = round_cents(subtotal * iva_rate / 100.0);
+    let irpf_amount = irpf_rate.map(|rate| round_cents(subtotal * rate / 100.0));
+    let total = round_cents(subtotal + iva_amount - irpf_amount.unwrap_or(0.0));
 
     sqlx::query(
         "UPDATE invoice_series SET next_rectification_number = next_rectification_number + 1 WHERE id = ?",
@@ -357,7 +371,7 @@ pub async fn create_rectification(
         .bind(&line.description)
         .bind(line.quantity)
         .bind(line.unit_price)
-        .bind(line.quantity * line.unit_price)
+        .bind(round_cents(line.quantity * line.unit_price))
         .execute(&mut *tx)
         .await?;
     }
@@ -756,6 +770,132 @@ mod tests {
                 .await
                 .expect("read client_country_snapshot");
         assert_eq!(country.as_deref(), Some("US"));
+    }
+
+    /// A draft whose line products don't land cleanly on a cent boundary in
+    /// binary floating point (0.1 * 3 == 0.30000000000000004).
+    async fn seed_noisy_draft_invoice(pool: &SqlitePool, client_id: i64) -> i64 {
+        sqlx::query(
+            "INSERT INTO invoices (client_id, status, iva_rate, irpf_rate) VALUES (?, 'draft', 21, 15)",
+        )
+        .bind(client_id)
+        .execute(pool)
+        .await
+        .expect("insert invoice");
+        let id: i64 = sqlx::query_scalar("SELECT last_insert_rowid()")
+            .fetch_one(pool)
+            .await
+            .expect("last id");
+        for _ in 0..3 {
+            sqlx::query(
+                "INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, total)
+                 VALUES (?, 'work', 1, 0.1, 0.1)",
+            )
+            .bind(id)
+            .execute(pool)
+            .await
+            .expect("insert line");
+        }
+        id
+    }
+
+    fn assert_cent_rounded(value: f64, label: &str) {
+        assert_eq!(value, round_cents(value), "{label} must be cent-rounded");
+    }
+
+    #[tokio::test]
+    async fn issued_amounts_are_cent_rounded_and_the_totals_identity_holds_exactly() {
+        let pool = fresh_pool().await;
+        let client_id = seed_client(&pool).await;
+        let invoice_id = seed_noisy_draft_invoice(&pool, client_id).await;
+
+        let issued = issue_invoice(&pool, invoice_id, "2026-07-31")
+            .await
+            .expect("issue succeeds");
+
+        assert_cent_rounded(issued.subtotal, "subtotal");
+        assert_cent_rounded(issued.iva_amount, "iva_amount");
+        assert_cent_rounded(issued.irpf_amount.unwrap(), "irpf_amount");
+        assert_cent_rounded(issued.total, "total");
+        assert_eq!(issued.subtotal, 0.3);
+        assert_eq!(
+            issued.total,
+            round_cents(issued.subtotal + issued.iva_amount - issued.irpf_amount.unwrap()),
+            "total is consistent with the cent-rounded components"
+        );
+
+        let row = sqlx::query(
+            "SELECT subtotal, iva_amount, irpf_amount, total FROM invoices WHERE id = ?",
+        )
+        .bind(invoice_id)
+        .fetch_one(&pool)
+        .await
+        .expect("read stored amounts");
+        let subtotal: f64 = row.get("subtotal");
+        let iva: f64 = row.get("iva_amount");
+        let irpf: f64 = row.get("irpf_amount");
+        let total: f64 = row.get("total");
+        assert_cent_rounded(subtotal, "stored subtotal");
+        assert_cent_rounded(iva, "stored iva_amount");
+        assert_cent_rounded(irpf, "stored irpf_amount");
+        assert_cent_rounded(total, "stored total");
+        assert_eq!(total, subtotal + iva - irpf);
+    }
+
+    #[tokio::test]
+    async fn rectification_amounts_are_cent_rounded_and_the_totals_identity_holds_exactly() {
+        let pool = fresh_pool().await;
+        let client_id = seed_client(&pool).await;
+        let invoice_id = seed_draft_invoice(&pool, client_id).await;
+        issue_invoice(&pool, invoice_id, "2026-07-31")
+            .await
+            .expect("issue succeeds");
+
+        let rectification = create_rectification(
+            &pool,
+            invoice_id,
+            "partial",
+            "ajuste parcial",
+            "2026-08-01",
+            vec![
+                NewRectificationLine {
+                    description: "work".to_string(),
+                    quantity: 1.0,
+                    unit_price: -0.1,
+                },
+                NewRectificationLine {
+                    description: "work".to_string(),
+                    quantity: 1.0,
+                    unit_price: -0.1,
+                },
+                NewRectificationLine {
+                    description: "work".to_string(),
+                    quantity: 1.0,
+                    unit_price: -0.1,
+                },
+            ],
+        )
+        .await
+        .expect("rectification succeeds");
+
+        assert_cent_rounded(rectification.subtotal, "subtotal");
+        assert_cent_rounded(rectification.iva_amount, "iva_amount");
+        assert_cent_rounded(rectification.irpf_amount.unwrap(), "irpf_amount");
+        assert_cent_rounded(rectification.total, "total");
+        assert_eq!(rectification.subtotal, -0.3);
+        assert_eq!(
+            rectification.total,
+            rectification.subtotal + rectification.iva_amount - rectification.irpf_amount.unwrap(),
+        );
+
+        let line_total: f64 = sqlx::query_scalar(
+            "SELECT total FROM invoice_lines WHERE invoice_id = ? LIMIT 1",
+        )
+        .bind(rectification.id)
+        .fetch_one(&pool)
+        .await
+        .expect("read line total");
+        assert_cent_rounded(line_total, "stored line total");
     }
 
     #[tokio::test]
