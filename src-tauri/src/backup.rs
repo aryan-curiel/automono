@@ -23,7 +23,14 @@ const BACKUP_SUBDIRS: [&str; 6] = [
 struct BackupSettings {
     folder_path: String,
     retention_days: i64,
+    auto_backup_enabled: bool,
+    interval_days: i64,
+    last_backup_at: Option<String>,
 }
+
+/// Core tables every real AutoMono database has — used to reject a restore from a truncated,
+/// half-written, or foreign SQLite file that would otherwise pass a bare `is_file()` check.
+const CORE_TABLES: [&str; 2] = ["clients", "invoices"];
 
 async fn pool_from_app(app: &AppHandle) -> Option<SqlitePool> {
     let instances = app.state::<DbInstances>();
@@ -35,13 +42,26 @@ async fn pool_from_app(app: &AppHandle) -> Option<SqlitePool> {
 }
 
 async fn load_backup_settings(pool: &SqlitePool) -> Result<BackupSettings, sqlx::Error> {
-    let row = sqlx::query("SELECT folder_path, retention_days FROM backup_settings WHERE id = 1")
-        .fetch_one(pool)
-        .await?;
+    let row = sqlx::query(
+        "SELECT folder_path, retention_days, auto_backup_enabled, interval_days, last_backup_at \
+         FROM backup_settings WHERE id = 1",
+    )
+    .fetch_one(pool)
+    .await?;
     Ok(BackupSettings {
         folder_path: row.get("folder_path"),
         retention_days: row.get("retention_days"),
+        auto_backup_enabled: row.get::<i64, _>("auto_backup_enabled") != 0,
+        interval_days: row.get("interval_days"),
+        last_backup_at: row.get("last_backup_at"),
     })
+}
+
+/// True when a scheduled backup should run: auto-backup is enabled and either there is no
+/// prior backup or the last one predates `cutoff`. `last_backup_at` and `cutoff` must share
+/// the `%Y-%m-%dT%H:%M:%SZ` format so a lexicographic compare is a correct age compare.
+fn backup_is_due(enabled: bool, last_backup_at: Option<&str>, cutoff: &str) -> bool {
+    enabled && last_backup_at.is_none_or(|t| t < cutoff)
 }
 
 /// Recursively copies `src` into `dst`, creating directories as needed and preserving relative
@@ -162,6 +182,25 @@ pub async fn backup_on_close(app: &AppHandle) {
     if settings.folder_path.trim().is_empty() {
         return;
     }
+    // Only run on close when a scheduled backup is actually due — the same cadence gate the
+    // startup catch-up (`checkAutoBackup`) applies. Without this, every quit re-copies every
+    // attachment tree from scratch and blocks shutdown for up to 10s.
+    let cutoff: Option<String> =
+        sqlx::query_scalar("SELECT strftime('%Y-%m-%dT%H:%M:%SZ','now','-' || ? || ' days')")
+            .bind(settings.interval_days)
+            .fetch_one(&pool)
+            .await
+            .ok();
+    let Some(cutoff) = cutoff else {
+        return;
+    };
+    if !backup_is_due(
+        settings.auto_backup_enabled,
+        settings.last_backup_at.as_deref(),
+        &cutoff,
+    ) {
+        return;
+    }
     let backup = run_backup(app, &pool, Path::new(&settings.folder_path), settings.retention_days);
     match tokio::time::timeout(Duration::from_secs(10), backup).await {
         Ok(Err(e)) => eprintln!("backup on close failed: {e}"),
@@ -181,13 +220,154 @@ pub async fn backup_now_cmd(app: AppHandle) -> Result<String, String> {
     Ok(backup_dir.to_string_lossy().to_string())
 }
 
+/// Opens `db_path` read-only and confirms it is a structurally sound AutoMono database:
+/// `PRAGMA quick_check` passes and the core tables exist. Guards against restoring from a
+/// truncated, half-written, or foreign file that a bare `is_file()` check would accept.
+async fn validate_backup_db(db_path: &Path) -> Result<(), String> {
+    const CORRUPT: &str = "La copia de seguridad está dañada o incompleta";
+    if !db_path.is_file() {
+        return Err("La carpeta seleccionada no contiene una copia de seguridad válida".into());
+    }
+    let url = format!("sqlite://{}?mode=ro", db_path.to_string_lossy());
+    let pool = SqlitePool::connect(&url).await.map_err(|_| CORRUPT.to_string())?;
+
+    let result = async {
+        let check: String = sqlx::query_scalar("PRAGMA quick_check")
+            .fetch_one(&pool)
+            .await
+            .map_err(|_| CORRUPT.to_string())?;
+        if check != "ok" {
+            return Err(CORRUPT.to_string());
+        }
+        for table in CORE_TABLES {
+            let found: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
+            )
+            .bind(table)
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(0);
+            if found == 0 {
+                return Err(CORRUPT.to_string());
+            }
+        }
+        Ok(())
+    }
+    .await;
+
+    pool.close().await;
+    result
+}
+
+fn dir_is_empty(path: &Path) -> bool {
+    std::fs::read_dir(path)
+        .map(|mut e| e.next().is_none())
+        .unwrap_or(true)
+}
+
+fn dir_has_entries(path: &Path) -> bool {
+    std::fs::read_dir(path)
+        .map(|mut e| e.next().is_some())
+        .unwrap_or(false)
+}
+
+/// Restores the DB and attachment trees from `backup_dir` into `data_dir` / `db_dest`.
+///
+/// The source is fully validated before anything on disk is touched; the attachment trees and
+/// the DB are staged into `*.restoring` siblings, and the live copies are only swapped out once
+/// every staged copy has succeeded. A failure part-way through therefore can't leave live data
+/// half-deleted — the previous implementation `remove_dir_all`'d each live tree before copying
+/// its replacement, so a bad backup wiped live data with nothing to show for it.
+async fn restore_from_dir(backup_dir: &Path, data_dir: &Path, db_dest: &Path) -> Result<(), String> {
+    let db_src = backup_dir.join(DB_FILE_NAME);
+    validate_backup_db(&db_src).await?;
+
+    // Reject a backup whose attachment folder exists but is empty while the live one has files
+    // — the hallmark of an interrupted earlier backup. Aborting beats wiping live receipts /
+    // contracts with nothing to replace them.
+    // ponytail: emptiness heuristic, not a per-file manifest/checksum — deeper integrity check
+    // is a follow-up.
+    for sub in BACKUP_SUBDIRS {
+        let src = backup_dir.join(sub);
+        if src.exists() && dir_is_empty(&src) && dir_has_entries(&data_dir.join(sub)) {
+            return Err(format!(
+                "La copia de seguridad parece incompleta (carpeta «{sub}» vacía); restauración cancelada"
+            ));
+        }
+    }
+
+    // Stage every tree into a sibling temp dir first — non-destructive, a failure here leaves
+    // live data untouched.
+    let mut staged: Vec<(&str, PathBuf, PathBuf)> = Vec::new();
+    for sub in BACKUP_SUBDIRS {
+        let src = backup_dir.join(sub);
+        if !src.exists() {
+            continue;
+        }
+        let tmp = data_dir.join(format!("{sub}.restoring"));
+        if tmp.exists() {
+            std::fs::remove_dir_all(&tmp).map_err(|e| e.to_string())?;
+        }
+        copy_dir_recursive(&src, &tmp).map_err(|e| e.to_string())?;
+        staged.push((sub, data_dir.join(sub), tmp));
+    }
+
+    // Stage the DB copy too, so the commit step below is renames only.
+    let db_tmp = db_dest.with_file_name(format!("{DB_FILE_NAME}.restoring"));
+    std::fs::copy(&db_src, &db_tmp).map_err(|e| e.to_string())?;
+
+    // Commit. Past this point only renames and small removals run, so the failure window is
+    // narrow.
+    // ponytail: not one atomic transaction across all trees — acceptable for renames on a
+    // single filesystem; a crash mid-loop leaves *.old / *.restoring dirs to clean up, not
+    // lost data.
+    for (_sub, dst, tmp) in &staged {
+        let old = dst.with_file_name(format!(
+            "{}.old",
+            dst.file_name().unwrap_or_default().to_string_lossy()
+        ));
+        if old.exists() {
+            std::fs::remove_dir_all(&old).map_err(|e| e.to_string())?;
+        }
+        if dst.exists() {
+            std::fs::rename(dst, &old).map_err(|e| e.to_string())?;
+        }
+        std::fs::rename(tmp, dst).map_err(|e| e.to_string())?;
+        std::fs::remove_dir_all(&old).ok();
+    }
+
+    // Drop stale WAL/SHM/journal sidecars so SQLite doesn't replay old frames against the
+    // freshly-restored file, then swap the DB in with an atomic rename (never a torn write on
+    // the live file).
+    for suffix in ["-wal", "-shm", "-journal"] {
+        let sidecar = db_dest.with_file_name(format!("{DB_FILE_NAME}{suffix}"));
+        if sidecar.exists() {
+            std::fs::remove_file(&sidecar).map_err(|e| e.to_string())?;
+        }
+    }
+    std::fs::rename(&db_tmp, db_dest).map_err(|e| e.to_string())?;
+
+    let context_src = backup_dir.join(CONTEXT_FILE_NAME);
+    if context_src.is_file() {
+        std::fs::copy(&context_src, data_dir.join(CONTEXT_FILE_NAME)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result<(), String> {
     let backup_dir = PathBuf::from(&backup_folder);
-    let db_src = backup_dir.join(DB_FILE_NAME);
-    if !db_src.is_file() {
-        return Err("La carpeta seleccionada no contiene una copia de seguridad válida".into());
-    }
+
+    // Validate before closing the live pool or touching disk, so a bad folder pick fails
+    // cleanly with the app still fully usable.
+    validate_backup_db(&backup_dir.join(DB_FILE_NAME)).await?;
+
+    let db_dest = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| e.to_string())?
+        .join(DB_FILE_NAME);
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
 
     // Close the live pool before touching the db file: overwriting an open sqlite file while a
     // connection holds it can corrupt data.
@@ -195,37 +375,7 @@ pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result
         pool.close().await;
     }
 
-    let db_dest = app
-        .path()
-        .app_config_dir()
-        .map_err(|e| e.to_string())?
-        .join(DB_FILE_NAME);
-    // Drop any stale WAL/SHM/journal sidecars so SQLite doesn't replay old frames against the
-    // freshly-restored file on next open.
-    for suffix in ["-wal", "-shm", "-journal"] {
-        let sidecar = db_dest.with_file_name(format!("{DB_FILE_NAME}{suffix}"));
-        if sidecar.exists() {
-            std::fs::remove_file(&sidecar).map_err(|e| e.to_string())?;
-        }
-    }
-    std::fs::copy(&db_src, &db_dest).map_err(|e| e.to_string())?;
-
-    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    for sub in BACKUP_SUBDIRS {
-        let src = backup_dir.join(sub);
-        if src.exists() {
-            let dst = data_dir.join(sub);
-            if dst.exists() {
-                std::fs::remove_dir_all(&dst).map_err(|e| e.to_string())?;
-            }
-            copy_dir_recursive(&src, &dst).map_err(|e| e.to_string())?;
-        }
-    }
-    let context_src = backup_dir.join(CONTEXT_FILE_NAME);
-    if context_src.is_file() {
-        std::fs::copy(&context_src, data_dir.join(CONTEXT_FILE_NAME)).map_err(|e| e.to_string())?;
-    }
-    Ok(())
+    restore_from_dir(&backup_dir, &data_dir, &db_dest).await
 }
 
 #[tauri::command]
@@ -317,6 +467,111 @@ mod tests {
         let v: String = sqlx::query_scalar("SELECT v FROM t").fetch_one(&check_pool).await.unwrap();
         assert_eq!(v, "hello");
 
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn backup_is_due_respects_enabled_and_interval() {
+        // disabled → never due, even with no prior backup
+        assert!(!backup_is_due(false, None, "2025-01-01T00:00:00Z"));
+        // enabled, never backed up → due
+        assert!(backup_is_due(true, None, "2025-01-01T00:00:00Z"));
+        // enabled, last backup older than the cutoff → due
+        assert!(backup_is_due(
+            true,
+            Some("2024-01-01T00:00:00Z"),
+            "2025-01-01T00:00:00Z"
+        ));
+        // enabled, last backup within the interval → not due
+        assert!(!backup_is_due(
+            true,
+            Some("2025-06-01T00:00:00Z"),
+            "2025-01-01T00:00:00Z"
+        ));
+    }
+
+    async fn write_valid_db(path: &Path) {
+        let pool = sqlx::SqlitePool::connect(&format!("sqlite://{}?mode=rwc", path.display()))
+            .await
+            .unwrap();
+        sqlx::query("CREATE TABLE clients (id INTEGER PRIMARY KEY)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("CREATE TABLE invoices (id INTEGER PRIMARY KEY)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        pool.close().await;
+    }
+
+    fn restore_fixture(tag: &str) -> (PathBuf, PathBuf, PathBuf, PathBuf) {
+        let tmp = std::env::temp_dir().join(format!(
+            "automono_restore_{tag}_{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&tmp).ok();
+        let backup = tmp.join("backup-2025-01-01T00-00-00");
+        let data = tmp.join("data");
+        let db_dest = tmp.join("config").join(DB_FILE_NAME);
+        std::fs::create_dir_all(backup.join("expenses")).unwrap();
+        std::fs::create_dir_all(data.join("expenses")).unwrap();
+        std::fs::create_dir_all(db_dest.parent().unwrap()).unwrap();
+        (tmp, backup, data, db_dest)
+    }
+
+    #[tokio::test]
+    async fn restore_from_dir_rejects_a_corrupt_backup_db_without_touching_live_data() {
+        let (tmp, backup, data, db_dest) = restore_fixture("corrupt");
+        std::fs::write(backup.join(DB_FILE_NAME), b"not a sqlite database").unwrap();
+        std::fs::write(data.join("expenses/receipt.pdf"), b"live receipt").unwrap();
+        std::fs::write(&db_dest, b"live db").unwrap();
+
+        let res = restore_from_dir(&backup, &data, &db_dest).await;
+
+        assert!(res.is_err());
+        assert_eq!(
+            std::fs::read(data.join("expenses/receipt.pdf")).unwrap(),
+            b"live receipt"
+        );
+        assert_eq!(std::fs::read(&db_dest).unwrap(), b"live db");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[tokio::test]
+    async fn restore_from_dir_rejects_an_incomplete_backup_when_live_has_files() {
+        let (tmp, backup, data, db_dest) = restore_fixture("incomplete");
+        write_valid_db(&backup.join(DB_FILE_NAME)).await;
+        // backup/expenses/ exists (from the fixture) but is empty; live has a receipt
+        std::fs::write(data.join("expenses/receipt.pdf"), b"live receipt").unwrap();
+        std::fs::write(&db_dest, b"live db").unwrap();
+
+        let res = restore_from_dir(&backup, &data, &db_dest).await;
+
+        assert!(res.is_err());
+        assert_eq!(
+            std::fs::read(data.join("expenses/receipt.pdf")).unwrap(),
+            b"live receipt"
+        );
+        assert_eq!(std::fs::read(&db_dest).unwrap(), b"live db");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[tokio::test]
+    async fn restore_from_dir_swaps_in_backup_data_on_a_valid_backup() {
+        let (tmp, backup, data, db_dest) = restore_fixture("valid");
+        write_valid_db(&backup.join(DB_FILE_NAME)).await;
+        std::fs::write(backup.join("expenses/restored.pdf"), b"restored").unwrap();
+        std::fs::write(data.join("expenses/stale.pdf"), b"stale").unwrap();
+        std::fs::write(&db_dest, b"stale db").unwrap();
+
+        restore_from_dir(&backup, &data, &db_dest)
+            .await
+            .expect("valid restore succeeds");
+
+        assert!(data.join("expenses/restored.pdf").is_file());
+        assert!(!data.join("expenses/stale.pdf").exists());
+        assert_ne!(std::fs::read(&db_dest).unwrap(), b"stale db");
         std::fs::remove_dir_all(&tmp).ok();
     }
 
