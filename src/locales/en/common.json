@@ -652,5 +652,11 @@
     "pageNext": "Next page",
     "pageIndicator": "{{page}} of {{count}}",
     "vsPriorYear": "{{sign}}{{value}}% vs. prior year"
+  },
+  "reminders": {
+    "title": "Tax filing deadline",
+    "body_one": "{{label}} is due in {{count}} day ({{date}})",
+    "body_other": "{{label}} is due in {{count}} days ({{date}})",
+    "bodyToday": "{{label}} is due today ({{date}})"
   }
 }
