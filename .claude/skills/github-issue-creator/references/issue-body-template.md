@@ -14,7 +14,7 @@ Title: `<short summary of the defect>` — plain, no `Bug —` prefix (issues
 ```markdown
 <Part of #<epic-number> — only if linked to an epic>
 
-From REPORT.md §<n>.  <!-- or: Discovered while working on #<n>. -->
+From REPORT.md §<n>. <!-- or: Discovered while working on #<n>. -->
 
 ## Repro / where it is
 
@@ -39,7 +39,7 @@ concrete edits. Note any test to add.>
 
 Title: `<verb-first summary>` — e.g. "Extract a shared `<ListRow>` primitive".
 
-```markdown
+````markdown
 <Part of #<epic-number> — only if linked>
 
 From REPORT.md §<n>.
@@ -56,9 +56,9 @@ From REPORT.md §<n>.
 ## Implementation notes
 
 <Optional. Sequencing, gotchas, what NOT to do. A real diff snippet in a
-fenced block (```ts / ```rust / ```sql) when it clarifies the shape — not a
+fenced block (`ts / `rust / ```sql) when it clarifies the shape — not a
 full implementation.>
-```
+````
 
 ## Feature (Issue Type: `Feature`)
 

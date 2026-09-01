@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../src-tauri/migrations");
 
 function migrationFiles(): string[] {
-  return readdirSync(MIGRATIONS_DIR).filter((f: string) => f.endsWith(".sql")).sort();
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((f: string) => f.endsWith(".sql"))
+    .sort();
 }
 
 function freshDb() {

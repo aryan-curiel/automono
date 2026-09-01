@@ -3,7 +3,15 @@ import { amountsFromLines, invoiceNumberLabel, roundCents } from "./invoice";
 import type { InvoiceLineRecord } from "../db/invoices";
 
 function line(overrides: Partial<InvoiceLineRecord>): InvoiceLineRecord {
-  return { id: 1, invoiceId: 1, description: "", quantity: 1, unitPrice: 0, total: 0, ...overrides };
+  return {
+    id: 1,
+    invoiceId: 1,
+    description: "",
+    quantity: 1,
+    unitPrice: 0,
+    total: 0,
+    ...overrides,
+  };
 }
 
 describe("roundCents", () => {
@@ -33,9 +41,9 @@ describe("amountsFromLines", () => {
 
 describe("invoiceNumberLabel", () => {
   it("labels an unissued invoice as a draft", () => {
-    expect(invoiceNumberLabel({ seriesPrefix: null, invoiceNumber: null, isRectification: false })).toBe(
-      "Borrador",
-    );
+    expect(
+      invoiceNumberLabel({ seriesPrefix: null, invoiceNumber: null, isRectification: false }),
+    ).toBe("Borrador");
   });
 
   it("pads the number and prefixes rectifications with R", () => {

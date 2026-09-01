@@ -44,9 +44,7 @@ export function Toast({ message, tone = "danger", onDismiss, offset = 0 }: Toast
           animate={{ opacity: 1, y: 0, scale: 1, top: `${64 + offset * 56}px` }}
           exit={{ opacity: 0, y: -8, scale: 0.97 }}
           transition={
-            reduceMotion
-              ? { duration: 0 }
-              : { type: "spring", stiffness: 400, damping: 30 }
+            reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }
           }
           className="fixed right-5 z-50 max-w-sm flex items-start gap-2.5 px-4 py-3
                      rounded-sheet bg-sheet-glass backdrop-blur-xl backdrop-saturate-150

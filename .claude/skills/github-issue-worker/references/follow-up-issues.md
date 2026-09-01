@@ -11,7 +11,7 @@ Something you noticed but deliberately didn't fix because it wasn't in the
 confirmed plan's scope — not every nice-to-have. If it's small enough to
 just do under the current plan, prefer that.
 
-A `ponytail:` comment you *added* during this work (a deliberate shortcut
+A `ponytail:` comment you _added_ during this work (a deliberate shortcut
 with a known ceiling) is a candidate — surface it so the deferral is
 tracked, not lost. (`ponytail:ponytail-debt` harvests these repo-wide if the
 user wants the full ledger.)

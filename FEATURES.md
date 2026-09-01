@@ -68,7 +68,7 @@ open an invoice at least once to generate its PDF before bundling).
 From the full-app review — checked against the "done" list above and
 `FUTURE_FEATURES.md` (Verifactu) to avoid overlap.
 
-- **Recurring expense detection** — mirror the existing recurring-*invoice* nudge
+- **Recurring expense detection** — mirror the existing recurring-_invoice_ nudge
   (`src/lib/recurring.ts`) for expenses that repeat monthly (rent, software
   subscriptions).
 - **Overdue invoice OS notification** — the aging card (task 1) is passive, only

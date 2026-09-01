@@ -88,10 +88,7 @@ describe("expensesInPeriod", () => {
   it("includes undeclared expenses dated inside the period, excludes ones outside it", () => {
     const period = quarterRange(2026, 1);
     const result = expensesInPeriod(
-      [
-        expense({ id: 1, date: "2026-02-01" }),
-        expense({ id: 2, date: "2026-04-01" }),
-      ],
+      [expense({ id: 1, date: "2026-02-01" }), expense({ id: 2, date: "2026-04-01" })],
       period,
     );
     expect(result.map((e) => e.id)).toEqual([1]);

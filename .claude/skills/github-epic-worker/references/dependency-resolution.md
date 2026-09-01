@@ -70,15 +70,15 @@ than two subagents corrupting the same file.
 **AutoMono hot files** — treat any two issues sharing one of these as a
 hard conflict:
 
-| File | Why |
-|---|---|
-| `src/App.tsx` | central screen switch + drag-drop wiring; every screen feature touches it |
-| `src/db/invoices.ts` | shared query layer for Dashboard / Facturas / ResumenTrimestral |
-| `src/lib/quarterlyDeclaration.ts` | the single source of tax truth |
-| `src/lib/modeloReport.ts` | modelo expected-casilla logic |
-| `src-tauri/src/lib.rs` | command registration + `all_migrations()` |
-| `src/locales/en/common.json` + `.../es/common.json` | any i18n-string change |
-| `src-tauri/migrations/` | numbering collides — **never** parallelize two migration-adding issues |
+| File                                                | Why                                                                       |
+| --------------------------------------------------- | ------------------------------------------------------------------------- |
+| `src/App.tsx`                                       | central screen switch + drag-drop wiring; every screen feature touches it |
+| `src/db/invoices.ts`                                | shared query layer for Dashboard / Facturas / ResumenTrimestral           |
+| `src/lib/quarterlyDeclaration.ts`                   | the single source of tax truth                                            |
+| `src/lib/modeloReport.ts`                           | modelo expected-casilla logic                                             |
+| `src-tauri/src/lib.rs`                              | command registration + `all_migrations()`                                 |
+| `src/locales/en/common.json` + `.../es/common.json` | any i18n-string change                                                    |
+| `src-tauri/migrations/`                             | numbering collides — **never** parallelize two migration-adding issues    |
 
 ## 4. Build ordered, conflict-free batches
 

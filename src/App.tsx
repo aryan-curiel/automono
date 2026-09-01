@@ -202,7 +202,9 @@ export default function App() {
     void listInvoices()
       .then(setInvoices)
       .finally(() => setInvoicesLoading(false));
-  }, [dbReady, screen]);
+    // Not keyed on `screen`: mutations already refresh via setInvoices(await listInvoices()),
+    // so re-querying every navigation is redundant work that scales with invoice count (#17).
+  }, [dbReady]);
 
   useEffect(() => {
     if (!dbReady) return;

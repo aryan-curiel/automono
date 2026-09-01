@@ -29,8 +29,13 @@ function rollOffWeekend(isoDate: string): string {
 function quarterlyDeadline(year: number, quarter: 1 | 2 | 3 | 4): TaxDeadline {
   const dueDay = quarter === 4 ? 30 : 20;
   const dueMonth = quarter * 3 + 1;
-  const dueDate = dueMonth > 12 ? iso(year + 1, dueMonth - 12, dueDay) : iso(year, dueMonth, dueDay);
-  return { model: "130/303", label: `Modelo 130/303 (${quarter}T)`, dueDate: rollOffWeekend(dueDate) };
+  const dueDate =
+    dueMonth > 12 ? iso(year + 1, dueMonth - 12, dueDay) : iso(year, dueMonth, dueDay);
+  return {
+    model: "130/303",
+    label: `Modelo 130/303 (${quarter}T)`,
+    dueDate: rollOffWeekend(dueDate),
+  };
 }
 
 /** Recovers the "YYYY-QN" quarter a 130/303 deadline reports on, from its due date (the month after

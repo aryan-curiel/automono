@@ -106,7 +106,9 @@ function currentSnapshot(
 export async function listDeclarations(): Promise<DeclarationListItem[]> {
   const db = await getDb();
   const [rows, invoices, expenses] = await Promise.all([
-    db.select<DeclarationRow[]>("SELECT * FROM quarterly_declarations ORDER BY year DESC, quarter DESC"),
+    db.select<DeclarationRow[]>(
+      "SELECT * FROM quarterly_declarations ORDER BY year DESC, quarter DESC",
+    ),
     listInvoices(),
     listExpenses(),
   ]);

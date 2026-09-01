@@ -21,24 +21,26 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `src/components/charts/QuarterBarChart.tsx` (new) | Single-series column chart for a fixed quarter axis — used by the IVA and top-category cards |
-| `src/components/charts/StackedQuarterBarChart.tsx` (new) | Two-series stacked column chart + legend — used by the paid-vs-outstanding card |
-| `src/screens/Dashboard.tsx` (modify) | Build chart-ready data arrays, swap the old bar-list JSX for the two new components, restyle the composition-card meters |
+| File                                                                | Responsibility                                                                                                                                    |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/components/charts/QuarterBarChart.tsx` (new)                   | Single-series column chart for a fixed quarter axis — used by the IVA and top-category cards                                                      |
+| `src/components/charts/StackedQuarterBarChart.tsx` (new)            | Two-series stacked column chart + legend — used by the paid-vs-outstanding card                                                                   |
+| `src/screens/Dashboard.tsx` (modify)                                | Build chart-ready data arrays, swap the old bar-list JSX for the two new components, restyle the composition-card meters                          |
 | `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | `dashboard.analytics.ivaTrend.credit` (a full sentence) → `.creditSuffix` (a short qualifier, composed with `formatEUR` in the tooltip formatter) |
-| `package.json`, `bun.lock` (modify) | Add `recharts` dependency |
+| `package.json`, `bun.lock` (modify)                                 | Add `recharts` dependency                                                                                                                         |
 
 ---
 
 ### Task 1: `QuarterBarChart` component + IVA card + top-category card
 
 **Files:**
+
 - Create: `src/components/charts/QuarterBarChart.tsx`
 - Modify: `src/screens/Dashboard.tsx` (import, two new data-array consts replacing two deleted max consts, two JSX swaps)
 - Modify: `package.json`, `bun.lock` (via `bun add recharts`)
 
 **Interfaces:**
+
 - Produces: `QuarterBarDatum { key: string; label: string; value: number }`, `QuarterBarChartProps { data: QuarterBarDatum[]; color: string; formatValue: (value: number) => string; formatTooltipValue?: (value: number) => string; height?: number }`, `QuarterBarChart(props: QuarterBarChartProps): JSX.Element`. Task 2 does not consume these — it builds its own equivalent shape for the stacked chart.
 
 - [ ] **Step 1: Install recharts**
@@ -190,20 +192,20 @@ import { QuarterBarChart } from "../components/charts/QuarterBarChart";
 Change:
 
 ```ts
-  const maxIvaNetValue = Math.max(
-    1,
-    ...QUARTER_KEYS.map((key) => Math.max(0, ivaNetByQuarter.get(key) ?? 0)),
-  );
+const maxIvaNetValue = Math.max(
+  1,
+  ...QUARTER_KEYS.map((key) => Math.max(0, ivaNetByQuarter.get(key) ?? 0)),
+);
 ```
 
 to:
 
 ```ts
-  const ivaTrendData = QUARTER_KEYS.map((key) => ({
-    key,
-    label: quarterKeyLabel(key),
-    value: ivaNetByQuarter.get(key) ?? 0,
-  }));
+const ivaTrendData = QUARTER_KEYS.map((key) => ({
+  key,
+  label: quarterKeyLabel(key),
+  value: ivaNetByQuarter.get(key) ?? 0,
+}));
 ```
 
 - [ ] **Step 6: Replace `maxCategoryTrendValue` with the chart data array**
@@ -211,20 +213,20 @@ to:
 Change:
 
 ```ts
-  const maxCategoryTrendValue = Math.max(
-    1,
-    ...QUARTER_KEYS.map((key) => categoryTrendByQuarter.get(key) ?? 0),
-  );
+const maxCategoryTrendValue = Math.max(
+  1,
+  ...QUARTER_KEYS.map((key) => categoryTrendByQuarter.get(key) ?? 0),
+);
 ```
 
 to:
 
 ```ts
-  const categoryTrendData = QUARTER_KEYS.map((key) => ({
-    key,
-    label: quarterKeyLabel(key),
-    value: categoryTrendByQuarter.get(key) ?? 0,
-  }));
+const categoryTrendData = QUARTER_KEYS.map((key) => ({
+  key,
+  label: quarterKeyLabel(key),
+  value: categoryTrendByQuarter.get(key) ?? 0,
+}));
 ```
 
 - [ ] **Step 7: Swap the IVA card's JSX**
@@ -232,58 +234,52 @@ to:
 Change:
 
 ```tsx
-        <Card className="p-6">
-          <div className="font-bold text-sm mb-4">{t("dashboard.analytics.ivaTrend.title")}</div>
-          {QUARTER_KEYS.map((key) => {
-            const net = ivaNetByQuarter.get(key) ?? 0;
-            return (
-              <div key={key} className="py-2 border-b border-border last:border-b-0">
-                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
-                {net < 0 ? (
-                  <div className="text-xs text-success">
-                    {t("dashboard.analytics.ivaTrend.credit", { amount: formatEUR(Math.abs(net)) })}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-accent"
-                        style={{ width: `${(net / maxIvaNetValue) * 100}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-[11px] w-20 text-right shrink-0">
-                      {formatEUR(net)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          <div className="text-[11px] text-ink-soft mt-3">
-            {t("dashboard.analytics.ivaTrend.subtitle")}
+<Card className="p-6">
+  <div className="font-bold text-sm mb-4">{t("dashboard.analytics.ivaTrend.title")}</div>
+  {QUARTER_KEYS.map((key) => {
+    const net = ivaNetByQuarter.get(key) ?? 0;
+    return (
+      <div key={key} className="py-2 border-b border-border last:border-b-0">
+        <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+        {net < 0 ? (
+          <div className="text-xs text-success">
+            {t("dashboard.analytics.ivaTrend.credit", { amount: formatEUR(Math.abs(net)) })}
           </div>
-        </Card>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+              <div
+                className="h-full rounded-full bg-accent"
+                style={{ width: `${(net / maxIvaNetValue) * 100}%` }}
+              />
+            </div>
+            <span className="font-mono text-[11px] w-20 text-right shrink-0">{formatEUR(net)}</span>
+          </div>
+        )}
+      </div>
+    );
+  })}
+  <div className="text-[11px] text-ink-soft mt-3">{t("dashboard.analytics.ivaTrend.subtitle")}</div>
+</Card>
 ```
 
 to:
 
 ```tsx
-        <Card className="p-6">
-          <div className="font-bold text-sm mb-4">{t("dashboard.analytics.ivaTrend.title")}</div>
-          <QuarterBarChart
-            data={ivaTrendData}
-            color="var(--color-accent)"
-            formatValue={formatEUR}
-            formatTooltipValue={(value) =>
-              value < 0
-                ? `${formatEUR(Math.abs(value))} ${t("dashboard.analytics.ivaTrend.creditSuffix")}`
-                : formatEUR(value)
-            }
-          />
-          <div className="text-[11px] text-ink-soft mt-3">
-            {t("dashboard.analytics.ivaTrend.subtitle")}
-          </div>
-        </Card>
+<Card className="p-6">
+  <div className="font-bold text-sm mb-4">{t("dashboard.analytics.ivaTrend.title")}</div>
+  <QuarterBarChart
+    data={ivaTrendData}
+    color="var(--color-accent)"
+    formatValue={formatEUR}
+    formatTooltipValue={(value) =>
+      value < 0
+        ? `${formatEUR(Math.abs(value))} ${t("dashboard.analytics.ivaTrend.creditSuffix")}`
+        : formatEUR(value)
+    }
+  />
+  <div className="text-[11px] text-ink-soft mt-3">{t("dashboard.analytics.ivaTrend.subtitle")}</div>
+</Card>
 ```
 
 - [ ] **Step 8: Swap the top-category card's JSX**
@@ -291,39 +287,43 @@ to:
 Change:
 
 ```tsx
-          {!topExpenseCategory ? (
-            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
-          ) : (
-            QUARTER_KEYS.map((key) => {
-              const amount = categoryTrendByQuarter.get(key) ?? 0;
-              return (
-                <div key={key} className="py-2 border-b border-border last:border-b-0">
-                  <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-warn"
-                        style={{ width: `${(amount / maxCategoryTrendValue) * 100}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-[11px] w-20 text-right shrink-0">
-                      {formatEUR(amount)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
-          )}
+{
+  !topExpenseCategory ? (
+    <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
+  ) : (
+    QUARTER_KEYS.map((key) => {
+      const amount = categoryTrendByQuarter.get(key) ?? 0;
+      return (
+        <div key={key} className="py-2 border-b border-border last:border-b-0">
+          <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-surface-alt overflow-hidden">
+              <div
+                className="h-full rounded-full bg-warn"
+                style={{ width: `${(amount / maxCategoryTrendValue) * 100}%` }}
+              />
+            </div>
+            <span className="font-mono text-[11px] w-20 text-right shrink-0">
+              {formatEUR(amount)}
+            </span>
+          </div>
+        </div>
+      );
+    })
+  );
+}
 ```
 
 to:
 
 ```tsx
-          {!topExpenseCategory ? (
-            <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
-          ) : (
-            <QuarterBarChart data={categoryTrendData} color="var(--color-warn)" formatValue={formatEUR} />
-          )}
+{
+  !topExpenseCategory ? (
+    <div className="text-xs text-ink-soft">{t("dashboard.noData")}</div>
+  ) : (
+    <QuarterBarChart data={categoryTrendData} color="var(--color-warn)" formatValue={formatEUR} />
+  );
+}
 ```
 
 - [ ] **Step 9: Typecheck and lint**
@@ -335,6 +335,7 @@ Expected: no errors. (`quarterKeyLabel` stays used elsewhere in the file; if lin
 
 Run: `bun run tauri dev`, open Inicio, scroll to "Análisis".
 Expected:
+
 - "IVA a liquidar por trimestre" renders as a real bar chart: X-axis quarter labels, Y-axis € values, hairline gridlines, hover tooltip per bar. A credit (negative) quarter, if any, shows its bar below a zero line and the tooltip reads "…€ a tu favor" (or "credit" in English).
 - "Mayor categoría de gasto: <category>" renders the same chart shape in the `warn` (amber) color.
 - Both charts resize with the window (no horizontal scrollbar, no overflow).
@@ -351,10 +352,12 @@ git commit -m "feat: replace IVA and top-category cards' bars with real Recharts
 ### Task 2: `StackedQuarterBarChart` component + paid/pending card + composition-card meter polish
 
 **Files:**
+
 - Create: `src/components/charts/StackedQuarterBarChart.tsx`
 - Modify: `src/screens/Dashboard.tsx` (import, one new data-array const, one JSX swap, two meter-track class tweaks)
 
 **Interfaces:**
+
 - Produces: `StackedQuarterBarDatum { key: string; label: string; a: number; b: number }`, `StackedQuarterBarChartProps { data: StackedQuarterBarDatum[]; aColor: string; bColor: string; aLabel: string; bLabel: string; formatValue: (value: number) => string; height?: number }`, `StackedQuarterBarChart(props: StackedQuarterBarChartProps): JSX.Element`.
 
 - [ ] **Step 1: Create `StackedQuarterBarChart.tsx`**
@@ -467,43 +470,43 @@ import { StackedQuarterBarChart } from "../components/charts/StackedQuarterBarCh
 Change:
 
 ```ts
-  const paidByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
+const paidByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
 
-  const clientInvoiceCountThisYear = new Map<number, number>();
+const clientInvoiceCountThisYear = new Map<number, number>();
 ```
 
 to:
 
 ```ts
-  const paidByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-  const paidPendingData = QUARTER_KEYS.map((key) => {
-    const total = grossInvoicedByQuarter.get(key) ?? 0;
-    const paid = paidByQuarter.get(key) ?? 0;
-    return {
-      key,
-      label: quarterKeyLabel(key),
-      a: paid,
-      b: Math.max(0, total - paid),
-    };
-  });
+const paidByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
+const paidPendingData = QUARTER_KEYS.map((key) => {
+  const total = grossInvoicedByQuarter.get(key) ?? 0;
+  const paid = paidByQuarter.get(key) ?? 0;
+  return {
+    key,
+    label: quarterKeyLabel(key),
+    a: paid,
+    b: Math.max(0, total - paid),
+  };
+});
 
-  const clientInvoiceCountThisYear = new Map<number, number>();
+const clientInvoiceCountThisYear = new Map<number, number>();
 ```
 
 - [ ] **Step 4: Swap the paid/pending card's JSX**
@@ -511,49 +514,51 @@ to:
 Change:
 
 ```tsx
-          {QUARTER_KEYS.map((key) => {
-            const total = grossInvoicedByQuarter.get(key) ?? 0;
-            const paid = paidByQuarter.get(key) ?? 0;
-            const pending = Math.max(0, total - paid);
-            const paidPct = total > 0 ? (paid / total) * 100 : 0;
-            const pendingPct = total > 0 ? (pending / total) * 100 : 0;
-            return (
-              <div key={key} className="py-2 border-b border-border last:border-b-0">
-                <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
-                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden flex">
-                  <div className="h-full bg-success" style={{ width: `${paidPct}%` }} />
-                  <div className="h-full bg-warn" style={{ width: `${pendingPct}%` }} />
-                </div>
-                <div className="flex items-center justify-between mt-1 text-[11px] font-mono">
-                  <span className="text-success">{formatEUR(paid)}</span>
-                  <span className="text-warn">{formatEUR(pending)}</span>
-                </div>
-              </div>
-            );
-          })}
-          <div className="flex items-center gap-4 mt-3 text-[11px] text-ink-soft">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              {t("dashboard.analytics.paidVsOutstanding.paid")}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-warn" />
-              {t("dashboard.analytics.paidVsOutstanding.pending")}
-            </span>
-          </div>
+{
+  QUARTER_KEYS.map((key) => {
+    const total = grossInvoicedByQuarter.get(key) ?? 0;
+    const paid = paidByQuarter.get(key) ?? 0;
+    const pending = Math.max(0, total - paid);
+    const paidPct = total > 0 ? (paid / total) * 100 : 0;
+    const pendingPct = total > 0 ? (pending / total) * 100 : 0;
+    return (
+      <div key={key} className="py-2 border-b border-border last:border-b-0">
+        <div className="text-xs font-medium mb-1.5">{quarterKeyLabel(key)}</div>
+        <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden flex">
+          <div className="h-full bg-success" style={{ width: `${paidPct}%` }} />
+          <div className="h-full bg-warn" style={{ width: `${pendingPct}%` }} />
+        </div>
+        <div className="flex items-center justify-between mt-1 text-[11px] font-mono">
+          <span className="text-success">{formatEUR(paid)}</span>
+          <span className="text-warn">{formatEUR(pending)}</span>
+        </div>
+      </div>
+    );
+  });
+}
+<div className="flex items-center gap-4 mt-3 text-[11px] text-ink-soft">
+  <span className="flex items-center gap-1.5">
+    <span className="w-1.5 h-1.5 rounded-full bg-success" />
+    {t("dashboard.analytics.paidVsOutstanding.paid")}
+  </span>
+  <span className="flex items-center gap-1.5">
+    <span className="w-1.5 h-1.5 rounded-full bg-warn" />
+    {t("dashboard.analytics.paidVsOutstanding.pending")}
+  </span>
+</div>;
 ```
 
 to:
 
 ```tsx
-          <StackedQuarterBarChart
-            data={paidPendingData}
-            aColor="var(--color-success)"
-            bColor="var(--color-info)"
-            aLabel={t("dashboard.analytics.paidVsOutstanding.paid")}
-            bLabel={t("dashboard.analytics.paidVsOutstanding.pending")}
-            formatValue={formatEUR}
-          />
+<StackedQuarterBarChart
+  data={paidPendingData}
+  aColor="var(--color-success)"
+  bColor="var(--color-info)"
+  aLabel={t("dashboard.analytics.paidVsOutstanding.paid")}
+  bLabel={t("dashboard.analytics.paidVsOutstanding.pending")}
+  formatValue={formatEUR}
+/>
 ```
 
 - [ ] **Step 5: Polish the composition card's meters**
@@ -561,45 +566,33 @@ to:
 Change (both occurrences in the composition card — the top-client meter and the repeat-clients meter):
 
 ```tsx
-                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${topClientShare * 100}%` }}
-                  />
-                </div>
+<div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
+  <div className="h-full rounded-full bg-accent" style={{ width: `${topClientShare * 100}%` }} />
+</div>
 ```
 
 to:
 
 ```tsx
-                <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${topClientShare * 100}%` }}
-                  />
-                </div>
+<div className="h-2 rounded-full bg-surface-alt overflow-hidden">
+  <div className="h-full rounded-full bg-accent" style={{ width: `${topClientShare * 100}%` }} />
+</div>
 ```
 
 and:
 
 ```tsx
-                <div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${repeatClientShare * 100}%` }}
-                  />
-                </div>
+<div className="h-1.5 rounded-full bg-surface-alt overflow-hidden">
+  <div className="h-full rounded-full bg-accent" style={{ width: `${repeatClientShare * 100}%` }} />
+</div>
 ```
 
 to:
 
 ```tsx
-                <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${repeatClientShare * 100}%` }}
-                  />
-                </div>
+<div className="h-2 rounded-full bg-surface-alt overflow-hidden">
+  <div className="h-full rounded-full bg-accent" style={{ width: `${repeatClientShare * 100}%` }} />
+</div>
 ```
 
 (Both meters already have a fully rounded track and fill end — the only change here is the track thickness, `h-1.5` → `h-2`, for a slightly more meter-like, less progress-bar-like weight. Do not touch the surrounding label/percentage markup.)
@@ -613,6 +606,7 @@ Expected: no errors.
 
 Run: `bun run tauri dev`, open Inicio, scroll to "Análisis".
 Expected:
+
 - "Cobrado vs. pendiente" renders as a stacked column chart: green (paid) segment at the bottom of each bar, blue (pending) segment on top, hairline gridlines, hover tooltip shows both segment values, legend below the chart reads "Cobrado" / "Pendiente" with matching colored dots.
 - Composition card's two meters are visibly slightly thicker than before; no other visual change there.
 
@@ -641,6 +635,7 @@ If a local dev database exists (e.g. `~/Library/Application Support/com.aryancur
 - [ ] **Step 3: Visual/theme check**
 
 Run `bun run tauri dev`. Confirm:
+
 - All three charts (IVA, paid/pending, top-category) render with correct axis labels, tooltips on hover, and no layout overflow at the app's default window width.
 - Toggle light/dark in Ajustes — bars, gridlines, and tooltip backgrounds all repaint correctly in both themes (this is the payoff of using `var(--color-*)` fills instead of hex).
 - The IVA chart's negative-quarter case (if any exists in the data) renders below the zero line with the correct tooltip suffix.

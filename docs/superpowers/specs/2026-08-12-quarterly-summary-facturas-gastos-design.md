@@ -90,6 +90,7 @@ existing `declarations.detail.*` keys (still accurate — a filed declaration di
 include these).
 
 New keys (es):
+
 - `resumenTrimestral.invoicesTitle`: "Facturas"
 - `resumenTrimestral.noInvoices`: "No hay facturas en este trimestre."
 - `resumenTrimestral.expensesTitle`: "Gastos"

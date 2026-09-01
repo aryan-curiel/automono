@@ -149,7 +149,11 @@ export function expectedCasillas(
       // isolated-quarter estimate, explicitly labelled so it's never read as an authoritative box.
       const pagoFraccionado = Math.max(0, totals.netIrpfIncome * 0.2 - totals.irpfWithheld);
       return [
-        { key: "rendimientoNeto", label: "Rendimiento neto", expected: round2(totals.netIrpfIncome) },
+        {
+          key: "rendimientoNeto",
+          label: "Rendimiento neto",
+          expected: round2(totals.netIrpfIncome),
+        },
         {
           key: "pagoFraccionado",
           label: "Pago fraccionado (estimación aislada)",
@@ -222,7 +226,13 @@ export function buildModeloReport(
       return { key: c.key, label: c.label, expected: c.expected, extracted: value, status: "info" };
     }
     if (value === null) {
-      return { key: c.key, label: c.label, expected: c.expected, extracted: null, status: "missing" };
+      return {
+        key: c.key,
+        label: c.label,
+        expected: c.expected,
+        extracted: null,
+        status: "missing",
+      };
     }
     const status: CasillaStatus = Math.abs(value - c.expected) <= TOLERANCE ? "match" : "mismatch";
     return { key: c.key, label: c.label, expected: c.expected, extracted: value, status };

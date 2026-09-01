@@ -27,9 +27,10 @@ Everything else is incremental.
 - `DeclarationWizard` and the frozen `QuarterlyDeclaration` snapshot use `paidInvoicesInPeriod` — `status === "paid"` only (cash). `src/components/DeclarationWizard.tsx:97`, `src/lib/quarterlyDeclaration.ts:21-32`
 - `Dashboard` trend/IVA cards use `invoicesInPeriod` (accrual). `src/screens/Dashboard.tsx:176,211`
 
-Spanish **Modelo 303 (IVA)** and **Modelo 130 (IRPF pago fraccionado)** are accrual/*devengo* by default — an issued invoice counts in the quarter it was issued regardless of whether it was collected. Only autónomos who explicitly opted into *criterio de caja* use cash basis.
+Spanish **Modelo 303 (IVA)** and **Modelo 130 (IRPF pago fraccionado)** are accrual/_devengo_ by default — an issued invoice counts in the quarter it was issued regardless of whether it was collected. Only autónomos who explicitly opted into _criterio de caja_ use cash basis.
 
 Consequences:
+
 - The user sees €X in the projection, clicks "Iniciar declaración", and the wizard shows a smaller €Y (issued-unpaid invoices dropped) with no explanation.
 - The frozen snapshot under-reports revenue and output IVA vs. what AEAT expects for the default regime.
 - `netIrpfIncome`, `margin`, `expectedCasillas("130")`, and `expectedCasillas("303")` all cascade from the wrong base.
@@ -48,6 +49,7 @@ let total = subtotal + iva_amount - irpf_amount.unwrap_or(0.0);  // not rounded
 ```
 
 Every other code path rounds through `roundCents` / `amountsFromSubtotal` (`src/lib/invoice.ts:21`). The stored values here feed:
+
 - the frozen declaration snapshot and the gestor CSV export (`buildDeclarationCsv`),
 - the invoice **PDF** — the legal artifact (`src-tauri/src/pdf.rs:801-806`, reads `subtotal`/`iva_amount`/`total` straight from the row),
 - `listInvoices` which prefers the stored value over `derived` for issued invoices (`src/db/invoices.ts:355-359`).
@@ -65,6 +67,7 @@ const pagoFraccionado = Math.max(0, totals.netIrpfIncome * 0.2 - totals.irpfWith
 ```
 
 The real Modelo 130 is **cumulative across the tax year**:
+
 - rendimiento neto YTD × 20%
 - minus retenciones YTD
 - minus **prior quarters' own pagos fraccionados**
@@ -77,7 +80,7 @@ Fix: either (a) track year-to-date declaration state and compute 130 properly, o
 
 ### 2.4 [P1] Modelo 303 `resultadoLiquidacion` ignores prior-period compensation
 
-`src/lib/modeloReport.ts:43-47` expects `resultado = ivaDevengado − ivaDeducible`. Real 303 subtracts *cuotas a compensar de periodos anteriores* (casilla 78/87) and applies annual regularisation. Same "informational" caveat as 2.3 — surface it or account for it.
+`src/lib/modeloReport.ts:43-47` expects `resultado = ivaDevengado − ivaDeducible`. Real 303 subtracts _cuotas a compensar de periodos anteriores_ (casilla 78/87) and applies annual regularisation. Same "informational" caveat as 2.3 — surface it or account for it.
 
 ### 2.5 [P2] Modelo 111 flow is likely noise for the target user
 
@@ -86,6 +89,7 @@ Fix: either (a) track year-to-date declaration state and compute 130 properly, o
 ### 2.6 [P2] Tax-deadline calendar edge cases
 
 `src/lib/taxCalendar.ts`:
+
 - `nextTaxDeadlines` emits both `130/303` and `190/390` dated 30 Jan for Q4 — two rows the same day.
 - No weekend / holiday roll-forward: if the 20th falls on a Saturday the real deadline is the next business day.
 
@@ -104,6 +108,7 @@ Low stakes (the dates are close enough to prompt action) but worth a pass if you
 `src-tauri/src/backup.rs:155-171` → `run_backup` → `copy_dir_recursive` over `contracts/ expenses/ invoices/ declarations/ documentos_autonomo/ branding/` on **every window close**, blocking shutdown up to 10s. Each backup is a fresh full copy (`backup-<timestamp>/`), so with a few tax years of receipts this is hundreds of MB re-copied per quit and grows unbounded until retention prunes.
 
 Fix options (cheapest first):
+
 - On close, back up only the DB (`VACUUM INTO`); copy the file trees on the daily `checkAutoBackup` / explicit "Backup now" only.
 - Make `copy_dir_recursive` skip files whose destination already exists with matching size + mtime (incremental).
 - Hardlink unchanged files from the previous `backup-*` folder.
@@ -121,6 +126,7 @@ Fix: restore into a temp dir, verify (DB opens, expected subdirs non-empty or a 
 ### 3.4 [P2] `ANTHROPIC_MODEL = "claude-opus-4-8"` is hardcoded and stale
 
 `src-tauri/src/llm.rs:15`. Current generation is the Claude 5 family (`claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5`). Two problems:
+
 - **Cost**: Opus for "extract 6 fields off a receipt" is heavy overkill. `claude-haiku-4-5` (or `claude-sonnet-5` for the trickier Modelo 303 box-summing) would be materially cheaper at effectively equal accuracy for this task.
 - **No UI**: only OpenRouter exposes a model field (`src/db/llmSettings.ts`); Anthropic/OpenAI model is compile-time only.
 
@@ -136,7 +142,7 @@ Fix: default Anthropic to `claude-haiku-4-5`, expose a model override for all th
 
 ### 3.7 [P3] Migration filename ↔ version gap
 
-There is no `0021_*.sql`; `0022_expense_irpf_retention.sql` is registered as `version: 21` (`src-tauri/src/lib.rs:150`). The guard test (`all_sql_files_are_registered_as_migrations`) only checks *sequential versions* + *count*, not that file `NNNN` maps to `version N`. Harmless today. Either rename the file to `0021_…` or tighten the test to assert `filename number == version`, so a real off-by-one can't slip through later.
+There is no `0021_*.sql`; `0022_expense_irpf_retention.sql` is registered as `version: 21` (`src-tauri/src/lib.rs:150`). The guard test (`all_sql_files_are_registered_as_migrations`) only checks _sequential versions_ + _count_, not that file `NNNN` maps to `version N`. Harmless today. Either rename the file to `0021_…` or tighten the test to assert `filename number == version`, so a real off-by-one can't slip through later.
 
 ### 3.8 [P3] API keys stored plaintext in SQLite
 
@@ -215,48 +221,63 @@ Defined + tested in `src/lib/analytics.ts:56` but not rendered anywhere (`Dashbo
 Ordered by leverage for a solo Spanish autónomo.
 
 ### 8.1 Filing-deadline reminders (highest leverage)
+
 OS notifications 7 / 3 / 1 days before each obligation (20th of month, 30 Jan), driven by the user's actual regime. Pair with the per-quarter checklist you already render ("303 ✓ / 130 ✓ / 111 —"). This is the one feature that turns a spreadsheet replacement into a thing you can't file late with.
 
 ### 8.2 Proper cumulative Modelo 130
+
 YTD rendimiento neto, prior pagos fraccionados, prior retenciones, the 2% gastos-difícil-justificación deduction (€2,000/yr cap), negative-result carry-forward. Requires the declaration store to hold year-to-date state (§2.3).
 
 ### 8.3 Criterio de caja toggle (done properly)
+
 You're already half-way — one `paidInvoicesInPeriod` vs `invoicesInPeriod` switch, plus a payment-date field for expenses, plus labelling the frozen snapshot with its basis.
 
 ### 8.4 Modelo 349 (intracomunitarias)
+
 You already tag `reverse_charge_eu` clients and snapshot `client_country`. A quarterly 349 summary (client VAT number + total base per client) is a near-free derived output.
 
 ### 8.5 Modelo 347 (operaciones con terceros > €3.005,06/año)
+
 Derivable from invoices grouped by client + expenses grouped by provider over a calendar year. Annual, informative, currently a manual chore.
 
 ### 8.6 Real recurring invoices
+
 Replace the "invoiced last month, not this" heuristic (`src/lib/recurring.ts`) with a billing-cadence field on the contract, auto-drafting on schedule with a reminder. `duplicateInvoice` already does the line copy.
 
 ### 8.7 Aging / collections
+
 Surface the existing `agingReport`. Add: mark partial payments, record payment date, generate a payment-reminder email, and a Ley 3/2004 late-interest claim letter (`lateInterest.ts` exists but nothing shows it).
 
 ### 8.8 Bank reconciliation
+
 Import a bank CSV, match credits to issued invoices (amount + date + reference), auto-mark paid with the real payment date — which also feeds 8.3 and 8.7.
 
 ### 8.9 Grounded tax assistant (AI)
+
 A chat grounded in the SQLite DB + `contexto_usuario.md`: "¿cuánto llevo facturado a X este año?", "¿me interesa comprar el portátil este trimestre o el que viene?", "¿qué me falta para cerrar el 3T?". The `user_context` scaffolding is already there.
 
 ### 8.10 Modelo pre-fill (AI, with disclaimer)
-Instead of only *checking* an uploaded modelo PDF, output the casilla values to type into AEAT's form — the inverse of the current review flow, reusing `expectedCasillas`.
+
+Instead of only _checking_ an uploaded modelo PDF, output the casilla values to type into AEAT's form — the inverse of the current review flow, reusing `expectedCasillas`.
 
 ### 8.11 Expense anomaly detection (AI or rules)
+
 "IVA deducible this quarter is 3× your 4-quarter average — possible duplicate receipt" / "this provider's retention rate (15%) looks wrong for a supplies invoice".
 
 ### 8.12 Contract → recurring invoice extraction (AI)
+
 Extract amount / cadence / IRPF / IVA treatment from an attached contract PDF (you already attach and store them) and pre-fill the recurring invoice.
 
 ### 8.13 Receipt inbox
+
 Watch a folder (or a forwarding email address) for receipts, auto-extract, queue as draft expenses for one-tap confirm. Menu-bar / dock-drop quick-add.
 
 ### 8.14 Annual views
+
 Multi-year revenue dashboard, annual P&L, an IRPF (Renta) estimate, expense budget-vs-actual by category.
 
 ### 8.15 Presupuestos (quotes)
+
 Quote → accepted → invoice conversion, with the quote as a non-fiscal PDF template alongside the invoice template.
 
 ---

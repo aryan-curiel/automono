@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Receipt, Wallet, ClipboardText } from "@phosphor-icons/react";
@@ -6,10 +6,9 @@ import { Sheet } from "./ui/Sheet";
 import { Button } from "./ui/Button";
 import { Label } from "./ui/Field";
 import { SegmentedControl } from "./ui/SegmentedControl";
-import { listExpenses } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { createDeclaration } from "../db/declarations";
-import { quarterRange, quartersInRange } from "../lib/dateRange";
+import { quarterRange } from "../lib/dateRange";
 import { DEFAULT_GDJ_RATE } from "../lib/modeloReport";
 import { buildDeclarationSnapshot, invoicesInPeriod } from "../lib/quarterlyDeclaration";
 import { formatEUR, formatDate } from "../lib/format";
@@ -37,6 +36,9 @@ interface DeclarationWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoices: InvoiceListItem[];
+  /** Expenses for `quarterRange(year, quarter)` — lifted from the parent screen, which already
+   * queries the same period (#19), rather than re-fetched here. */
+  expenses: ExpenseRecord[];
   year: number;
   quarter: Quarter;
   onCreated: () => void;
@@ -46,6 +48,7 @@ export function DeclarationWizard({
   open,
   onOpenChange,
   invoices,
+  expenses,
   year,
   quarter,
   onCreated,
@@ -54,7 +57,6 @@ export function DeclarationWizard({
   const reduceMotion = useReducedMotion();
   const [step, setStep] = useState<Step>(1);
   const [direction, setDirection] = useState(1);
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [excludedExpenseIds, setExcludedExpenseIds] = useState<Set<number>>(new Set());
   const [gdjRate, setGdjRate] = useState<number>(DEFAULT_GDJ_RATE);
   const [creating, setCreating] = useState(false);
@@ -75,15 +77,6 @@ export function DeclarationWizard({
   }
 
   const period = quarterRange(year, quarter);
-
-  useEffect(() => {
-    if (!open) return;
-    void listExpenses({
-      from: period.from,
-      to: period.to,
-      quarterKeys: quartersInRange(period.from, period.to),
-    }).then(setExpenses);
-  }, [open, period.from, period.to]);
 
   function goTo(next: Step) {
     setDirection(next > step ? 1 : -1);

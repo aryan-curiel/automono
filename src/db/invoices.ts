@@ -136,7 +136,8 @@ function mapInvoiceRow(row: InvoiceRow): InvoiceRecord {
     dueDate: row.due_date,
     status: row.status,
     vatTreatment: row.vat_treatment ?? row.live_client_vat_treatment,
-    vatNoteText: row.vat_note_text ?? row.live_vat_note_text_in_language ?? row.live_vat_note_text_es,
+    vatNoteText:
+      row.vat_note_text ?? row.live_vat_note_text_in_language ?? row.live_vat_note_text_es,
     language: row.language,
     subtotal: row.subtotal,
     ivaRate: row.iva_rate,

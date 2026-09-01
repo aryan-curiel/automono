@@ -43,9 +43,7 @@ export function Sheet({
                   transition: reduceMotion ? { duration: 0 } : EXIT_SPRING,
                 }}
                 transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { type: "spring", stiffness: 380, damping: 32 }
+                  reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }
                 }
                 className={`fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                            w-full ${maxWidthClassName} rounded-sheet bg-sheet-glass backdrop-blur-xl backdrop-saturate-150

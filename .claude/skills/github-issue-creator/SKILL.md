@@ -16,8 +16,9 @@ using `gh`. This repo has **no issue-template YAML** — the body conventions
 in [references/issue-body-template.md](references/issue-body-template.md) are
 the source of truth. It uses GitHub's native Issue Type (`Bug` / `Task` /
 `Feature`) set via `--type`, plus a small flat label set (severity `P0`–`P3`
-+ area labels). It's a **single-maintainer personal project**: epics are
-*optional*, not mandatory.
+
+- area labels). It's a **single-maintainer personal project**: epics are
+  _optional_, not mandatory.
 
 ## Quick Start
 
@@ -32,7 +33,7 @@ the source of truth. It uses GitHub's native Issue Type (`Bug` / `Task` /
      `enhancement` + one area)
    - keep the legacy `bug` / `enhancement` labels **in addition to** the
      Issue Type, matching how issues #2–#43 were filed.
-   See [references/label-taxonomy.md](references/label-taxonomy.md).
+     See [references/label-taxonomy.md](references/label-taxonomy.md).
 3. **Epic linking is optional.** If the user wants epic grouping, or an
    obviously-matching `Epic — <Theme>` issue is already open, propose it and
    confirm. Otherwise skip straight to creation — labels are the primary
@@ -49,8 +50,8 @@ the source of truth. It uses GitHub's native Issue Type (`Bug` / `Task` /
    ```
 5. If linked to an epic, append the new issue to the epic's `## Tasks`
    checklist and check whether the epic's `Description` is now stale (propose
-   + confirm before editing). See
-   [references/epic-workflow.md](references/epic-workflow.md).
+   - confirm before editing). See
+     [references/epic-workflow.md](references/epic-workflow.md).
 6. Report back — see [references/gh-commands.md](references/gh-commands.md)
    for the exact commands and the final summary format.
 
@@ -85,12 +86,12 @@ the source of truth. It uses GitHub's native Issue Type (`Bug` / `Task` /
 
 ## Reference Directory
 
-| Scenario | Trigger Keywords | Reference File |
-|---|---|---|
-| Which Issue Type / labels to pick, full label list | label, issue type, --type, severity, P0, area, taxonomy | [references/label-taxonomy.md](references/label-taxonomy.md) |
-| Optional epic matching / creation / linking | epic, parent, grouping, Feature type, theme | [references/epic-workflow.md](references/epic-workflow.md) |
-| Body structure per issue type | template, body, description, acceptance criteria, repro steps | [references/issue-body-template.md](references/issue-body-template.md) |
-| Exact `gh` invocations for each step | gh issue create, gh issue edit, gh label list | [references/gh-commands.md](references/gh-commands.md) |
+| Scenario                                           | Trigger Keywords                                              | Reference File                                                         |
+| -------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Which Issue Type / labels to pick, full label list | label, issue type, --type, severity, P0, area, taxonomy       | [references/label-taxonomy.md](references/label-taxonomy.md)           |
+| Optional epic matching / creation / linking        | epic, parent, grouping, Feature type, theme                   | [references/epic-workflow.md](references/epic-workflow.md)             |
+| Body structure per issue type                      | template, body, description, acceptance criteria, repro steps | [references/issue-body-template.md](references/issue-body-template.md) |
+| Exact `gh` invocations for each step               | gh issue create, gh issue edit, gh label list                 | [references/gh-commands.md](references/gh-commands.md)                 |
 
 ## Related Skills
 

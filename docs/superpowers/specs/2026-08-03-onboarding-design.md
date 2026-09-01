@@ -117,8 +117,7 @@ dashboard.
   switcher UI is added elsewhere — onboarding is the only place this is set
   for now.
 - **Default tax rates:** `src/features/clients/taxDefaults.ts`'s hardcoded
-  `IRPF_DEFAULT_RATE = 7` and `FacturaNueva.tsx`'s hardcoded `21` (lines 35,
-  72) become reads from `preferences.defaultIrpfRate` /
+  `IRPF_DEFAULT_RATE = 7` and `FacturaNueva.tsx`'s hardcoded `21` (lines 35, 72) become reads from `preferences.defaultIrpfRate` /
   `defaultIvaRate`, fetched where `FacturaNueva` already loads client data,
   falling back to today's 21/7 if preferences haven't loaded. The existing
   `irpfApplicable(client.country)` gating is unchanged.

@@ -199,7 +199,9 @@ export function FacturaDetalle({
                     disabled={generatingPdf}
                     className="rounded-r-none"
                   >
-                    {generatingPdf ? t("invoices.detail.generatingPdf") : t("invoices.detail.downloadPdf")}
+                    {generatingPdf
+                      ? t("invoices.detail.generatingPdf")
+                      : t("invoices.detail.downloadPdf")}
                   </Button>
                   <MenuTrigger asChild>
                     <Button
@@ -417,7 +419,8 @@ export function FacturaDetalle({
             </div>
             <div className="flex justify-between text-xs py-1.5">
               <span>
-                {previewLabels.irpf} {irpfRateShown}%{irpfForeignClient && ` (${previewLabels.foreignClient})`}
+                {previewLabels.irpf} {irpfRateShown}%
+                {irpfForeignClient && ` (${previewLabels.foreignClient})`}
               </span>
               <span>-{formatEUR(amounts.irpfAmount)}</span>
             </div>

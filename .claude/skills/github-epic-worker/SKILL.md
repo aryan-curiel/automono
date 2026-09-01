@@ -66,7 +66,7 @@ AutoMono has no formal epic requirement, so the "issue set" can be either:
 - **ALWAYS** take the issue set from the epic body's `- [ ] #<n>` task list
   (or the user's stated label query) — don't guess membership from search.
 - **ALWAYS** verify each issue's actual state via `gh issue view <n> --json
-  state` rather than trusting an epic checkbox — a checked box on an open
+state` rather than trusting an epic checkbox — a checked box on an open
   issue is a mismatch; surface it, don't silently pick a side.
 - **ALWAYS** determine order and conflicts yourself when not stated — an
   unordered list means "figure out the safe order", not "any order is fine".
@@ -98,11 +98,11 @@ AutoMono has no formal epic requirement, so the "issue set" can be either:
 
 ## Reference Directory
 
-| Scenario | Trigger Keywords | Reference File |
-|---|---|---|
-| Resolving the issue set, inferring order/dependencies/conflicts, building batches | epic body, task list, label query, blocked by, depends on, conflict, batch, order | [references/dependency-resolution.md](references/dependency-resolution.md) |
-| Spawning subagents in worktrees, prompt structure, waiting on batches, base-branch stacking | subagent, worktree, isolation, dispatch, stacked branch, base | [references/dispatch.md](references/dispatch.md) |
-| Persisting/resuming the batch plan and per-issue progress across sessions | resume, run state, progress, checkpoint, session limit, crash | [references/run-state.md](references/run-state.md) |
+| Scenario                                                                                    | Trigger Keywords                                                                  | Reference File                                                             |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Resolving the issue set, inferring order/dependencies/conflicts, building batches           | epic body, task list, label query, blocked by, depends on, conflict, batch, order | [references/dependency-resolution.md](references/dependency-resolution.md) |
+| Spawning subagents in worktrees, prompt structure, waiting on batches, base-branch stacking | subagent, worktree, isolation, dispatch, stacked branch, base                     | [references/dispatch.md](references/dispatch.md)                           |
+| Persisting/resuming the batch plan and per-issue progress across sessions                   | resume, run state, progress, checkpoint, session limit, crash                     | [references/run-state.md](references/run-state.md)                         |
 
 ## Related Skills
 

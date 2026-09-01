@@ -21,28 +21,30 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `src-tauri/migrations/0029_expense_declared.sql` (new) | Adds `declared` boolean column to `expenses` |
-| `src-tauri/src/lib.rs` (modify) | Registers migration 0029 |
-| `src/db/expenses.ts` (modify) | `ExpenseRecord`/`ExpenseRow`/`NewExpense` gain `declared`; CRUD wiring |
-| `src/lib/analytics.test.ts`, `src/lib/quarterlyDeclaration.test.ts`, `src/lib/modeloReport.test.ts` (modify) | Fixture fixes so `ExpenseRecord`-typed test helpers still compile |
-| `src/screens/GastoForm.tsx` (modify) | Preserves `declared` across create/edit saves (no form field) |
-| `src/db/declarations.ts` (modify) | `markDeclarationCompleted` flags every expense in the frozen snapshot |
-| `src/db/declarations.test.ts` (modify) | Test for the flagging SQL |
-| `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | New `expenses.declaredBadge`, `expenses.actions.markDeclared`/`unmarkDeclared` |
-| `src/screens/Gastos.tsx` (modify) | Declared badge + toggle menu item in the list row |
-| `src/screens/GastoDetalle.tsx` (modify) | Declared badge + toggle menu item in the detail header |
+| File                                                                                                         | Responsibility                                                                 |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `src-tauri/migrations/0029_expense_declared.sql` (new)                                                       | Adds `declared` boolean column to `expenses`                                   |
+| `src-tauri/src/lib.rs` (modify)                                                                              | Registers migration 0029                                                       |
+| `src/db/expenses.ts` (modify)                                                                                | `ExpenseRecord`/`ExpenseRow`/`NewExpense` gain `declared`; CRUD wiring         |
+| `src/lib/analytics.test.ts`, `src/lib/quarterlyDeclaration.test.ts`, `src/lib/modeloReport.test.ts` (modify) | Fixture fixes so `ExpenseRecord`-typed test helpers still compile              |
+| `src/screens/GastoForm.tsx` (modify)                                                                         | Preserves `declared` across create/edit saves (no form field)                  |
+| `src/db/declarations.ts` (modify)                                                                            | `markDeclarationCompleted` flags every expense in the frozen snapshot          |
+| `src/db/declarations.test.ts` (modify)                                                                       | Test for the flagging SQL                                                      |
+| `src/locales/es/common.json`, `src/locales/en/common.json` (modify)                                          | New `expenses.declaredBadge`, `expenses.actions.markDeclared`/`unmarkDeclared` |
+| `src/screens/Gastos.tsx` (modify)                                                                            | Declared badge + toggle menu item in the list row                              |
+| `src/screens/GastoDetalle.tsx` (modify)                                                                      | Declared badge + toggle menu item in the detail header                         |
 
 ---
 
 ### Task 1: Schema migration
 
 **Files:**
+
 - Create: `src-tauri/migrations/0029_expense_declared.sql`
 - Modify: `src-tauri/src/lib.rs:184-190` (append a new `Migration` entry after version 27, before the closing `]`)
 
 **Interfaces:**
+
 - Produces: `expenses.declared INTEGER NOT NULL DEFAULT 0` — consumed by Task 2 (`src/db/expenses.ts`) and Task 3 (`src/db/declarations.ts`).
 
 - [ ] **Step 1: Create the migration file**
@@ -107,11 +109,13 @@ git commit -m "feat: add declared column to expenses"
 ### Task 2: `src/db/expenses.ts` field wiring + `GastoForm.tsx` passthrough
 
 **Files:**
+
 - Modify: `src/db/expenses.ts`
 - Modify: `src/screens/GastoForm.tsx`
 - Modify: `src/lib/analytics.test.ts`, `src/lib/quarterlyDeclaration.test.ts`, `src/lib/modeloReport.test.ts` (fixture helpers — required for these to typecheck)
 
 **Interfaces:**
+
 - Consumes: `expenses.declared` column from Task 1.
 - Produces: `ExpenseRecord.declared: boolean`, `NewExpense.declared: boolean` — consumed by Task 3 (`declarations.ts`), Task 5 (`Gastos.tsx`), Task 6 (`GastoDetalle.tsx`).
 
@@ -336,76 +340,74 @@ const COLUMN_BY_KEY: Record<keyof NewExpense, string> = {
 In `src/screens/GastoForm.tsx`, replace line 118:
 
 ```tsx
-  const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
+const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
 ```
 
 with:
 
 ```tsx
-  const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
-  const [declared, setDeclared] = useState(false);
+const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
+const [declared, setDeclared] = useState(false);
 ```
 
 Replace lines 138-145:
 
 ```tsx
-    getExpense(expenseId)
-      .then((expense) => {
-        if (cancelled) return;
-        if (expense) {
-          setIrpfAutoManaged(expense.irpfAmount === null);
-          setForm(toFormState(expense));
-        }
-      })
+getExpense(expenseId).then((expense) => {
+  if (cancelled) return;
+  if (expense) {
+    setIrpfAutoManaged(expense.irpfAmount === null);
+    setForm(toFormState(expense));
+  }
+});
 ```
 
 with:
 
 ```tsx
-    getExpense(expenseId)
-      .then((expense) => {
-        if (cancelled) return;
-        if (expense) {
-          setIrpfAutoManaged(expense.irpfAmount === null);
-          setDeclared(expense.declared);
-          setForm(toFormState(expense));
-        }
-      })
+getExpense(expenseId).then((expense) => {
+  if (cancelled) return;
+  if (expense) {
+    setIrpfAutoManaged(expense.irpfAmount === null);
+    setDeclared(expense.declared);
+    setForm(toFormState(expense));
+  }
+});
 ```
 
 Replace lines 283-294:
 
 ```tsx
-    const payload: NewExpense = {
-      date: form.date,
-      category: form.category.trim() || null,
-      description: form.description.trim() || null,
-      amount: Number(form.amount),
-      ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
-      deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
-      irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
-      irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
-      receiptFilePath: form.receiptFilePath,
-      declaredPeriod: form.declaredPeriod || null,
-    };
+const payload: NewExpense = {
+  date: form.date,
+  category: form.category.trim() || null,
+  description: form.description.trim() || null,
+  amount: Number(form.amount),
+  ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
+  deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
+  irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
+  irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
+  receiptFilePath: form.receiptFilePath,
+  declaredPeriod: form.declaredPeriod || null,
+};
 ```
 
 with:
 
 ```tsx
-    const payload: NewExpense = {
-      date: form.date,
-      category: form.category.trim() || null,
-      description: form.description.trim() || null,
-      amount: Number(form.amount),
-      ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
-      deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
-      irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
-      irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
-      receiptFilePath: form.receiptFilePath,
-      declaredPeriod: form.declaredPeriod || null,
-      declared,
-    };
+const payload: NewExpense = {
+  date: form.date,
+  category: form.category.trim() || null,
+  description: form.description.trim() || null,
+  amount: Number(form.amount),
+  ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
+  deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
+  irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
+  irpfAmount: irpfAmountDisplay.trim() ? Number(irpfAmountDisplay) : null,
+  receiptFilePath: form.receiptFilePath,
+  declaredPeriod: form.declaredPeriod || null,
+  declared,
+};
 ```
 
 - [ ] **Step 6: Fix the three now-broken test fixtures**
@@ -479,10 +481,12 @@ git commit -m "feat: wire declared through the expenses data layer"
 ### Task 3: Auto-flag expenses when a declaration completes
 
 **Files:**
+
 - Modify: `src/db/declarations.ts`
 - Modify: `src/db/declarations.test.ts`
 
 **Interfaces:**
+
 - Consumes: `expenses.declared` column (Task 1), `DeclarationExpenseLine.id` (already exists in `src/lib/quarterlyDeclaration.ts`).
 
 - [ ] **Step 1: Write the failing test**
@@ -577,10 +581,12 @@ git commit -m "feat: flag declared expenses when a quarterly declaration complet
 ### Task 4: i18n labels
 
 **Files:**
+
 - Modify: `src/locales/es/common.json:311-379`
 - Modify: `src/locales/en/common.json:311-379`
 
 **Interfaces:**
+
 - Produces: `expenses.declaredBadge`, `expenses.actions.markDeclared`, `expenses.actions.unmarkDeclared` — consumed by Task 5 and Task 6.
 
 - [ ] **Step 1: Add the Spanish strings**
@@ -714,9 +720,11 @@ git commit -m "feat: add i18n labels for the expense declared flag"
 ### Task 5: `Gastos.tsx` — declared badge + toggle
 
 **Files:**
+
 - Modify: `src/screens/Gastos.tsx`
 
 **Interfaces:**
+
 - Consumes: `ExpenseRecord.declared` (Task 2), `updateExpense` (Task 2), `expenses.declaredBadge`/`expenses.actions.markDeclared`/`unmarkDeclared` (Task 4).
 
 - [ ] **Step 1: Import `updateExpense`**
@@ -738,26 +746,26 @@ import { listExpenses, updateExpense } from "../db/expenses";
 Replace lines 31-35:
 
 ```tsx
-  function retry() {
-    setLoading(true);
-    setLoadError(false);
-    setReloadToken((n) => n + 1);
-  }
+function retry() {
+  setLoading(true);
+  setLoadError(false);
+  setReloadToken((n) => n + 1);
+}
 ```
 
 with:
 
 ```tsx
-  function retry() {
-    setLoading(true);
-    setLoadError(false);
-    setReloadToken((n) => n + 1);
-  }
+function retry() {
+  setLoading(true);
+  setLoadError(false);
+  setReloadToken((n) => n + 1);
+}
 
-  async function toggleDeclared(expense: ExpenseRecord) {
-    await updateExpense(expense.id, { declared: !expense.declared });
-    setReloadToken((n) => n + 1);
-  }
+async function toggleDeclared(expense: ExpenseRecord) {
+  await updateExpense(expense.id, { declared: !expense.declared });
+  setReloadToken((n) => n + 1);
+}
 ```
 
 - [ ] **Step 3: Show the badge and add the menu item**
@@ -853,9 +861,11 @@ git commit -m "feat: show and toggle the declared flag in the Gastos list"
 ### Task 6: `GastoDetalle.tsx` — declared badge + toggle
 
 **Files:**
+
 - Modify: `src/screens/GastoDetalle.tsx`
 
 **Interfaces:**
+
 - Consumes: `ExpenseRecord.declared` (Task 2), `updateExpense` (Task 2), `expenses.declaredBadge`/`expenses.actions.markDeclared`/`unmarkDeclared` (Task 4).
 
 - [ ] **Step 1: Import `Badge` and `updateExpense`**
@@ -898,32 +908,32 @@ import {
 Replace lines 61-67:
 
 ```tsx
-  async function confirmDelete() {
-    if (!expense) return;
-    const filePaths = [expense.receiptFilePath].filter((p): p is string => !!p);
-    await deleteExpenseFiles(filePaths);
-    await deleteExpense(expense.id);
-    onDeleted();
-  }
+async function confirmDelete() {
+  if (!expense) return;
+  const filePaths = [expense.receiptFilePath].filter((p): p is string => !!p);
+  await deleteExpenseFiles(filePaths);
+  await deleteExpense(expense.id);
+  onDeleted();
+}
 ```
 
 with:
 
 ```tsx
-  async function confirmDelete() {
-    if (!expense) return;
-    const filePaths = [expense.receiptFilePath].filter((p): p is string => !!p);
-    await deleteExpenseFiles(filePaths);
-    await deleteExpense(expense.id);
-    onDeleted();
-  }
+async function confirmDelete() {
+  if (!expense) return;
+  const filePaths = [expense.receiptFilePath].filter((p): p is string => !!p);
+  await deleteExpenseFiles(filePaths);
+  await deleteExpense(expense.id);
+  onDeleted();
+}
 
-  async function toggleDeclared() {
-    if (!expense) return;
-    await updateExpense(expense.id, { declared: !expense.declared });
-    const updated = await getExpense(expense.id);
-    if (updated) setExpense(updated);
-  }
+async function toggleDeclared() {
+  if (!expense) return;
+  await updateExpense(expense.id, { declared: !expense.declared });
+  const updated = await getExpense(expense.id);
+  if (updated) setExpense(updated);
+}
 ```
 
 - [ ] **Step 3: Show the badge in the header and add the menu item**
@@ -931,69 +941,69 @@ with:
 Replace lines 105-128:
 
 ```tsx
-      <PageHeader
-        title={expense.description || expense.category || formatDate(expense.date)}
-        subtitle={formatDate(expense.date)}
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => onEditExpense(expense.id)}>
-              {t("expenses.actions.edit")}
-            </Button>
-            <Menu>
-              <MenuTrigger
-                className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
-                aria-label={t("expenses.detail.moreActions")}
-              >
-                <DotsThreeVertical size={16} weight="bold" />
-              </MenuTrigger>
-              <MenuContent>
-                <MenuItem danger onSelect={() => setDeletePending(true)}>
-                  {t("expenses.actions.delete")}
-                </MenuItem>
-              </MenuContent>
-            </Menu>
-          </>
-        }
-      />
+<PageHeader
+  title={expense.description || expense.category || formatDate(expense.date)}
+  subtitle={formatDate(expense.date)}
+  actions={
+    <>
+      <Button variant="secondary" onClick={() => onEditExpense(expense.id)}>
+        {t("expenses.actions.edit")}
+      </Button>
+      <Menu>
+        <MenuTrigger
+          className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
+          aria-label={t("expenses.detail.moreActions")}
+        >
+          <DotsThreeVertical size={16} weight="bold" />
+        </MenuTrigger>
+        <MenuContent>
+          <MenuItem danger onSelect={() => setDeletePending(true)}>
+            {t("expenses.actions.delete")}
+          </MenuItem>
+        </MenuContent>
+      </Menu>
+    </>
+  }
+/>
 ```
 
 with:
 
 ```tsx
-      <PageHeader
-        title={
-          <span className="flex items-center gap-2">
-            {expense.description || expense.category || formatDate(expense.date)}
-            {expense.declared && <Badge tone="success">{t("expenses.declaredBadge")}</Badge>}
-          </span>
-        }
-        subtitle={formatDate(expense.date)}
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => onEditExpense(expense.id)}>
-              {t("expenses.actions.edit")}
-            </Button>
-            <Menu>
-              <MenuTrigger
-                className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
-                aria-label={t("expenses.detail.moreActions")}
-              >
-                <DotsThreeVertical size={16} weight="bold" />
-              </MenuTrigger>
-              <MenuContent>
-                <MenuItem onSelect={toggleDeclared}>
-                  {expense.declared
-                    ? t("expenses.actions.unmarkDeclared")
-                    : t("expenses.actions.markDeclared")}
-                </MenuItem>
-                <MenuItem danger onSelect={() => setDeletePending(true)}>
-                  {t("expenses.actions.delete")}
-                </MenuItem>
-              </MenuContent>
-            </Menu>
-          </>
-        }
-      />
+<PageHeader
+  title={
+    <span className="flex items-center gap-2">
+      {expense.description || expense.category || formatDate(expense.date)}
+      {expense.declared && <Badge tone="success">{t("expenses.declaredBadge")}</Badge>}
+    </span>
+  }
+  subtitle={formatDate(expense.date)}
+  actions={
+    <>
+      <Button variant="secondary" onClick={() => onEditExpense(expense.id)}>
+        {t("expenses.actions.edit")}
+      </Button>
+      <Menu>
+        <MenuTrigger
+          className="p-2 rounded-control hover:bg-surface-alt cursor-pointer"
+          aria-label={t("expenses.detail.moreActions")}
+        >
+          <DotsThreeVertical size={16} weight="bold" />
+        </MenuTrigger>
+        <MenuContent>
+          <MenuItem onSelect={toggleDeclared}>
+            {expense.declared
+              ? t("expenses.actions.unmarkDeclared")
+              : t("expenses.actions.markDeclared")}
+          </MenuItem>
+          <MenuItem danger onSelect={() => setDeletePending(true)}>
+            {t("expenses.actions.delete")}
+          </MenuItem>
+        </MenuContent>
+      </Menu>
+    </>
+  }
+/>
 ```
 
 - [ ] **Step 4: Typecheck**

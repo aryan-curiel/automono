@@ -257,8 +257,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     if (!form.name.trim()) next.name = t("settings.errors.nameRequired");
     if (!isValidNifCif(form.nifCif)) next.nifCif = t("settings.errors.nifCifInvalid");
     if (!isValidVatNumber(form.vatNumber)) next.vatNumber = t("settings.errors.vatNumberInvalid");
-    if (form.iban.trim() && !isValidIban(form.iban))
-      next.iban = t("settings.errors.ibanInvalid");
+    if (form.iban.trim() && !isValidIban(form.iban)) next.iban = t("settings.errors.ibanInvalid");
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -520,9 +519,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         (loading ? (
           <div className="text-sm text-ink-soft mb-5">{t("settings.loading")}</div>
         ) : loadError ? (
-          <div className="text-sm text-danger mb-5">
-            {t("settings.loadError")}
-          </div>
+          <div className="text-sm text-danger mb-5">{t("settings.loadError")}</div>
         ) : (
           <>
             <Card className="px-5 max-w-[640px] mb-5">
@@ -599,9 +596,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
                         ? t("settings.logoChange")
                         : t("settings.logoUpload")}
                   </Button>
-                  <span className="text-[13px] text-ink-soft">
-                    {t("settings.logoHelp")}
-                  </span>
+                  <span className="text-[13px] text-ink-soft">{t("settings.logoHelp")}</span>
                 </div>
               </FormRow>
             </Card>
@@ -643,9 +638,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         <Card className="px-5 max-w-[640px]">
           <div className="pt-4 pb-3">
             <div className="font-bold text-sm mb-1.5">{t("settings.documentsTabTitle")}</div>
-            <div className="text-[13px] text-ink-soft">
-              {t("settings.documentsTabDescription")}
-            </div>
+            <div className="text-[13px] text-ink-soft">{t("settings.documentsTabDescription")}</div>
           </div>
           <BusinessDocumentsPanel onExtracted={applyExtracted} />
         </Card>
@@ -655,9 +648,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         <Card className="px-5 max-w-[640px]">
           <div className="pt-4 pb-3">
             <div className="font-bold text-sm mb-1.5">{t("settings.categoriesTitle")}</div>
-            <div className="text-[13px] text-ink-soft">
-              {t("settings.categoriesSubtitle")}
-            </div>
+            <div className="text-[13px] text-ink-soft">{t("settings.categoriesSubtitle")}</div>
           </div>
 
           <div className="flex flex-col gap-0.5 mb-3">
@@ -717,9 +708,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         <Card className="px-5 max-w-[640px]">
           <div className="pt-4 pb-3">
             <div className="font-bold text-sm mb-1.5">{t("settings.backupTitle")}</div>
-            <div className="text-[13px] text-ink-soft">
-              {t("settings.backupDescription")}
-            </div>
+            <div className="text-[13px] text-ink-soft">{t("settings.backupDescription")}</div>
           </div>
 
           <FormRow label={t("settings.backupFolder")}>
@@ -859,9 +848,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         onOpenChange={(open) => !open && setRestorePendingEntry(null)}
         title={t("settings.backupRestoreTitle")}
       >
-        <p className="text-[13px] text-ink-soft mb-4">
-          {t("settings.backupRestoreConfirm")}
-        </p>
+        <p className="text-[13px] text-ink-soft mb-4">{t("settings.backupRestoreConfirm")}</p>
         <div className="flex gap-2.5 justify-end">
           <Button
             variant="secondary"
@@ -876,11 +863,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         </div>
       </Sheet>
 
-      <Toast
-        message={documentsToast}
-        tone="info"
-        onDismiss={() => setDocumentsToast(null)}
-      />
+      <Toast message={documentsToast} tone="info" onDismiss={() => setDocumentsToast(null)} />
     </div>
   );
 }

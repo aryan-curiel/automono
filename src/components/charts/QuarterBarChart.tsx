@@ -70,7 +70,13 @@ export function QuarterBarChart({
             fontSize: 12,
           }}
         />
-        <Bar dataKey="value" name={seriesLabel} fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} />
+        <Bar
+          dataKey="value"
+          name={seriesLabel}
+          fill={color}
+          radius={[4, 4, 0, 0]}
+          maxBarSize={24}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

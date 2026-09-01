@@ -36,7 +36,7 @@ export interface QuarterBarChartProps {
   height?: number; // default 160
 }
 
-export function QuarterBarChart(props: QuarterBarChartProps): JSX.Element
+export function QuarterBarChart(props: QuarterBarChartProps): JSX.Element;
 ```
 
 Built on Recharts' `ResponsiveContainer` > `BarChart`: `CartesianGrid` (horizontal only, `stroke="var(--color-border)"`, dashed), `XAxis` on `label` (no axis line noise — tick labels + `var(--color-ink-soft)`), `YAxis` with `tickFormatter={formatValue}`, a `ReferenceLine` at `y={0}` only when any datum is negative, a `Tooltip` styled with the app's surface/border tokens, and one `Bar` with `radius={[4, 4, 4, 4]}` and `maxBarSize` so bars stay thin on a 4-point quarter axis (per the dataviz mark spec: thin marks, 4px rounded data-ends).
@@ -63,7 +63,7 @@ export interface StackedQuarterBarChartProps {
   height?: number; // default 160
 }
 
-export function StackedQuarterBarChart(props: StackedQuarterBarChartProps): JSX.Element
+export function StackedQuarterBarChart(props: StackedQuarterBarChartProps): JSX.Element;
 ```
 
 Same axis/grid/tooltip treatment as `QuarterBarChart`, plus two `Bar`s sharing `stackId="1"` (`a` first/bottom, `b` on top) and a Recharts `Legend` below the plot using `aLabel`/`bLabel`, restyled to match the app's existing small-caption legend look (the current `<span>` + colored dot pattern) rather than Recharts' default legend chrome.
@@ -71,7 +71,7 @@ Same axis/grid/tooltip treatment as `QuarterBarChart`, plus two `Bar`s sharing `
 ### `Dashboard.tsx` changes
 
 - Import both new chart components and `formatEUR` stays as the value formatter (already imported).
-- IVA card: build `QuarterBarDatum[]` from `ivaNetByQuarter`/`QUARTER_KEYS`, render `<QuarterBarChart data={...} color="var(--color-accent)" formatValue={formatEUR} formatTooltipLabel={(v) => v < 0 ? \`${formatEUR(Math.abs(v))} ${t("dashboard.analytics.ivaTrend.creditSuffix")}\` : formatEUR(v)} />`. Drop `maxIvaNetValue` (Recharts scales its own axis) and the old `ivaTrend.credit`/per-row-bar JSX. Card keeps its existing subtitle line below the chart.
+- IVA card: build `QuarterBarDatum[]` from `ivaNetByQuarter`/`QUARTER_KEYS`, render `<QuarterBarChart data={...} color="var(--color-accent)" formatValue={formatEUR} formatTooltipLabel={(v) => v < 0 ? \`${formatEUR(Math.abs(v))} ${t("dashboard.analytics.ivaTrend.creditSuffix")}\` : formatEUR(v)} />`. Drop `maxIvaNetValue`(Recharts scales its own axis) and the old`ivaTrend.credit`/per-row-bar JSX. Card keeps its existing subtitle line below the chart.
 - Paid/pending card: build `StackedQuarterBarDatum[]` from `grossInvoicedByQuarter`/`paidByQuarter`/`QUARTER_KEYS` (`a` = paid, `b` = pending = `max(0, total - paid)`), render `<StackedQuarterBarChart ... aColor="var(--color-success)" bColor="var(--color-info)" />`. Drop the old per-row stacked-div JSX and the now-unused hand-rolled legend (the chart component owns its own legend).
 - Top-category card: same `QuarterBarChart` treatment as IVA, `color="var(--color-warn)"`, no reference line (values are never negative). Drop `maxCategoryTrendValue`.
 - Composition card: restyle the two existing bar rows as meters — track becomes `h-2 rounded-full bg-surface-alt`, fill keeps `bg-accent` with `rounded-full`, add a small `100%` tick label at the track's right edge. No data changes.

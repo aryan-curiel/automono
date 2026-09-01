@@ -4,6 +4,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -97,11 +98,14 @@ export function QuarterTrendChart({
   onSelectQuarter,
   height = 220,
 }: QuarterTrendChartProps) {
+  const hasNegativeNet = data.some((d) => d.net < 0);
+
   return (
     <>
       <ResponsiveContainer width="100%" height={height}>
         <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
           <CartesianGrid vertical={false} stroke="var(--color-border)" />
+          {hasNegativeNet && <ReferenceLine y={0} stroke="var(--color-border)" />}
           <XAxis
             dataKey="label"
             interval={0}
@@ -162,7 +166,10 @@ export function QuarterTrendChart({
       </ResponsiveContainer>
       <div className="flex items-center gap-4 mt-1 text-[11px] text-ink-soft">
         <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--color-accent)" }} />
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: "var(--color-accent)" }}
+          />
           {invoicedLabel}
         </span>
         <span className="flex items-center gap-1.5">

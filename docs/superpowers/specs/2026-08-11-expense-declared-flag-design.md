@@ -4,7 +4,7 @@
 
 Nothing today marks an expense as having actually been filed with Hacienda.
 `quarterly_declarations` is the only persisted declaration concept, and it
-locks a whole quarter's frozen *snapshot* — but the individual `expenses` rows
+locks a whole quarter's frozen _snapshot_ — but the individual `expenses` rows
 that fed that snapshot carry no trace of it. There's no way to glance at an
 expense (in the main Gastos list or its detail view) and tell "this was
 already declared" vs. "this hasn't been filed yet," and no way to mark one by
@@ -47,7 +47,7 @@ automatically by `src/db/migrations.test.ts`'s directory rescan.
   via `!!row.declared`.
 - `createExpense`'s INSERT: add `declared` (as `input.declared ? 1 : 0`).
 - `COLUMN_BY_KEY`: add `declared: "declared"`, so `updateExpense(id, {
-  declared })` works via the existing generic patch path — no new function
+declared })` works via the existing generic patch path — no new function
   needed for the manual toggle.
 
 ### `src/db/declarations.ts`

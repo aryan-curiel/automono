@@ -4,7 +4,7 @@
 
 **Goal:** Let any expense record carry an optional IRPF retention (rate % and amount €) withheld by the vendor (e.g. a Gestor), extract it from PDF receipts when present, and surface it as its own credit line in the quarterly tax summary.
 
-**Architecture:** Two new nullable columns on `expenses` (`irpf_rate`, `irpf_amount`), mirroring the existing `invoices.irpf_rate`/`irpf_amount` columns but in the inverse direction (withheld *from* the user, not *by* the user's client). Extraction reuses `receipt_extract.rs`'s existing keyword-line-scan pattern. The form auto-computes amount from rate × base but allows manual override, matching how the vendor's own invoice may round.
+**Architecture:** Two new nullable columns on `expenses` (`irpf_rate`, `irpf_amount`), mirroring the existing `invoices.irpf_rate`/`irpf_amount` columns but in the inverse direction (withheld _from_ the user, not _by_ the user's client). Extraction reuses `receipt_extract.rs`'s existing keyword-line-scan pattern. The form auto-computes amount from rate × base but allows manual override, matching how the vendor's own invoice may round.
 
 **Tech Stack:** Tauri 2 (Rust) + React 19 + TypeScript + SQLite (`@tauri-apps/plugin-sql`), Vitest, `cargo test`.
 
@@ -20,27 +20,29 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `src-tauri/migrations/0022_expense_irpf_retention.sql` (new) | Adds `irpf_rate`, `irpf_amount` nullable columns to `expenses` |
-| `src-tauri/src/lib.rs` (modify) | Registers migration 0022 |
-| `src-tauri/src/receipt_extract.rs` (modify) | Extracts retention rate/amount from receipt PDF text |
-| `src/db/expenses.ts` (modify) | `ExpenseRecord`/`ExpenseRow`/`ReceiptFields` gain the two fields; CRUD wiring |
-| `src/lib/analytics.test.ts` (modify) | Fixture fix so `ExpenseRecord`-typed test helper still compiles |
-| `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | New `expenses.fields.irpfRate`/`irpfAmount` labels |
-| `src/screens/GastoForm.tsx` (modify) | Rate/amount inputs, auto-compute, OCR autofill |
-| `src/screens/GastoDetalle.tsx` (modify) | Read-only retention row |
-| `src/screens/ResumenTrimestral.tsx` (modify) | New KPI tile + CSV columns |
+| File                                                                | Responsibility                                                                |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `src-tauri/migrations/0022_expense_irpf_retention.sql` (new)        | Adds `irpf_rate`, `irpf_amount` nullable columns to `expenses`                |
+| `src-tauri/src/lib.rs` (modify)                                     | Registers migration 0022                                                      |
+| `src-tauri/src/receipt_extract.rs` (modify)                         | Extracts retention rate/amount from receipt PDF text                          |
+| `src/db/expenses.ts` (modify)                                       | `ExpenseRecord`/`ExpenseRow`/`ReceiptFields` gain the two fields; CRUD wiring |
+| `src/lib/analytics.test.ts` (modify)                                | Fixture fix so `ExpenseRecord`-typed test helper still compiles               |
+| `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | New `expenses.fields.irpfRate`/`irpfAmount` labels                            |
+| `src/screens/GastoForm.tsx` (modify)                                | Rate/amount inputs, auto-compute, OCR autofill                                |
+| `src/screens/GastoDetalle.tsx` (modify)                             | Read-only retention row                                                       |
+| `src/screens/ResumenTrimestral.tsx` (modify)                        | New KPI tile + CSV columns                                                    |
 
 ---
 
 ### Task 1: Schema migration
 
 **Files:**
+
 - Create: `src-tauri/migrations/0022_expense_irpf_retention.sql`
 - Modify: `src-tauri/src/lib.rs:145-150` (append a new `Migration` entry after the version-21 entry, before the closing `]`)
 
 **Interfaces:**
+
 - Produces: `expenses.irpf_rate REAL NULL`, `expenses.irpf_amount REAL NULL` — consumed by Task 3 (`src/db/expenses.ts`).
 
 - [ ] **Step 1: Create the migration file**
@@ -104,9 +106,11 @@ git commit -m "feat: add irpf_rate/irpf_amount columns to expenses"
 ### Task 2: Retention extraction in `receipt_extract.rs`
 
 **Files:**
+
 - Modify: `src-tauri/src/receipt_extract.rs`
 
 **Interfaces:**
+
 - Consumes: `parse_amount(raw: &str) -> Option<f64>` (existing, line 31), `last_number_on_line_containing(text: &str, keyword: &str) -> Option<f64>` (existing, line 51).
 - Produces: `ReceiptFields.irpf_rate: Option<f64>`, `ReceiptFields.irpf_amount: Option<f64>` — consumed by Task 3's `ReceiptFieldsRow`/`extractReceiptFields` mapping in `src/db/expenses.ts`.
 
@@ -266,10 +270,12 @@ git commit -m "feat: extract IRPF retention rate/amount from receipt PDFs"
 ### Task 3: `src/db/expenses.ts` field wiring
 
 **Files:**
+
 - Modify: `src/db/expenses.ts`
 - Modify: `src/lib/analytics.test.ts:37-50` (fixture helper — required for this to typecheck)
 
 **Interfaces:**
+
 - Consumes: `expenses.irpf_rate`/`irpf_amount` columns from Task 1; `ReceiptFields.irpf_rate`/`irpf_amount` (Rust, `snake_case`) from Task 2.
 - Produces: `ExpenseRecord.irpfRate: number | null`, `ExpenseRecord.irpfAmount: number | null`, `ReceiptFields.irpfRate: number | null`, `ReceiptFields.irpfAmount: number | null` — consumed by Task 5 (`GastoForm.tsx`), Task 6 (`GastoDetalle.tsx`), Task 7 (`ResumenTrimestral.tsx`).
 
@@ -595,10 +601,12 @@ git commit -m "feat: wire irpfRate/irpfAmount through the expenses data layer"
 ### Task 4: i18n labels
 
 **Files:**
+
 - Modify: `src/locales/es/common.json:161-173`
 - Modify: `src/locales/en/common.json:161-173`
 
 **Interfaces:**
+
 - Produces: `expenses.fields.irpfRate`, `expenses.fields.irpfAmount` translation keys — consumed by Task 5 and Task 6.
 
 - [ ] **Step 1: Add the Spanish labels**
@@ -678,9 +686,11 @@ git commit -m "feat: add i18n labels for expense IRPF retention fields"
 ### Task 5: `GastoForm.tsx` — rate/amount inputs, auto-compute, OCR autofill
 
 **Files:**
+
 - Modify: `src/screens/GastoForm.tsx`
 
 **Interfaces:**
+
 - Consumes: `ExpenseRecord.irpfRate`/`irpfAmount`, `NewExpense.irpfRate`/`irpfAmount`, `ReceiptFields.irpfRate`/`irpfAmount` (all from Task 3).
 - Produces: nothing new consumed elsewhere — this is a leaf UI task alongside Task 6.
 
@@ -793,80 +803,80 @@ function toFormState(expense: ExpenseRecord): FormState {
 Replace lines 77-104 (from `const [attachingProof, ...]` through the end of the edit-load `useEffect`):
 
 ```tsx
-  const [attachingProof, setAttachingProof] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
+const [attachingProof, setAttachingProof] = useState(false);
+const [errors, setErrors] = useState<FieldErrors>({});
+const [saveError, setSaveError] = useState<string | null>(null);
+const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
 
-  useEffect(() => {
-    listExpenseCategories().then(setCategories);
-  }, []);
+useEffect(() => {
+  listExpenseCategories().then(setCategories);
+}, []);
 
-  useEffect(() => {
-    if (mode !== "edit" || expenseId === undefined) return;
-    let cancelled = false;
-    getExpense(expenseId)
-      .then((expense) => {
-        if (cancelled) return;
-        if (expense) setForm(toFormState(expense));
-      })
-      .catch(() => {
-        if (!cancelled) setLoadError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, expenseId]);
+useEffect(() => {
+  if (mode !== "edit" || expenseId === undefined) return;
+  let cancelled = false;
+  getExpense(expenseId)
+    .then((expense) => {
+      if (cancelled) return;
+      if (expense) setForm(toFormState(expense));
+    })
+    .catch(() => {
+      if (!cancelled) setLoadError(true);
+    })
+    .finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+  return () => {
+    cancelled = true;
+  };
+}, [mode, expenseId]);
 ```
 
 with:
 
 ```tsx
-  const [attachingProof, setAttachingProof] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
-  // Tracks whether irpfAmount should keep auto-recomputing from rate × amount, or has been
-  // taken over by a manual/OCR-extracted value it shouldn't clobber.
-  const irpfAutoManaged = useRef(true);
+const [attachingProof, setAttachingProof] = useState(false);
+const [errors, setErrors] = useState<FieldErrors>({});
+const [saveError, setSaveError] = useState<string | null>(null);
+const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
+// Tracks whether irpfAmount should keep auto-recomputing from rate × amount, or has been
+// taken over by a manual/OCR-extracted value it shouldn't clobber.
+const irpfAutoManaged = useRef(true);
 
-  useEffect(() => {
-    listExpenseCategories().then(setCategories);
-  }, []);
+useEffect(() => {
+  listExpenseCategories().then(setCategories);
+}, []);
 
-  useEffect(() => {
-    if (mode !== "edit" || expenseId === undefined) return;
-    let cancelled = false;
-    getExpense(expenseId)
-      .then((expense) => {
-        if (cancelled) return;
-        if (expense) {
-          irpfAutoManaged.current = expense.irpfAmount === null;
-          setForm(toFormState(expense));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setLoadError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, expenseId]);
+useEffect(() => {
+  if (mode !== "edit" || expenseId === undefined) return;
+  let cancelled = false;
+  getExpense(expenseId)
+    .then((expense) => {
+      if (cancelled) return;
+      if (expense) {
+        irpfAutoManaged.current = expense.irpfAmount === null;
+        setForm(toFormState(expense));
+      }
+    })
+    .catch(() => {
+      if (!cancelled) setLoadError(true);
+    })
+    .finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+  return () => {
+    cancelled = true;
+  };
+}, [mode, expenseId]);
 
-  useEffect(() => {
-    if (!irpfAutoManaged.current) return;
-    const rate = Number(form.irpfRate);
-    const base = Number(form.amount);
-    if (!form.irpfRate.trim() || Number.isNaN(rate) || Number.isNaN(base)) return;
-    const computed = ((base * rate) / 100).toFixed(2);
-    setForm((f) => (f.irpfAmount === computed ? f : { ...f, irpfAmount: computed }));
-  }, [form.amount, form.irpfRate]);
+useEffect(() => {
+  if (!irpfAutoManaged.current) return;
+  const rate = Number(form.irpfRate);
+  const base = Number(form.amount);
+  if (!form.irpfRate.trim() || Number.isNaN(rate) || Number.isNaN(base)) return;
+  const computed = ((base * rate) / 100).toFixed(2);
+  setForm((f) => (f.irpfAmount === computed ? f : { ...f, irpfAmount: computed }));
+}, [form.amount, form.irpfRate]);
 ```
 
 - [ ] **Step 4: Backfill retention fields from OCR in `handleAttachFile`**
@@ -874,44 +884,42 @@ with:
 Replace lines 127-137:
 
 ```tsx
-      const stored = await attachExpenseFile(source, date, note);
+const stored = await attachExpenseFile(source, date, note);
 
-      setForm((f) => ({
-        ...f,
-        receiptFilePath: stored,
-        date: f.date || extracted?.date || f.date,
-        amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
-        ivaAmount:
-          f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
-        description: f.description || extracted?.vendorGuess || f.description,
-      }));
+setForm((f) => ({
+  ...f,
+  receiptFilePath: stored,
+  date: f.date || extracted?.date || f.date,
+  amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
+  ivaAmount:
+    f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
+  description: f.description || extracted?.vendorGuess || f.description,
+}));
 ```
 
 with:
 
 ```tsx
-      const stored = await attachExpenseFile(source, date, note);
+const stored = await attachExpenseFile(source, date, note);
 
-      // An OCR-extracted retention amount is authoritative (it's read off the vendor's own
-      // printed figure), so stop the rate×amount auto-compute effect from overwriting it later.
-      if (extracted?.irpfAmount != null && !form.irpfAmount) {
-        irpfAutoManaged.current = false;
-      }
+// An OCR-extracted retention amount is authoritative (it's read off the vendor's own
+// printed figure), so stop the rate×amount auto-compute effect from overwriting it later.
+if (extracted?.irpfAmount != null && !form.irpfAmount) {
+  irpfAutoManaged.current = false;
+}
 
-      setForm((f) => ({
-        ...f,
-        receiptFilePath: stored,
-        date: f.date || extracted?.date || f.date,
-        amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
-        ivaAmount:
-          f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
-        irpfRate:
-          f.irpfRate || (extracted?.irpfRate != null ? String(extracted.irpfRate) : f.irpfRate),
-        irpfAmount:
-          f.irpfAmount ||
-          (extracted?.irpfAmount != null ? String(extracted.irpfAmount) : f.irpfAmount),
-        description: f.description || extracted?.vendorGuess || f.description,
-      }));
+setForm((f) => ({
+  ...f,
+  receiptFilePath: stored,
+  date: f.date || extracted?.date || f.date,
+  amount: f.amount || (extracted?.amount != null ? String(extracted.amount) : f.amount),
+  ivaAmount:
+    f.ivaAmount || (extracted?.ivaAmount != null ? String(extracted.ivaAmount) : f.ivaAmount),
+  irpfRate: f.irpfRate || (extracted?.irpfRate != null ? String(extracted.irpfRate) : f.irpfRate),
+  irpfAmount:
+    f.irpfAmount || (extracted?.irpfAmount != null ? String(extracted.irpfAmount) : f.irpfAmount),
+  description: f.description || extracted?.vendorGuess || f.description,
+}));
 ```
 
 - [ ] **Step 5: Include the fields in the save payload**
@@ -919,33 +927,33 @@ with:
 Replace lines 176-185:
 
 ```tsx
-    const payload: NewExpense = {
-      date: form.date,
-      category: form.category.trim() || null,
-      description: form.description.trim() || null,
-      amount: Number(form.amount),
-      ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
-      deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
-      receiptFilePath: form.receiptFilePath,
-      paymentProofFilePath: form.paymentProofFilePath,
-    };
+const payload: NewExpense = {
+  date: form.date,
+  category: form.category.trim() || null,
+  description: form.description.trim() || null,
+  amount: Number(form.amount),
+  ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
+  deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
+  receiptFilePath: form.receiptFilePath,
+  paymentProofFilePath: form.paymentProofFilePath,
+};
 ```
 
 with:
 
 ```tsx
-    const payload: NewExpense = {
-      date: form.date,
-      category: form.category.trim() || null,
-      description: form.description.trim() || null,
-      amount: Number(form.amount),
-      ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
-      deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
-      irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
-      irpfAmount: form.irpfAmount.trim() ? Number(form.irpfAmount) : null,
-      receiptFilePath: form.receiptFilePath,
-      paymentProofFilePath: form.paymentProofFilePath,
-    };
+const payload: NewExpense = {
+  date: form.date,
+  category: form.category.trim() || null,
+  description: form.description.trim() || null,
+  amount: Number(form.amount),
+  ivaAmount: form.ivaAmount.trim() ? Number(form.ivaAmount) : null,
+  deductiblePct: form.deductiblePct.trim() ? Number(form.deductiblePct) : 100,
+  irpfRate: form.irpfRate.trim() ? Number(form.irpfRate) : null,
+  irpfAmount: form.irpfAmount.trim() ? Number(form.irpfAmount) : null,
+  receiptFilePath: form.receiptFilePath,
+  paymentProofFilePath: form.paymentProofFilePath,
+};
 ```
 
 - [ ] **Step 6: Add the two form rows**
@@ -953,17 +961,17 @@ with:
 Replace lines 278-289 (the `deductiblePct` `FormRow`, keeping it as-is but adding two new rows right after it):
 
 ```tsx
-        <FormRow label={t("expenses.fields.deductiblePct")}>
-          <TextInput
-            type="number"
-            step="1"
-            min="0"
-            max="100"
-            mono
-            value={form.deductiblePct}
-            onChange={(e) => set("deductiblePct", e.target.value)}
-          />
-        </FormRow>
+<FormRow label={t("expenses.fields.deductiblePct")}>
+  <TextInput
+    type="number"
+    step="1"
+    min="0"
+    max="100"
+    mono
+    value={form.deductiblePct}
+    onChange={(e) => set("deductiblePct", e.target.value)}
+  />
+</FormRow>
 ```
 
 with:
@@ -1028,9 +1036,11 @@ git commit -m "feat: add IRPF retention fields to the expense form"
 ### Task 6: `GastoDetalle.tsx` — read-only retention row
 
 **Files:**
+
 - Modify: `src/screens/GastoDetalle.tsx`
 
 **Interfaces:**
+
 - Consumes: `ExpenseRecord.irpfRate`/`irpfAmount` (Task 3).
 
 - [ ] **Step 1: Add the retention `InfoRow`**
@@ -1038,28 +1048,30 @@ git commit -m "feat: add IRPF retention fields to the expense form"
 Replace lines 119-123:
 
 ```tsx
-        <InfoRow
-          label={t("expenses.fields.deductiblePct")}
-          value={`${expense.deductiblePct}% (${formatEUR(deductibleIva)})`}
-          mono
-        />
+<InfoRow
+  label={t("expenses.fields.deductiblePct")}
+  value={`${expense.deductiblePct}% (${formatEUR(deductibleIva)})`}
+  mono
+/>
 ```
 
 with:
 
 ```tsx
-        <InfoRow
-          label={t("expenses.fields.deductiblePct")}
-          value={`${expense.deductiblePct}% (${formatEUR(deductibleIva)})`}
-          mono
-        />
-        {expense.irpfAmount !== null && (
-          <InfoRow
-            label={t("expenses.fields.irpfRate")}
-            value={`${expense.irpfRate ?? 0}% (${formatEUR(expense.irpfAmount)})`}
-            mono
-          />
-        )}
+<InfoRow
+  label={t("expenses.fields.deductiblePct")}
+  value={`${expense.deductiblePct}% (${formatEUR(deductibleIva)})`}
+  mono
+/>;
+{
+  expense.irpfAmount !== null && (
+    <InfoRow
+      label={t("expenses.fields.irpfRate")}
+      value={`${expense.irpfRate ?? 0}% (${formatEUR(expense.irpfAmount)})`}
+      mono
+    />
+  );
+}
 ```
 
 - [ ] **Step 2: Typecheck**
@@ -1085,9 +1097,11 @@ git commit -m "feat: show IRPF retention in expense detail view"
 ### Task 7: `ResumenTrimestral.tsx` — KPI tile + CSV export
 
 **Files:**
+
 - Modify: `src/screens/ResumenTrimestral.tsx`
 
 **Interfaces:**
+
 - Consumes: `ExpenseRecord.irpfRate`/`irpfAmount` (Task 3).
 
 - [ ] **Step 1: Add the `% IRPF`/`IRPF` CSV columns for the Gastos section**
@@ -1095,43 +1109,43 @@ git commit -m "feat: show IRPF retention in expense detail view"
 Replace lines 60-73:
 
 ```tsx
-  lines.push(csvRow(["Gastos"]));
-  lines.push(csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible"]));
-  for (const e of expenses) {
-    lines.push(
-      csvRow([
-        formatDate(e.date),
-        e.category ?? "",
-        e.description ?? "",
-        e.amount,
-        e.ivaAmount ?? 0,
-        e.deductiblePct,
-      ]),
-    );
-  }
+lines.push(csvRow(["Gastos"]));
+lines.push(csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible"]));
+for (const e of expenses) {
+  lines.push(
+    csvRow([
+      formatDate(e.date),
+      e.category ?? "",
+      e.description ?? "",
+      e.amount,
+      e.ivaAmount ?? 0,
+      e.deductiblePct,
+    ]),
+  );
+}
 ```
 
 with:
 
 ```tsx
-  lines.push(csvRow(["Gastos"]));
+lines.push(csvRow(["Gastos"]));
+lines.push(
+  csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible", "% IRPF", "IRPF"]),
+);
+for (const e of expenses) {
   lines.push(
-    csvRow(["Fecha", "Categoría", "Descripción", "Importe", "IVA", "% deducible", "% IRPF", "IRPF"]),
+    csvRow([
+      formatDate(e.date),
+      e.category ?? "",
+      e.description ?? "",
+      e.amount,
+      e.ivaAmount ?? 0,
+      e.deductiblePct,
+      e.irpfRate ?? 0,
+      e.irpfAmount ?? 0,
+    ]),
   );
-  for (const e of expenses) {
-    lines.push(
-      csvRow([
-        formatDate(e.date),
-        e.category ?? "",
-        e.description ?? "",
-        e.amount,
-        e.ivaAmount ?? 0,
-        e.deductiblePct,
-        e.irpfRate ?? 0,
-        e.irpfAmount ?? 0,
-      ]),
-    );
-  }
+}
 ```
 
 - [ ] **Step 2: Compute the expense-side retention credit total**
@@ -1139,20 +1153,14 @@ with:
 Replace lines 121-124:
 
 ```tsx
-  const expensesIva = expenses.reduce(
-    (s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100),
-    0,
-  );
+const expensesIva = expenses.reduce((s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100), 0);
 ```
 
 with:
 
 ```tsx
-  const expensesIva = expenses.reduce(
-    (s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100),
-    0,
-  );
-  const expensesIrpfWithheld = expenses.reduce((s, e) => s + (e.irpfAmount ?? 0), 0);
+const expensesIva = expenses.reduce((s, e) => s + (e.ivaAmount ?? 0) * (e.deductiblePct / 100), 0);
+const expensesIrpfWithheld = expenses.reduce((s, e) => s + (e.irpfAmount ?? 0), 0);
 ```
 
 - [ ] **Step 3: Relabel the existing tile and add the new one**
@@ -1160,7 +1168,7 @@ with:
 Replace line 211:
 
 ```tsx
-        <KpiTile label="IRPF retenido" value={formatEUR(irpfWithheld)} icon={Percent} />
+<KpiTile label="IRPF retenido" value={formatEUR(irpfWithheld)} icon={Percent} />
 ```
 
 with:
@@ -1227,6 +1235,6 @@ Create one new expense with category "Otros", amount 200, IRPF rate 15 (auto-com
 
 ## Self-Review Notes
 
-- **Spec coverage:** schema (Task 1), OCR extraction (Task 2), db layer (Task 3), i18n (Task 4), form UI + auto-compute + OCR wiring (Task 5), detail view (Task 6), quarterly summary KPI + CSV (Task 7) — every section of the design spec has a task. No dedicated new test *file* was added for the frontend (per the spec's "Testing" section, this rides existing coverage) — Task 5/6/7 close the gap with mandatory manual verification steps instead, per this repo's CLAUDE.md UI-verification requirement.
+- **Spec coverage:** schema (Task 1), OCR extraction (Task 2), db layer (Task 3), i18n (Task 4), form UI + auto-compute + OCR wiring (Task 5), detail view (Task 6), quarterly summary KPI + CSV (Task 7) — every section of the design spec has a task. No dedicated new test _file_ was added for the frontend (per the spec's "Testing" section, this rides existing coverage) — Task 5/6/7 close the gap with mandatory manual verification steps instead, per this repo's CLAUDE.md UI-verification requirement.
 - **Type consistency:** `irpfRate`/`irpfAmount` (TS, camelCase) ↔ `irpf_rate`/`irpf_amount` (SQL/Rust, snake_case) used consistently across every task; `ReceiptFields.irpfRate`/`irpfAmount` (Task 3) match what `GastoForm.tsx`'s `handleAttachFile` (Task 5) reads.
 - **No placeholders:** every step has literal code, not a description of code.

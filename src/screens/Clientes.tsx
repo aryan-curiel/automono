@@ -163,7 +163,9 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
                     <DotsThreeVertical size={16} weight="bold" />
                   </MenuTrigger>
                   <MenuContent>
-                    <MenuItem onSelect={() => onOpenClient(c.id)}>{t("common.viewDetail")}</MenuItem>
+                    <MenuItem onSelect={() => onOpenClient(c.id)}>
+                      {t("common.viewDetail")}
+                    </MenuItem>
                     <MenuItem
                       danger
                       onSelect={() => {

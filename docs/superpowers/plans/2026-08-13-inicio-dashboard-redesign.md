@@ -23,21 +23,23 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `src/screens/ResumenTrimestral.tsx` (modify) | New optional `initialQuarterKey` prop seeds `focusedKey` instead of always starting on the current quarter |
-| `src/screens/Dashboard.tsx` (modify) | The bulk of the work: wider expense fetch + declarations fetch, declaration-status hero card, historical quarter strip + trend chart, declaration-aware tax-calendar dots, new `onNavigateToQuarter` prop |
-| `src/App.tsx` (modify) | `dashboardQuarterKey` state threaded between `Dashboard` and `ResumenTrimestral`; Sidebar navigation resets it |
-| `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | New keys under `dashboard.declarationStatus`, `dashboard.history`, `dashboard.trend` |
+| File                                                                | Responsibility                                                                                                                                                                                            |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/screens/ResumenTrimestral.tsx` (modify)                        | New optional `initialQuarterKey` prop seeds `focusedKey` instead of always starting on the current quarter                                                                                                |
+| `src/screens/Dashboard.tsx` (modify)                                | The bulk of the work: wider expense fetch + declarations fetch, declaration-status hero card, historical quarter strip + trend chart, declaration-aware tax-calendar dots, new `onNavigateToQuarter` prop |
+| `src/App.tsx` (modify)                                              | `dashboardQuarterKey` state threaded between `Dashboard` and `ResumenTrimestral`; Sidebar navigation resets it                                                                                            |
+| `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | New keys under `dashboard.declarationStatus`, `dashboard.history`, `dashboard.trend`                                                                                                                      |
 
 ---
 
 ### Task 1: `ResumenTrimestral` accepts an `initialQuarterKey` prop
 
 **Files:**
+
 - Modify: `src/screens/ResumenTrimestral.tsx:85-89` (props interface), `src/screens/ResumenTrimestral.tsx:242-244` (component signature + initial state)
 
 **Interfaces:**
+
 - Produces: `ResumenTrimestralProps.initialQuarterKey?: string` — when set, `focusedKey`'s initial value is this instead of `CURRENT_KEY`. Later tasks (App.tsx wiring) pass this from a new `dashboardQuarterKey` state.
 
 - [ ] **Step 1: Add the prop to the interface**
@@ -107,9 +109,11 @@ git commit -m "feat: let ResumenTrimestral open on a specific quarter"
 Rewires `Dashboard.tsx`'s data fetching before any UI changes: replaces the single-current-quarter expense fetch with one 6-quarter fetch (the KPI and expenses-by-category cards derive their current-quarter numbers from it, so their rendered output is unchanged), and adds the `listDeclarations()` fetch every later task needs.
 
 **Files:**
+
 - Modify: `src/screens/Dashboard.tsx` (imports, module-scope consts, component state/effects, derived values)
 
 **Interfaces:**
+
 - Consumes: `listDeclarations(): Promise<DeclarationListItem[]>`, `getDeclaration(id): Promise<DeclarationDetail | null>` from `src/db/declarations.ts` (existing, used by `ResumenTrimestral.tsx` already). `quarterRange`, `quarterKeyOf`, `previousQuarterKey`, `quarterKeyLabel` from `src/lib/dateRange.ts` (existing).
 - Produces (module scope, used by Tasks 3-5): `CURRENT_KEY: string`, `CURRENT_YEAR: number`, `CURRENT_QUARTER: number`, `QUARTER_KEYS: string[]` (6 keys, ascending, oldest→newest, ending at `CURRENT_KEY`), `quarterKeyRange(key: string): { from: string; to: string }`, `expenseQuarterKey(expense: ExpenseRecord): string`, `MODELOS: Modelo[]`, `MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "modelo111Path">`.
 - Produces (component scope, used by Tasks 3-5): `declarations: DeclarationListItem[]` state, `currentDeclarationDetail: DeclarationDetail | null` state, `currentDeclaration: DeclarationListItem | undefined`, `invoicedByQuarter: Map<string, number>`, `expensesByQuarter: Map<string, number>`, `maxTrendValue: number`.
@@ -195,62 +199,61 @@ const MODELO_PATH_KEY: Record<Modelo, "modelo303Path" | "modelo130Path" | "model
 Change:
 
 ```ts
-  const [clientCount, setClientCount] = useState(0);
-  const [expensesThisQuarter, setExpensesThisQuarter] = useState(0);
-  const [quarterExpenses, setQuarterExpenses] = useState<ExpenseRecord[]>([]);
-  const [generatingFor, setGeneratingFor] = useState<number | null>(null);
+const [clientCount, setClientCount] = useState(0);
+const [expensesThisQuarter, setExpensesThisQuarter] = useState(0);
+const [quarterExpenses, setQuarterExpenses] = useState<ExpenseRecord[]>([]);
+const [generatingFor, setGeneratingFor] = useState<number | null>(null);
 
-  useEffect(() => {
-    listClients().then((clients) => setClientCount(clients.length));
-  }, []);
+useEffect(() => {
+  listClients().then((clients) => setClientCount(clients.length));
+}, []);
 
-  useEffect(() => {
-    const { from, to } = defaultQuarterPeriod();
-    listExpenses({ from, to, quarterKeys: quartersInRange(from, to) }).then((expenses) => {
-      setQuarterExpenses(expenses);
-      setExpensesThisQuarter(
-        expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0),
-      );
-    });
-  }, []);
+useEffect(() => {
+  const { from, to } = defaultQuarterPeriod();
+  listExpenses({ from, to, quarterKeys: quartersInRange(from, to) }).then((expenses) => {
+    setQuarterExpenses(expenses);
+    setExpensesThisQuarter(expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0));
+  });
+}, []);
 ```
 
 to:
 
 ```ts
-  const [clientCount, setClientCount] = useState(0);
-  const [recentExpenses, setRecentExpenses] = useState<ExpenseRecord[]>([]);
-  const [generatingFor, setGeneratingFor] = useState<number | null>(null);
-  const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
-  const [currentDeclarationDetail, setCurrentDeclarationDetail] =
-    useState<DeclarationDetail | null>(null);
+const [clientCount, setClientCount] = useState(0);
+const [recentExpenses, setRecentExpenses] = useState<ExpenseRecord[]>([]);
+const [generatingFor, setGeneratingFor] = useState<number | null>(null);
+const [declarations, setDeclarations] = useState<DeclarationListItem[]>([]);
+const [currentDeclarationDetail, setCurrentDeclarationDetail] = useState<DeclarationDetail | null>(
+  null,
+);
 
-  useEffect(() => {
-    listClients().then((clients) => setClientCount(clients.length));
-  }, []);
+useEffect(() => {
+  listClients().then((clients) => setClientCount(clients.length));
+}, []);
 
-  useEffect(() => {
-    listExpenses({
-      from: QUARTER_WINDOW_FROM,
-      to: QUARTER_WINDOW_TO,
-      quarterKeys: QUARTER_KEYS,
-    }).then(setRecentExpenses);
-  }, []);
+useEffect(() => {
+  listExpenses({
+    from: QUARTER_WINDOW_FROM,
+    to: QUARTER_WINDOW_TO,
+    quarterKeys: QUARTER_KEYS,
+  }).then(setRecentExpenses);
+}, []);
 
-  useEffect(() => {
-    listDeclarations().then(setDeclarations);
-  }, []);
+useEffect(() => {
+  listDeclarations().then(setDeclarations);
+}, []);
 
-  useEffect(() => {
-    const current = declarations.find(
-      (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
-    );
-    if (current?.status === "in_progress") {
-      getDeclaration(current.id).then(setCurrentDeclarationDetail);
-    } else {
-      setCurrentDeclarationDetail(null);
-    }
-  }, [declarations]);
+useEffect(() => {
+  const current = declarations.find(
+    (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+  );
+  if (current?.status === "in_progress") {
+    getDeclaration(current.id).then(setCurrentDeclarationDetail);
+  } else {
+    setCurrentDeclarationDetail(null);
+  }
+}, [declarations]);
 ```
 
 - [ ] **Step 4: Derive the current-quarter expense subset and the 6-quarter trend maps**
@@ -258,47 +261,50 @@ to:
 Immediately after the line `const taxDeadlines = nextTaxDeadlines(todayIso, 2);` (which stays where it is), add:
 
 ```ts
-  const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === CURRENT_KEY);
-  const expensesThisQuarter = quarterExpenses.reduce(
-    (s, e) => s + e.amount * (e.deductiblePct / 100),
-    0,
-  );
+const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === CURRENT_KEY);
+const expensesThisQuarter = quarterExpenses.reduce(
+  (s, e) => s + e.amount * (e.deductiblePct / 100),
+  0,
+);
 
-  const invoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const { from, to } = quarterKeyRange(key);
-      const total = invoices
-        .filter(
-          (inv) =>
-            inv.status !== "draft" &&
-            inv.issueDate !== null &&
-            inv.issueDate >= from &&
-            inv.issueDate <= to,
-        )
-        .reduce((s, inv) => s + inv.total, 0);
-      return [key, total] as const;
-    }),
-  );
+const invoicedByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const { from, to } = quarterKeyRange(key);
+    const total = invoices
+      .filter(
+        (inv) =>
+          inv.status !== "draft" &&
+          inv.issueDate !== null &&
+          inv.issueDate >= from &&
+          inv.issueDate <= to,
+      )
+      .reduce((s, inv) => s + inv.total, 0);
+    return [key, total] as const;
+  }),
+);
 
-  const expensesByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as const));
-  for (const expense of recentExpenses) {
-    const key = expenseQuarterKey(expense);
-    if (expensesByQuarter.has(key)) {
-      expensesByQuarter.set(
-        key,
-        expensesByQuarter.get(key)! + expense.amount * (expense.deductiblePct / 100),
-      );
-    }
+const expensesByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as const));
+for (const expense of recentExpenses) {
+  const key = expenseQuarterKey(expense);
+  if (expensesByQuarter.has(key)) {
+    expensesByQuarter.set(
+      key,
+      expensesByQuarter.get(key)! + expense.amount * (expense.deductiblePct / 100),
+    );
   }
+}
 
-  const maxTrendValue = Math.max(
-    1,
-    ...QUARTER_KEYS.flatMap((key) => [invoicedByQuarter.get(key) ?? 0, expensesByQuarter.get(key) ?? 0]),
-  );
+const maxTrendValue = Math.max(
+  1,
+  ...QUARTER_KEYS.flatMap((key) => [
+    invoicedByQuarter.get(key) ?? 0,
+    expensesByQuarter.get(key) ?? 0,
+  ]),
+);
 
-  const currentDeclaration = declarations.find(
-    (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
-  );
+const currentDeclaration = declarations.find(
+  (d) => d.year === CURRENT_YEAR && d.quarter === CURRENT_QUARTER,
+);
 ```
 
 There should be exactly one declaration each of `expensesThisQuarter` and `quarterExpenses` in the file now — the old `useState` pair was already removed in Step 3, and this step adds their `const`-derived replacements.
@@ -325,10 +331,12 @@ git commit -m "refactor: widen Dashboard's expense fetch to 6 quarters, add decl
 ### Task 3: Declaration status hero card
 
 **Files:**
+
 - Modify: `src/screens/Dashboard.tsx` (JSX, right after `PageHeader`)
 - Modify: `src/locales/es/common.json`, `src/locales/en/common.json` (new `dashboard.declarationStatus.*` keys)
 
 **Interfaces:**
+
 - Consumes: `currentDeclaration`, `currentDeclarationDetail`, `MODELOS`, `MODELO_PATH_KEY`, `taxDeadlines`, `totalFacturado`, `expensesThisQuarter`, `CURRENT_KEY` — all produced by Task 2.
 
 - [ ] **Step 1: Add i18n keys**
@@ -453,6 +461,7 @@ Expected: no errors.
 
 Run: `bun run tauri dev`, open Inicio.
 Expected:
+
 - If the current quarter has no declaration row yet: badge reads "Sin empezar" (neutral tone), no modelo dots.
 - If it has an in-progress declaration: badge reads "En curso" (info tone), and the three "Modelo 303/130/111" dots appear, colored green when that PDF is attached and muted grey otherwise (attach one via Resumen Trimestral to see it flip).
 - If it's completed: badge reads "Completada" (success tone), no modelo dots (all three are guaranteed attached by `markDeclarationCompleted`'s invariant, so showing them again is redundant here).
@@ -470,10 +479,12 @@ git commit -m "feat: add declaration status hero card to Inicio"
 ### Task 4: Historical quarter strip + trend chart
 
 **Files:**
+
 - Modify: `src/screens/Dashboard.tsx` (new `DashboardQuarterStrip` component, new JSX section, `DashboardProps`/`onNavigate` wiring)
 - Modify: `src/locales/es/common.json`, `src/locales/en/common.json` (new `dashboard.history`/`dashboard.trend` keys)
 
 **Interfaces:**
+
 - Consumes: `QUARTER_KEYS`, `declarations`, `invoicedByQuarter`, `expensesByQuarter`, `maxTrendValue`, `quarterKeyLabel` — all from Task 2.
 - Produces: `DashboardProps.onNavigateToQuarter: (quarterKey: string) => void` (new required prop — Task 6 wires it from `App.tsx`). `DashboardQuarterStrip({ quarterKeys, declarations, onSelect })` — local component, not exported.
 
@@ -596,7 +607,6 @@ function DashboardQuarterStrip({
     </div>
   );
 }
-
 ```
 
 - [ ] **Step 4: Add the history + trend JSX section**
@@ -680,9 +690,11 @@ git commit -m "feat: add historical quarter strip and trend chart to Inicio"
 ### Task 5: Declaration-aware dots on the tax calendar card
 
 **Files:**
+
 - Modify: `src/screens/Dashboard.tsx` (tax calendar card JSX + one module-scope helper)
 
 **Interfaces:**
+
 - Consumes: `declarations`, `taxDeadlines` — from Task 2/existing code.
 - Produces: `deadlineQuarterKey(dueDate: string): string` (module-scope helper, local to this file).
 
@@ -708,60 +720,64 @@ function deadlineQuarterKey(dueDate: string): string {
 Change:
 
 ```tsx
-          {taxDeadlines.map((d) => (
-            <div
-              key={d.dueDate}
-              className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
-            >
-              <div className="flex items-center gap-2.5">
-                <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
-                <span className="font-medium text-[13.5px]">{d.label}</span>
-              </div>
-              <span className="font-semibold text-[13.5px] font-mono">{formatDate(d.dueDate)}</span>
-            </div>
-          ))}
+{
+  taxDeadlines.map((d) => (
+    <div
+      key={d.dueDate}
+      className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
+    >
+      <div className="flex items-center gap-2.5">
+        <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
+        <span className="font-medium text-[13.5px]">{d.label}</span>
+      </div>
+      <span className="font-semibold text-[13.5px] font-mono">{formatDate(d.dueDate)}</span>
+    </div>
+  ));
+}
 ```
 
 to:
 
 ```tsx
-          {taxDeadlines.map((d) => {
-            const declarationStatus =
-              d.model === "130/303"
-                ? (() => {
-                    const key = deadlineQuarterKey(d.dueDate);
-                    const [yearStr, q] = key.split("-Q");
-                    return declarations.find(
-                      (dec) => dec.year === Number(yearStr) && dec.quarter === Number(q),
-                    )?.status;
-                  })()
-                : undefined;
-            return (
-              <div
-                key={d.dueDate}
-                className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
-              >
-                <div className="flex items-center gap-2.5">
-                  <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
-                  <span className="font-medium text-[13.5px]">{d.label}</span>
-                </div>
-                <span className="flex items-center gap-2 font-semibold text-[13.5px] font-mono">
-                  {d.model === "130/303" && (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        declarationStatus === "completed"
-                          ? "bg-success"
-                          : declarationStatus === "in_progress"
-                            ? "bg-info"
-                            : "bg-ink-soft/40"
-                      }`}
-                    />
-                  )}
-                  {formatDate(d.dueDate)}
-                </span>
-              </div>
-            );
-          })}
+{
+  taxDeadlines.map((d) => {
+    const declarationStatus =
+      d.model === "130/303"
+        ? (() => {
+            const key = deadlineQuarterKey(d.dueDate);
+            const [yearStr, q] = key.split("-Q");
+            return declarations.find(
+              (dec) => dec.year === Number(yearStr) && dec.quarter === Number(q),
+            )?.status;
+          })()
+        : undefined;
+    return (
+      <div
+        key={d.dueDate}
+        className="flex items-center justify-between py-2.5 border-b border-border last:border-b-0"
+      >
+        <div className="flex items-center gap-2.5">
+          <CalendarCheck size={16} weight="bold" className="text-ink-soft" />
+          <span className="font-medium text-[13.5px]">{d.label}</span>
+        </div>
+        <span className="flex items-center gap-2 font-semibold text-[13.5px] font-mono">
+          {d.model === "130/303" && (
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                declarationStatus === "completed"
+                  ? "bg-success"
+                  : declarationStatus === "in_progress"
+                    ? "bg-info"
+                    : "bg-ink-soft/40"
+              }`}
+            />
+          )}
+          {formatDate(d.dueDate)}
+        </span>
+      </div>
+    );
+  });
+}
 ```
 
 - [ ] **Step 3: Typecheck and lint**
@@ -781,9 +797,11 @@ git commit -m "feat: show declaration status dots on Inicio's tax calendar deadl
 ### Task 6: Wire `App.tsx`
 
 **Files:**
+
 - Modify: `src/App.tsx`
 
 **Interfaces:**
+
 - Consumes: `DashboardProps.onNavigateToQuarter` (Task 4), `ResumenTrimestralProps.initialQuarterKey` (Task 1).
 
 - [ ] **Step 1: Add `dashboardQuarterKey` state**
@@ -791,7 +809,7 @@ git commit -m "feat: show declaration status dots on Inicio's tax calendar deadl
 Near the other `useState` declarations at the top of the `App` component (e.g. right after `const [selectedClientId, setSelectedClientId] = useState<number | null>(null);`), add:
 
 ```ts
-  const [dashboardQuarterKey, setDashboardQuarterKey] = useState<string | null>(null);
+const [dashboardQuarterKey, setDashboardQuarterKey] = useState<string | null>(null);
 ```
 
 - [ ] **Step 2: Wire the `Dashboard` call site**
@@ -799,31 +817,35 @@ Near the other `useState` declarations at the top of the `App` component (e.g. r
 Change:
 
 ```tsx
-          {screen === "dashboard" && (
-            <Dashboard
-              invoices={invoices}
-              onNavigate={navigateFromDashboard}
-              onOpenInvoice={openInvoice}
-              onDuplicateInvoice={handleDuplicateInvoice}
-            />
-          )}
+{
+  screen === "dashboard" && (
+    <Dashboard
+      invoices={invoices}
+      onNavigate={navigateFromDashboard}
+      onOpenInvoice={openInvoice}
+      onDuplicateInvoice={handleDuplicateInvoice}
+    />
+  );
+}
 ```
 
 to:
 
 ```tsx
-          {screen === "dashboard" && (
-            <Dashboard
-              invoices={invoices}
-              onNavigate={navigateFromDashboard}
-              onNavigateToQuarter={(key) => {
-                setDashboardQuarterKey(key);
-                setScreen("resumen-trimestral");
-              }}
-              onOpenInvoice={openInvoice}
-              onDuplicateInvoice={handleDuplicateInvoice}
-            />
-          )}
+{
+  screen === "dashboard" && (
+    <Dashboard
+      invoices={invoices}
+      onNavigate={navigateFromDashboard}
+      onNavigateToQuarter={(key) => {
+        setDashboardQuarterKey(key);
+        setScreen("resumen-trimestral");
+      }}
+      onOpenInvoice={openInvoice}
+      onDuplicateInvoice={handleDuplicateInvoice}
+    />
+  );
+}
 ```
 
 - [ ] **Step 3: Wire the `ResumenTrimestral` call site**
@@ -831,26 +853,30 @@ to:
 Change:
 
 ```tsx
-          {screen === "resumen-trimestral" && (
-            <ResumenTrimestral
-              invoices={invoices}
-              dropPaths={declarationDropPaths}
-              dropToken={declarationDropToken}
-            />
-          )}
+{
+  screen === "resumen-trimestral" && (
+    <ResumenTrimestral
+      invoices={invoices}
+      dropPaths={declarationDropPaths}
+      dropToken={declarationDropToken}
+    />
+  );
+}
 ```
 
 to:
 
 ```tsx
-          {screen === "resumen-trimestral" && (
-            <ResumenTrimestral
-              invoices={invoices}
-              dropPaths={declarationDropPaths}
-              dropToken={declarationDropToken}
-              initialQuarterKey={dashboardQuarterKey ?? undefined}
-            />
-          )}
+{
+  screen === "resumen-trimestral" && (
+    <ResumenTrimestral
+      invoices={invoices}
+      dropPaths={declarationDropPaths}
+      dropToken={declarationDropToken}
+      initialQuarterKey={dashboardQuarterKey ?? undefined}
+    />
+  );
+}
 ```
 
 - [ ] **Step 4: Reset `dashboardQuarterKey` on sidebar navigation**
@@ -860,19 +886,19 @@ The sidebar is the only other entry point into `resumen-trimestral` (confirmed: 
 Change:
 
 ```tsx
-        <Sidebar screen={screen} onNavigate={setScreen} />
+<Sidebar screen={screen} onNavigate={setScreen} />
 ```
 
 to:
 
 ```tsx
-        <Sidebar
-          screen={screen}
-          onNavigate={(next) => {
-            setDashboardQuarterKey(null);
-            setScreen(next);
-          }}
-        />
+<Sidebar
+  screen={screen}
+  onNavigate={(next) => {
+    setDashboardQuarterKey(null);
+    setScreen(next);
+  }}
+/>
 ```
 
 - [ ] **Step 5: Typecheck, lint, and build**
@@ -915,7 +941,7 @@ Confirm the upcoming 130/303 deadlines show a dot whose color matches that quart
 
 - [ ] **Step 6: Verify the sidebar-reset fix**
 
-From Inicio, click a past quarter in the strip (lands on that quarter in Resumen Trimestral). Then click "Inicio" in the sidebar, then click "Resumen trimestral" in the sidebar directly. Confirm it opens on the *current* quarter, not the stale past one.
+From Inicio, click a past quarter in the strip (lands on that quarter in Resumen Trimestral). Then click "Inicio" in the sidebar, then click "Resumen trimestral" in the sidebar directly. Confirm it opens on the _current_ quarter, not the stale past one.
 
 - [ ] **Step 7: Verify nothing else regressed**
 

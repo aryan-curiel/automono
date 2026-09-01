@@ -23,19 +23,21 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `src/components/charts/QuarterTrendChart.tsx` (new) | Grouped-bar + line combo chart with a clickable, status-aware X-axis tick |
-| `src/screens/Dashboard.tsx` (modify) | Build `trendData`, swap the trend card's JSX, drop `maxTrendValue` and the now-unused `Lock` import |
+| File                                                | Responsibility                                                                                      |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `src/components/charts/QuarterTrendChart.tsx` (new) | Grouped-bar + line combo chart with a clickable, status-aware X-axis tick                           |
+| `src/screens/Dashboard.tsx` (modify)                | Build `trendData`, swap the trend card's JSX, drop `maxTrendValue` and the now-unused `Lock` import |
 
 ---
 
 ### Task 1: `QuarterTrendChart` component
 
 **Files:**
+
 - Create: `src/components/charts/QuarterTrendChart.tsx`
 
 **Interfaces:**
+
 - Produces: `QuarterTrendDatum { key: string; label: string; invoiced: number; expenses: number; net: number; status: "completed" | "in_progress" | "none"; locked: boolean }`, `QuarterTrendChartProps { data: QuarterTrendDatum[]; invoicedLabel: string; expensesLabel: string; netLabel: string; formatValue: (value: number) => string; onSelectQuarter: (key: string) => void; height?: number }`, `QuarterTrendChart(props: QuarterTrendChartProps): JSX.Element`. Task 2 consumes these.
 
 - [ ] **Step 1: Create the component**
@@ -203,7 +205,10 @@ export function QuarterTrendChart({
       </ResponsiveContainer>
       <div className="flex items-center gap-4 mt-1 text-[11px] text-ink-soft">
         <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--color-accent)" }} />
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: "var(--color-accent)" }}
+          />
           {invoicedLabel}
         </span>
         <span className="flex items-center gap-1.5">
@@ -247,9 +252,11 @@ git commit -m "feat: add QuarterTrendChart combo chart component"
 ### Task 2: Wire `QuarterTrendChart` into Inicio's trend card
 
 **Files:**
+
 - Modify: `src/screens/Dashboard.tsx`
 
 **Interfaces:**
+
 - Consumes: `QuarterTrendChart`, `QuarterTrendDatum` from Task 1.
 
 - [ ] **Step 1: Import the new component**
@@ -310,35 +317,35 @@ to:
 Change:
 
 ```ts
-  const statusByKey = new Map<string, DeclarationStatus>(
-    declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
-  );
+const statusByKey = new Map<string, DeclarationStatus>(
+  declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
+);
 
-  const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
+const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
 ```
 
 to:
 
 ```ts
-  const statusByKey = new Map<string, DeclarationStatus>(
-    declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
-  );
+const statusByKey = new Map<string, DeclarationStatus>(
+  declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
+);
 
-  const trendData = QUARTER_KEYS.map((key) => {
-    const invoiced = invoicedByQuarter.get(key) ?? 0;
-    const expenses = expensesByQuarter.get(key) ?? 0;
-    return {
-      key,
-      label: quarterKeyLabel(key),
-      invoiced,
-      expenses,
-      net: invoiced - expenses,
-      status: statusByKey.get(key) ?? "none",
-      locked: altaKey !== null && compareQuarterKeys(key, altaKey) < 0,
-    };
-  });
+const trendData = QUARTER_KEYS.map((key) => {
+  const invoiced = invoicedByQuarter.get(key) ?? 0;
+  const expenses = expensesByQuarter.get(key) ?? 0;
+  return {
+    key,
+    label: quarterKeyLabel(key),
+    invoiced,
+    expenses,
+    net: invoiced - expenses,
+    status: statusByKey.get(key) ?? "none",
+    locked: altaKey !== null && compareQuarterKeys(key, altaKey) < 0,
+  };
+});
 
-  const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
+const prevQuarterKey = QUARTER_KEYS[QUARTER_KEYS.length - 2];
 ```
 
 - [ ] **Step 5: Swap the trend card's JSX**
@@ -436,6 +443,7 @@ leftover fragment.
 
 Run: `bun run tauri dev`, open Inicio, find the "Facturado vs. gastos" card.
 Expected:
+
 - Renders as a real chart: grouped bars (Facturado, Gastos) per quarter plus a
   dark line for Neto, hairline gridlines, a legend below with three entries.
 - Hovering a quarter's bars shows a tooltip with all three values (Facturado,

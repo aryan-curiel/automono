@@ -169,7 +169,8 @@ export function mergeRegistrationFields(
   current: BusinessProfileRecord,
   fields: RegistrationFields,
 ): BusinessProfileRecord {
-  const keep = (value: string, extracted: string | null) => (value.trim() ? value : extracted ?? value);
+  const keep = (value: string, extracted: string | null) =>
+    value.trim() ? value : (extracted ?? value);
   return {
     ...current,
     name: keep(current.name, fields.businessName),
