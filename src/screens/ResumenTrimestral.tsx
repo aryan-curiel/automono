@@ -97,7 +97,7 @@ interface ResumenTrimestralProps {
 
 interface QuarterLineItem {
   id: number;
-  date: string;
+  date: string | null;
   label: string;
   amount: number;
   /** The line's full (pre-deduction) amount, shown muted next to `amount` when it differs —
@@ -209,7 +209,9 @@ function GastosMesTabs({
   const [page, setPage] = useState(0);
   const activeMonth = selected === "all" ? null : months[Number(selected)];
   const filtered = activeMonth
-    ? items.filter((it) => it.date >= activeMonth.from && it.date <= activeMonth.to)
+    ? items.filter(
+        (it) => it.date != null && it.date >= activeMonth.from && it.date <= activeMonth.to,
+      )
     : items;
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
@@ -772,7 +774,7 @@ export function ResumenTrimestral({
               title={t("resumenTrimestral.invoicesTitle")}
               items={qInvoices.map((inv) => ({
                 id: inv.id,
-                date: inv.issueDate ?? "",
+                date: inv.issueDate,
                 label: `${inv.clientName} · ${invoiceNumberLabel(inv)}`,
                 amount: inv.total,
               }))}

@@ -5,7 +5,7 @@ export function formatEUR(n: number): string {
   return (n < 0 ? "-" : "") + grouped + "," + decPart + " €";
 }
 
-export function formatDate(iso: string | null): string {
+export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
