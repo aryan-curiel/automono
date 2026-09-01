@@ -95,10 +95,7 @@ export function Dashboard({
   const [currentYearStr, currentQuarterStr] = currentKey.split("-Q");
   const currentYear = Number(currentYearStr);
   const currentQuarter = Number(currentQuarterStr);
-  const quarterKeys = useMemo(
-    () => recentQuarterKeys(currentKey, RECENT_QUARTERS),
-    [currentKey],
-  );
+  const quarterKeys = useMemo(() => recentQuarterKeys(currentKey, RECENT_QUARTERS), [currentKey]);
   const quarterWindowFrom = quarterKeyRange(quarterKeys[0]).from;
   const quarterWindowTo = quarterKeyRange(quarterKeys[quarterKeys.length - 1]).to;
 
@@ -132,177 +129,244 @@ export function Dashboard({
     void detail.then(setCurrentDeclarationDetail);
   }, [declarations, currentYear, currentQuarter]);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const soonIso = new Date(new Date(todayIso).getTime() + 14 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const thisYear = new Date().getFullYear();
-  const invoicesThisYear = invoices.filter(
-    (inv) => inv.issueDate !== null && inv.issueDate.startsWith(String(thisYear)),
-  );
-  const quarterPeriod = defaultQuarterPeriod();
-  const invoicesThisQuarter = invoices.filter(
-    (inv) =>
-      inv.issueDate !== null &&
-      inv.issueDate >= quarterPeriod.from &&
-      inv.issueDate <= quarterPeriod.to,
-  );
+  // Every derived structure below scans `invoices` / `recentExpenses` (some once per
+  // quarter key). Memoized so a parent re-render that didn't change either list is free.
+  // ponytail: "today" is captured at memo time, not per render — a Dashboard left open
+  // across midnight keeps yesterday's date until invoices/expenses next change. Fine here.
+  const {
+    soonIso,
+    thisYear,
+    quarterPeriod,
+    taxDeadlines,
+    invoicesThisQuarter,
+    recentInvoices,
+    topClients,
+    expensesThisQuarter,
+    topCategories,
+    expensesByQuarter,
+    currentDeclaration,
+    prevQuarterKey,
+    ivaTrendData,
+    grossInvoicedByQuarter,
+    trendData,
+    paidPendingData,
+    totalRevenueThisYear,
+    topClientShare,
+    repeatClientShare,
+    topExpenseCategory,
+    categoryTrendData,
+    recurring,
+    maxClientRevenue,
+    maxCategoryExpense,
+  } = useMemo(() => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const soonIso = new Date(new Date(todayIso).getTime() + 14 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const thisYear = new Date().getFullYear();
+    const quarterPeriod = defaultQuarterPeriod();
+    const taxDeadlines = nextTaxDeadlines(todayIso, 2);
 
-  const recentInvoices = invoices.slice(0, 4);
-  const topClients = revenueByClient(invoicesThisYear).slice(0, 5);
-  const taxDeadlines = nextTaxDeadlines(todayIso, 2);
-
-  const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === currentKey);
-  const expensesThisQuarter = quarterExpenses.reduce(
-    (s, e) => s + e.amount * (e.deductiblePct / 100),
-    0,
-  );
-  const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
-
-  const expensesByQuarter = new Map(quarterKeys.map((key) => [key, 0] as [string, number]));
-  for (const expense of recentExpenses) {
-    const key = expenseQuarterKey(expense);
-    if (expensesByQuarter.has(key)) {
-      expensesByQuarter.set(
-        key,
-        expensesByQuarter.get(key)! + expense.amount * (expense.deductiblePct / 100),
-      );
-    }
-  }
-
-  const currentDeclaration = declarations.find(
-    (d) => d.year === currentYear && d.quarter === currentQuarter,
-  );
-  const statusByKey = new Map<string, DeclarationStatus>(
-    declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
-  );
-
-  const prevQuarterKey = quarterKeys[quarterKeys.length - 2];
-
-  const ivaInvoicedByQuarter = new Map(
-    quarterKeys.map((key) => {
-      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.ivaAmount,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-  const ivaDeductibleByQuarter = new Map(quarterKeys.map((key) => [key, 0] as [string, number]));
-  for (const expense of recentExpenses) {
-    const key = expenseQuarterKey(expense);
-    if (ivaDeductibleByQuarter.has(key)) {
-      ivaDeductibleByQuarter.set(
-        key,
-        ivaDeductibleByQuarter.get(key)! +
-          (expense.ivaAmount ?? 0) * (ivaDeductiblePctOf(expense) / 100),
-      );
-    }
-  }
-  const ivaNetByQuarter = new Map(
-    quarterKeys.map(
-      (key) =>
-        [
-          key,
-          (ivaInvoicedByQuarter.get(key) ?? 0) - (ivaDeductibleByQuarter.get(key) ?? 0),
-        ] as const,
-    ),
-  );
-  const ivaTrendData = quarterKeys.map((key) => ({
-    key,
-    label: quarterKeyLabel(key),
-    value: ivaNetByQuarter.get(key) ?? 0,
-  }));
-
-  const grossInvoicedByQuarter = new Map(
-    quarterKeys.map((key) => {
-      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-  const paidByQuarter = new Map(
-    quarterKeys.map((key) => {
-      const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-
-  // Only quarters from the RETA alta date onward — before that the freelancer
-  // wasn't registered, so plotting €0 there just adds an empty gutter.
-  const trendData = quarterKeys.filter(
-    (key) => altaKey === null || compareQuarterKeys(key, altaKey) >= 0,
-  ).map((key) => {
-    const invoiced = grossInvoicedByQuarter.get(key) ?? 0;
-    const expenses = expensesByQuarter.get(key) ?? 0;
-    const declared = statusByKey.get(key);
-    return {
-      key,
-      label: quarterKeyLabel(key),
-      invoiced,
-      expenses,
-      net: invoiced - expenses,
-      status:
-        declared ?? (key === currentKey ? ("in_progress" as const) : ("none" as const)),
-    };
-  });
-
-  const paidPendingData = quarterKeys.map((key) => {
-    const total = grossInvoicedByQuarter.get(key) ?? 0;
-    const paid = paidByQuarter.get(key) ?? 0;
-    return {
-      key,
-      label: quarterKeyLabel(key),
-      a: paid,
-      b: Math.max(0, total - paid),
-    };
-  });
-
-  const clientInvoiceCountThisYear = new Map<number, number>();
-  for (const inv of invoicesThisYear) {
-    if (inv.status === "draft") continue;
-    clientInvoiceCountThisYear.set(
-      inv.clientId,
-      (clientInvoiceCountThisYear.get(inv.clientId) ?? 0) + 1,
+    const invoicesThisYear = invoices.filter(
+      (inv) => inv.issueDate !== null && inv.issueDate.startsWith(String(thisYear)),
     );
-  }
-  const revenueByClientThisYear = revenueByClient(invoicesThisYear);
-  const totalRevenueThisYear = revenueByClientThisYear.reduce((s, c) => s + c.total, 0);
-  const repeatRevenueThisYear = revenueByClientThisYear
-    .filter((c) => (clientInvoiceCountThisYear.get(c.clientId) ?? 0) >= 2)
-    .reduce((s, c) => s + c.total, 0);
-  const topClientShare =
-    totalRevenueThisYear > 0 ? (topClients[0]?.total ?? 0) / totalRevenueThisYear : 0;
-  const repeatClientShare =
-    totalRevenueThisYear > 0 ? repeatRevenueThisYear / totalRevenueThisYear : 0;
+    const invoicesThisQuarter = invoices.filter(
+      (inv) =>
+        inv.issueDate !== null &&
+        inv.issueDate >= quarterPeriod.from &&
+        inv.issueDate <= quarterPeriod.to,
+    );
 
-  const topExpenseCategory = expenseByCategory(recentExpenses)[0]?.category;
-  const categoryTrendByQuarter = new Map(
-    quarterKeys.map((key) => {
-      const total = recentExpenses
-        .filter(
-          (e) =>
-            expenseQuarterKey(e) === key &&
-            (e.category?.trim() || "Sin categoría") === topExpenseCategory,
-        )
-        .reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
-      return [key, total] as const;
-    }),
-  );
-  const categoryTrendData = quarterKeys.map((key) => ({
-    key,
-    label: quarterKeyLabel(key),
-    value: categoryTrendByQuarter.get(key) ?? 0,
-  }));
+    const recentInvoices = invoices.slice(0, 4);
+    const topClients = revenueByClient(invoicesThisYear).slice(0, 5);
 
-  const recurring = recurringInvoiceCandidates(invoices, todayIso);
-  const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
-  const maxCategoryExpense = Math.max(1, ...topCategories.map((c) => c.total));
+    const quarterExpenses = recentExpenses.filter((e) => expenseQuarterKey(e) === currentKey);
+    const expensesThisQuarter = quarterExpenses.reduce(
+      (s, e) => s + e.amount * (e.deductiblePct / 100),
+      0,
+    );
+    const topCategories = expenseByCategory(quarterExpenses).slice(0, 5);
+
+    const expensesByQuarter = new Map(quarterKeys.map((key) => [key, 0] as [string, number]));
+    for (const expense of recentExpenses) {
+      const key = expenseQuarterKey(expense);
+      if (expensesByQuarter.has(key)) {
+        expensesByQuarter.set(
+          key,
+          expensesByQuarter.get(key)! + expense.amount * (expense.deductiblePct / 100),
+        );
+      }
+    }
+
+    const currentDeclaration = declarations.find(
+      (d) => d.year === currentYear && d.quarter === currentQuarter,
+    );
+    const statusByKey = new Map<string, DeclarationStatus>(
+      declarations.map((d) => [`${d.year}-Q${d.quarter}`, d.status]),
+    );
+
+    const prevQuarterKey = quarterKeys[quarterKeys.length - 2];
+
+    const ivaInvoicedByQuarter = new Map(
+      quarterKeys.map((key) => {
+        const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+          (s, inv) => s + inv.ivaAmount,
+          0,
+        );
+        return [key, total] as const;
+      }),
+    );
+    const ivaDeductibleByQuarter = new Map(quarterKeys.map((key) => [key, 0] as [string, number]));
+    for (const expense of recentExpenses) {
+      const key = expenseQuarterKey(expense);
+      if (ivaDeductibleByQuarter.has(key)) {
+        ivaDeductibleByQuarter.set(
+          key,
+          ivaDeductibleByQuarter.get(key)! +
+            (expense.ivaAmount ?? 0) * (ivaDeductiblePctOf(expense) / 100),
+        );
+      }
+    }
+    const ivaNetByQuarter = new Map(
+      quarterKeys.map(
+        (key) =>
+          [
+            key,
+            (ivaInvoicedByQuarter.get(key) ?? 0) - (ivaDeductibleByQuarter.get(key) ?? 0),
+          ] as const,
+      ),
+    );
+    const ivaTrendData = quarterKeys.map((key) => ({
+      key,
+      label: quarterKeyLabel(key),
+      value: ivaNetByQuarter.get(key) ?? 0,
+    }));
+
+    const grossInvoicedByQuarter = new Map(
+      quarterKeys.map((key) => {
+        const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+          (s, inv) => s + inv.total,
+          0,
+        );
+        return [key, total] as const;
+      }),
+    );
+    const paidByQuarter = new Map(
+      quarterKeys.map((key) => {
+        const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+          (s, inv) => s + inv.total,
+          0,
+        );
+        return [key, total] as const;
+      }),
+    );
+
+    // Only quarters from the RETA alta date onward — before that the freelancer
+    // wasn't registered, so plotting €0 there just adds an empty gutter.
+    const trendData = quarterKeys
+      .filter((key) => altaKey === null || compareQuarterKeys(key, altaKey) >= 0)
+      .map((key) => {
+        const invoiced = grossInvoicedByQuarter.get(key) ?? 0;
+        const expenses = expensesByQuarter.get(key) ?? 0;
+        const declared = statusByKey.get(key);
+        return {
+          key,
+          label: quarterKeyLabel(key),
+          invoiced,
+          expenses,
+          net: invoiced - expenses,
+          status: declared ?? (key === currentKey ? ("in_progress" as const) : ("none" as const)),
+        };
+      });
+
+    const paidPendingData = quarterKeys.map((key) => {
+      const total = grossInvoicedByQuarter.get(key) ?? 0;
+      const paid = paidByQuarter.get(key) ?? 0;
+      return {
+        key,
+        label: quarterKeyLabel(key),
+        a: paid,
+        b: Math.max(0, total - paid),
+      };
+    });
+
+    const clientInvoiceCountThisYear = new Map<number, number>();
+    for (const inv of invoicesThisYear) {
+      if (inv.status === "draft") continue;
+      clientInvoiceCountThisYear.set(
+        inv.clientId,
+        (clientInvoiceCountThisYear.get(inv.clientId) ?? 0) + 1,
+      );
+    }
+    const revenueByClientThisYear = revenueByClient(invoicesThisYear);
+    const totalRevenueThisYear = revenueByClientThisYear.reduce((s, c) => s + c.total, 0);
+    const repeatRevenueThisYear = revenueByClientThisYear
+      .filter((c) => (clientInvoiceCountThisYear.get(c.clientId) ?? 0) >= 2)
+      .reduce((s, c) => s + c.total, 0);
+    const topClientShare =
+      totalRevenueThisYear > 0 ? (topClients[0]?.total ?? 0) / totalRevenueThisYear : 0;
+    const repeatClientShare =
+      totalRevenueThisYear > 0 ? repeatRevenueThisYear / totalRevenueThisYear : 0;
+
+    const topExpenseCategory = expenseByCategory(recentExpenses)[0]?.category;
+    const categoryTrendByQuarter = new Map(
+      quarterKeys.map((key) => {
+        const total = recentExpenses
+          .filter(
+            (e) =>
+              expenseQuarterKey(e) === key &&
+              (e.category?.trim() || "Sin categoría") === topExpenseCategory,
+          )
+          .reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
+        return [key, total] as const;
+      }),
+    );
+    const categoryTrendData = quarterKeys.map((key) => ({
+      key,
+      label: quarterKeyLabel(key),
+      value: categoryTrendByQuarter.get(key) ?? 0,
+    }));
+
+    const recurring = recurringInvoiceCandidates(invoices, todayIso);
+    const maxClientRevenue = Math.max(1, ...topClients.map((c) => c.total));
+    const maxCategoryExpense = Math.max(1, ...topCategories.map((c) => c.total));
+
+    return {
+      soonIso,
+      thisYear,
+      quarterPeriod,
+      taxDeadlines,
+      invoicesThisQuarter,
+      recentInvoices,
+      topClients,
+      expensesThisQuarter,
+      topCategories,
+      expensesByQuarter,
+      currentDeclaration,
+      prevQuarterKey,
+      ivaTrendData,
+      grossInvoicedByQuarter,
+      trendData,
+      paidPendingData,
+      totalRevenueThisYear,
+      topClientShare,
+      repeatClientShare,
+      topExpenseCategory,
+      categoryTrendData,
+      recurring,
+      maxClientRevenue,
+      maxCategoryExpense,
+    };
+  }, [
+    invoices,
+    recentExpenses,
+    quarterKeys,
+    altaKey,
+    declarations,
+    currentKey,
+    currentYear,
+    currentQuarter,
+  ]);
 
   async function handleGenerateRecurring(id: number) {
     setGeneratingFor(id);
@@ -335,7 +399,8 @@ export function Dashboard({
   }
 
   const facturadoDelta = kpiDelta(
-    (grossInvoicedByQuarter.get(currentKey) ?? 0) - (grossInvoicedByQuarter.get(prevQuarterKey) ?? 0),
+    (grossInvoicedByQuarter.get(currentKey) ?? 0) -
+      (grossInvoicedByQuarter.get(prevQuarterKey) ?? 0),
   );
   const gastosDelta = kpiDelta(
     (expensesByQuarter.get(currentKey) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0),
@@ -344,7 +409,8 @@ export function Dashboard({
   const netoDelta = kpiDelta(
     (grossInvoicedByQuarter.get(currentKey) ?? 0) -
       (expensesByQuarter.get(currentKey) ?? 0) -
-      ((grossInvoicedByQuarter.get(prevQuarterKey) ?? 0) - (expensesByQuarter.get(prevQuarterKey) ?? 0)),
+      ((grossInvoicedByQuarter.get(prevQuarterKey) ?? 0) -
+        (expensesByQuarter.get(prevQuarterKey) ?? 0)),
   );
 
   const kpis = [
@@ -537,9 +603,7 @@ export function Dashboard({
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2 mt-1">
-                <span className="text-xs text-ink-soft">
-                  {t("dashboard.recurring.lastMonth")}
-                </span>
+                <span className="text-xs text-ink-soft">{t("dashboard.recurring.lastMonth")}</span>
                 <Button
                   variant="secondary"
                   className="px-2.5 py-1 text-xs shrink-0"

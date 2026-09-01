@@ -41,7 +41,7 @@ The `invoices` table is unaffected — `series_prefix`/`invoice_number` are
 already plain snapshot columns on each invoice row (`UNIQUE (series_prefix,
 invoice_number, is_rectification)`), not FKs to `clients`. That decoupling
 already exists at the invoice level; this change only affects how a client's
-*next* prefix/number gets looked up and incremented at issue time.
+_next_ prefix/number gets looked up and incremented at issue time.
 
 ## Migration
 
@@ -51,11 +51,11 @@ rebuilds `clients`, following the same pattern `0013_rectification_numbering.sql
 used to rebuild `invoices`:
 
 1. `INSERT INTO invoice_series (prefix, next_invoice_number,
-   next_rectification_number) SELECT invoice_prefix, next_invoice_number,
-   next_rectification_number FROM clients` — one series per existing client,
+next_rectification_number) SELECT invoice_prefix, next_invoice_number,
+next_rectification_number FROM clients` — one series per existing client,
    counters carried over exactly. Zero behavior change for current data.
 2. Rebuild `clients` with `series_id` populated via `(SELECT id FROM
-   invoice_series WHERE prefix = clients.invoice_prefix)`, dropping the three
+invoice_series WHERE prefix = clients.invoice_prefix)`, dropping the three
    old columns.
 3. Any triggers/indexes referencing dropped columns are recreated as needed
    (none currently reference these three columns directly, per a check of
@@ -94,8 +94,11 @@ first, with the client referencing its id.
 **`src/db/series.ts` (new):**
 
 ```ts
-export interface SeriesRecord { id: number; prefix: string; }
-export async function listSeries(): Promise<SeriesRecord[]>
+export interface SeriesRecord {
+  id: number;
+  prefix: string;
+}
+export async function listSeries(): Promise<SeriesRecord[]>;
 ```
 
 Reuses `isValidInvoicePrefix` from `src/features/clients/validators.ts` — no
@@ -105,12 +108,12 @@ new validator.
 
 - `ClientRecord` drops `invoicePrefix`/`nextInvoiceNumber`/
   `nextRectificationNumber`; gains `seriesId: number`, `seriesPrefix:
-  string`, `nextInvoiceNumber`, `nextRectificationNumber` — the latter three
+string`, `nextInvoiceNumber`, `nextRectificationNumber` — the latter three
   populated via `JOIN invoice_series ON invoice_series.id = clients.series_id`,
   so every existing read site still gets the same shape it has today, just
   sourced from the join instead of the client row directly.
 - `NewClient` replaces `invoicePrefix: string` with `series: { id: number } |
-  { newPrefix: string }`.
+{ newPrefix: string }`.
 - `createClient`/`updateClient` resolve that union before writing: `newPrefix`
   → `INSERT INTO invoice_series (prefix) VALUES (?)`, use the new id;
   `id` → used as-is. Then write `series_id` on the client row.

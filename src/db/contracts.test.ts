@@ -9,7 +9,9 @@ const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../src-
 function freshDb() {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON;");
-  const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
   for (const file of files) {
     db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
   }

@@ -20,20 +20,22 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `src/screens/Dashboard.tsx` (modify) | New derived consts (IVA net, paid/pending, revenue composition, top-category trend) + new JSX section with 4 cards |
-| `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | New keys under `dashboard.analytics` |
+| File                                                                | Responsibility                                                                                                     |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `src/screens/Dashboard.tsx` (modify)                                | New derived consts (IVA net, paid/pending, revenue composition, top-category trend) + new JSX section with 4 cards |
+| `src/locales/es/common.json`, `src/locales/en/common.json` (modify) | New keys under `dashboard.analytics`                                                                               |
 
 ---
 
 ### Task 1: IVA-a-liquidar card + paid-vs-outstanding card
 
 **Files:**
+
 - Modify: `src/screens/Dashboard.tsx` (import, derived consts, JSX)
 - Modify: `src/locales/es/common.json`, `src/locales/en/common.json` (all `dashboard.analytics.*` keys — this task adds every key the whole plan needs, so Task 2 touches no JSON)
 
 **Interfaces:**
+
 - Consumes: `QUARTER_KEYS`, `quarterKeyRange`, `expenseQuarterKey`, `recentExpenses`, `invoices` — all existing in `Dashboard.tsx`. `invoicesInPeriod`, `paidInvoicesInPeriod` from `../lib/quarterlyDeclaration`.
 - Produces (component scope, used only within this task's JSX): `ivaNetByQuarter: Map<string, number>`, `maxIvaNetValue: number`, `grossInvoicedByQuarter: Map<string, number>`, `paidByQuarter: Map<string, number>`.
 
@@ -154,82 +156,82 @@ import { invoicesInPeriod, paidInvoicesInPeriod } from "../lib/quarterlyDeclarat
 Change:
 
 ```ts
-  const comparison = [
-    comparisonRow(t("dashboard.comparison.invoiced"), currInvoiced, prevInvoiced),
-    comparisonRow(t("dashboard.comparison.expenses"), currExpenses, prevExpenses),
-    comparisonRow(
-      t("dashboard.comparison.net"),
-      currInvoiced - currExpenses,
-      prevInvoiced - prevExpenses,
-    ),
-  ];
+const comparison = [
+  comparisonRow(t("dashboard.comparison.invoiced"), currInvoiced, prevInvoiced),
+  comparisonRow(t("dashboard.comparison.expenses"), currExpenses, prevExpenses),
+  comparisonRow(
+    t("dashboard.comparison.net"),
+    currInvoiced - currExpenses,
+    prevInvoiced - prevExpenses,
+  ),
+];
 
-  const recurring = recurringInvoiceCandidates(invoices, todayIso);
+const recurring = recurringInvoiceCandidates(invoices, todayIso);
 ```
 
 to:
 
 ```ts
-  const comparison = [
-    comparisonRow(t("dashboard.comparison.invoiced"), currInvoiced, prevInvoiced),
-    comparisonRow(t("dashboard.comparison.expenses"), currExpenses, prevExpenses),
-    comparisonRow(
-      t("dashboard.comparison.net"),
-      currInvoiced - currExpenses,
-      prevInvoiced - prevExpenses,
-    ),
-  ];
+const comparison = [
+  comparisonRow(t("dashboard.comparison.invoiced"), currInvoiced, prevInvoiced),
+  comparisonRow(t("dashboard.comparison.expenses"), currExpenses, prevExpenses),
+  comparisonRow(
+    t("dashboard.comparison.net"),
+    currInvoiced - currExpenses,
+    prevInvoiced - prevExpenses,
+  ),
+];
 
-  const ivaInvoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.ivaAmount,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-  const ivaDeductibleByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
-  for (const expense of recentExpenses) {
-    const key = expenseQuarterKey(expense);
-    if (ivaDeductibleByQuarter.has(key)) {
-      ivaDeductibleByQuarter.set(
-        key,
-        ivaDeductibleByQuarter.get(key)! + (expense.ivaAmount ?? 0) * (expense.deductiblePct / 100),
-      );
-    }
+const ivaInvoicedByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.ivaAmount,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
+const ivaDeductibleByQuarter = new Map(QUARTER_KEYS.map((key) => [key, 0] as [string, number]));
+for (const expense of recentExpenses) {
+  const key = expenseQuarterKey(expense);
+  if (ivaDeductibleByQuarter.has(key)) {
+    ivaDeductibleByQuarter.set(
+      key,
+      ivaDeductibleByQuarter.get(key)! + (expense.ivaAmount ?? 0) * (expense.deductiblePct / 100),
+    );
   }
-  const ivaNetByQuarter = new Map(
-    QUARTER_KEYS.map(
-      (key) =>
-        [key, (ivaInvoicedByQuarter.get(key) ?? 0) - (ivaDeductibleByQuarter.get(key) ?? 0)] as const,
-    ),
-  );
-  const maxIvaNetValue = Math.max(
-    1,
-    ...QUARTER_KEYS.map((key) => Math.max(0, ivaNetByQuarter.get(key) ?? 0)),
-  );
+}
+const ivaNetByQuarter = new Map(
+  QUARTER_KEYS.map(
+    (key) =>
+      [key, (ivaInvoicedByQuarter.get(key) ?? 0) - (ivaDeductibleByQuarter.get(key) ?? 0)] as const,
+  ),
+);
+const maxIvaNetValue = Math.max(
+  1,
+  ...QUARTER_KEYS.map((key) => Math.max(0, ivaNetByQuarter.get(key) ?? 0)),
+);
 
-  const grossInvoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-  const paidByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
+const grossInvoicedByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
+const paidByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
 
-  const recurring = recurringInvoiceCandidates(invoices, todayIso);
+const recurring = recurringInvoiceCandidates(invoices, todayIso);
 ```
 
 - [ ] **Step 5: Add the section divider and first grid row**
@@ -379,6 +381,7 @@ Expected: no errors.
 
 Run: `bun run tauri dev`, open Inicio, scroll to the new "Análisis" section.
 Expected:
+
 - Two new cards render: "IVA a liquidar por trimestre" and "Cobrado vs. pendiente".
 - IVA card shows one row per quarter with a bar + € amount; if any quarter's deductible IVA exceeds invoiced IVA, that row shows green "IVA a tu favor: €X" text instead of a bar.
 - Paid/pending card shows a two-color stacked bar per quarter (green = paid, amber = pending) with a legend below, and the total € label per row matches gross invoiced (IVA-inclusive) for that quarter.
@@ -396,9 +399,11 @@ git commit -m "feat: add IVA and paid-vs-outstanding trend cards to Inicio"
 ### Task 2: Revenue-composition card + top-expense-category trend card
 
 **Files:**
+
 - Modify: `src/screens/Dashboard.tsx` (derived consts, JSX)
 
 **Interfaces:**
+
 - Consumes: `invoicesThisYear`, `topClients`, `recentExpenses`, `QUARTER_KEYS`, `expenseQuarterKey` — all existing. `revenueByClient`, `expenseByCategory` from `../lib/analytics` (already imported in this file).
 - Produces (component scope, used only within this task's JSX): `totalRevenueThisYear: number`, `topClientShare: number`, `repeatClientShare: number`, `topExpenseCategory: string | undefined`, `categoryTrendByQuarter: Map<string, number>`, `maxCategoryTrendValue: number`.
 
@@ -407,86 +412,87 @@ git commit -m "feat: add IVA and paid-vs-outstanding trend cards to Inicio"
 In `src/screens/Dashboard.tsx`, change:
 
 ```ts
-  const grossInvoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-  const paidByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
+const grossInvoicedByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
+const paidByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
 
-  const recurring = recurringInvoiceCandidates(invoices, todayIso);
+const recurring = recurringInvoiceCandidates(invoices, todayIso);
 ```
 
 to:
 
 ```ts
-  const grossInvoicedByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-  const paidByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
-        (s, inv) => s + inv.total,
-        0,
-      );
-      return [key, total] as const;
-    }),
-  );
-
-  const clientInvoiceCountThisYear = new Map<number, number>();
-  for (const inv of invoicesThisYear) {
-    if (inv.status === "draft") continue;
-    clientInvoiceCountThisYear.set(
-      inv.clientId,
-      (clientInvoiceCountThisYear.get(inv.clientId) ?? 0) + 1,
+const grossInvoicedByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = invoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
     );
-  }
-  const revenueByClientThisYear = revenueByClient(invoicesThisYear);
-  const totalRevenueThisYear = revenueByClientThisYear.reduce((s, c) => s + c.total, 0);
-  const repeatRevenueThisYear = revenueByClientThisYear
-    .filter((c) => (clientInvoiceCountThisYear.get(c.clientId) ?? 0) >= 2)
-    .reduce((s, c) => s + c.total, 0);
-  const topClientShare =
-    totalRevenueThisYear > 0 ? (topClients[0]?.total ?? 0) / totalRevenueThisYear : 0;
-  const repeatClientShare = totalRevenueThisYear > 0 ? repeatRevenueThisYear / totalRevenueThisYear : 0;
+    return [key, total] as const;
+  }),
+);
+const paidByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = paidInvoicesInPeriod(invoices, quarterKeyRange(key)).reduce(
+      (s, inv) => s + inv.total,
+      0,
+    );
+    return [key, total] as const;
+  }),
+);
 
-  const topExpenseCategory = expenseByCategory(recentExpenses)[0]?.category;
-  const categoryTrendByQuarter = new Map(
-    QUARTER_KEYS.map((key) => {
-      const total = recentExpenses
-        .filter(
-          (e) =>
-            expenseQuarterKey(e) === key &&
-            (e.category?.trim() || "Sin categoría") === topExpenseCategory,
-        )
-        .reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
-      return [key, total] as const;
-    }),
+const clientInvoiceCountThisYear = new Map<number, number>();
+for (const inv of invoicesThisYear) {
+  if (inv.status === "draft") continue;
+  clientInvoiceCountThisYear.set(
+    inv.clientId,
+    (clientInvoiceCountThisYear.get(inv.clientId) ?? 0) + 1,
   );
-  const maxCategoryTrendValue = Math.max(
-    1,
-    ...QUARTER_KEYS.map((key) => categoryTrendByQuarter.get(key) ?? 0),
-  );
+}
+const revenueByClientThisYear = revenueByClient(invoicesThisYear);
+const totalRevenueThisYear = revenueByClientThisYear.reduce((s, c) => s + c.total, 0);
+const repeatRevenueThisYear = revenueByClientThisYear
+  .filter((c) => (clientInvoiceCountThisYear.get(c.clientId) ?? 0) >= 2)
+  .reduce((s, c) => s + c.total, 0);
+const topClientShare =
+  totalRevenueThisYear > 0 ? (topClients[0]?.total ?? 0) / totalRevenueThisYear : 0;
+const repeatClientShare =
+  totalRevenueThisYear > 0 ? repeatRevenueThisYear / totalRevenueThisYear : 0;
 
-  const recurring = recurringInvoiceCandidates(invoices, todayIso);
+const topExpenseCategory = expenseByCategory(recentExpenses)[0]?.category;
+const categoryTrendByQuarter = new Map(
+  QUARTER_KEYS.map((key) => {
+    const total = recentExpenses
+      .filter(
+        (e) =>
+          expenseQuarterKey(e) === key &&
+          (e.category?.trim() || "Sin categoría") === topExpenseCategory,
+      )
+      .reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
+    return [key, total] as const;
+  }),
+);
+const maxCategoryTrendValue = Math.max(
+  1,
+  ...QUARTER_KEYS.map((key) => categoryTrendByQuarter.get(key) ?? 0),
+);
+
+const recurring = recurringInvoiceCandidates(invoices, todayIso);
 ```
 
 - [ ] **Step 2: Add the second grid row**
@@ -617,6 +623,7 @@ Expected: no errors.
 
 Run: `bun run tauri dev`, open Inicio, scroll to "Análisis".
 Expected:
+
 - "Composición de ingresos" shows two bars with percentages: top client's share, and repeat-clients' share (both 0-100%, never NaN/Infinity even with only one client or one invoice).
 - "Mayor categoría de gasto: <category>" shows one bar per quarter for that single category, title includes the actual top category name.
 - If there are no expenses in the 4-quarter window, that card shows the empty title + "Sin datos todavía" instead of a category name and empty rows.
@@ -642,6 +649,7 @@ Run: `bun run tauri dev`
 - [ ] **Step 2: Verify all four cards against real data**
 
 On Inicio's "Análisis" section, spot-check one quarter's numbers against Facturas/Gastos filtered to that period:
+
 - IVA card: manually sum that quarter's issued+paid invoices' IVA, and that quarter's deductible expense IVA; confirm the displayed net (or credit) matches.
 - Paid/pending card: confirm the green segment width matches paid invoices' share of that quarter's gross total.
 - Composition card: confirm the top-client % matches `topClient.total / totalRevenueThisYear` by hand for the current year.

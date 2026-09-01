@@ -20,6 +20,7 @@
 ## Scope
 
 **In scope:**
+
 - New `quarterly_declarations.gdj_rate REAL NOT NULL DEFAULT 5.0`.
 - Wizard step 3 gains a GDJ-rate control (SegmentedControl: 0 / 2 / 5 / 7 %); the value flows into `createDeclaration`.
 - `cumulativeModelo130(invoices, expenses, year, quarter, gdjRatePct)`: rendimiento neto YTD × 20%, − GDJ reduction (rate × YTD net, capped €2,000/yr), − retenciones YTD, − prior quarters' own positive pagos fraccionados, floored at 0.
@@ -27,6 +28,7 @@
 - Keep the match/mismatch badge for 130 — meaningful once the value is correct.
 
 **Out of scope:**
+
 - Editing the GDJ rate on an already-created declaration (delete + recreate the in-progress one, or a follow-up issue). Noted in Risks.
 - Modelo 303 prior-period compensation (issue §2.4 — separate).
 - Storing "what was actually declared/paid" per quarter — `cumulativeModelo130` uses AutoMono's own consistent recomputation as the baseline (`ponytail:` comment marks the ceiling).
@@ -50,6 +52,7 @@
 ### Task 1: Migration — `quarterly_declarations.gdj_rate`
 
 **Files:**
+
 - Create: `src-tauri/migrations/0033_declaration_gdj_rate.sql`
 - Modify: `src-tauri/src/lib.rs:210-215` (append after the `version: 31` entry, before the closing `]`)
 
@@ -90,12 +93,15 @@ Expected: PASS (`all_sql_files_are_registered_as_migrations` green; migration re
 ### Task 2: `cumulativeModelo130` pure function + tests
 
 **Files:**
+
 - Modify: `src/lib/modeloReport.ts`
 - Test: `src/lib/modeloReport.test.ts`
 
 **Interfaces:**
+
 - Consumes: `buildDeclarationSnapshot`, `invoicesInPeriod`, `expensesInPeriod` from `./quarterlyDeclaration`; `quarterRange` from `./dateRange`; `roundCents as round2` from `./invoice`; `InvoiceListItem`, `ExpenseRecord` types.
 - Produces:
+
   ```ts
   /** 5% is the estimación directa simplificada default; kept in sync with the SQL column default
    *  in 0033_declaration_gdj_rate.sql. */
@@ -103,10 +109,10 @@ Expected: PASS (`all_sql_files_are_registered_as_migrations` green; migration re
   export const GDJ_ANNUAL_CAP = 2000;
 
   export interface Modelo130Ytd {
-    rendimientoNetoYtd: number;          // AEAT box [03], YTD, accrual
-    gastosDificilJustificacion: number;  // reduction actually applied YTD (capped)
-    priorPagosFraccionados: number;      // Σ prior quarters' positive pagos
-    pagoFraccionado: number;             // this quarter's box result, floored at 0
+    rendimientoNetoYtd: number; // AEAT box [03], YTD, accrual
+    gastosDificilJustificacion: number; // reduction actually applied YTD (capped)
+    priorPagosFraccionados: number; // Σ prior quarters' positive pagos
+    pagoFraccionado: number; // this quarter's box result, floored at 0
   }
 
   export function cumulativeModelo130(
@@ -128,7 +134,9 @@ describe("cumulativeModelo130", () => {
     const r = cumulativeModelo130(
       [invoice({ issueDate: "2026-02-01", subtotal: 10000, irpfAmount: 1500 })],
       [expense({ date: "2026-02-01", amount: 2000, deductiblePct: 100 })],
-      2026, 1, 5,
+      2026,
+      1,
+      5,
     );
     // net 8000; GDJ = 5% * 8000 = 400; base 7600; 0.2*7600 = 1520; − ret 1500 − prior 0 = 20
     expect(r.rendimientoNetoYtd).toBe(8000);
@@ -168,7 +176,10 @@ describe("cumulativeModelo130", () => {
   it("GDJ reduction is capped at €2,000/yr", () => {
     const r = cumulativeModelo130(
       [invoice({ issueDate: "2026-02-01", subtotal: 200000, irpfAmount: 0 })],
-      [], 2026, 1, 5,
+      [],
+      2026,
+      1,
+      5,
     );
     expect(r.gastosDificilJustificacion).toBe(2000); // 5% * 200000 = 10000, capped
   });
@@ -260,10 +271,12 @@ export function cumulativeModelo130(
 ### Task 3: Thread `ytd130` through `expectedCasillas` / `buildModeloReport`
 
 **Files:**
+
 - Modify: `src/lib/modeloReport.ts` (`expectedCasillas` ~`:34`, `buildModeloReport` ~`:98`)
 - Test: `src/lib/modeloReport.test.ts`
 
 **Interfaces:**
+
 - Produces: `expectedCasillas(modelo, snapshot, ytd130?: Modelo130Ytd)`, `buildModeloReport(modelo, snapshot, extracted, period, ytd130?: Modelo130Ytd)`.
 
 - [ ] **Step 1: Replace** the existing 130 test ("computes 130 rendimiento neto and pago fraccionado, clamped at zero") with:
@@ -334,9 +347,11 @@ case "130": {
 ### Task 4: Persist `gdjRate` on the declaration
 
 **Files:**
+
 - Modify: `src/db/declarations.ts`
 
 **Interfaces:**
+
 - Produces: `DeclarationDetail.gdjRate: number`; `createDeclaration(year, quarter, snapshot, gdjRate: number)`.
 
 - [ ] **Step 1:** Add `gdj_rate: number;` to `DeclarationRow`, `gdjRate: number;` to `DeclarationDetail`, and map it in `mapRow`:
@@ -374,6 +389,7 @@ export async function createDeclaration(
 ### Task 5: Wizard GDJ-rate control
 
 **Files:**
+
 - Modify: `src/components/DeclarationWizard.tsx`
 - Modify: `src/locales/es/common.json` (`declarations.wizard.step4`), `src/locales/en/common.json` (same path)
 
@@ -420,6 +436,7 @@ Reset it alongside the other fields in the `open && !wasOpen` block: `setGdjRate
 ### Task 6: Wire the cumulative result into the review modal
 
 **Files:**
+
 - Modify: `src/components/ModeloReviewModal.tsx` (props ~`:54-63`, `buildModeloReport` call ~`:134`)
 - Modify: `src/screens/ResumenTrimestral.tsx` (expense fetch ~`:330-345`, modal render ~`:627-636`)
 
@@ -427,8 +444,15 @@ Reset it alongside the other fields in the `open && !wasOpen` block: `setGdjRate
 
 ```ts
 const report = buildModeloReport(
-  detection.modelo, snapshot, fields,
-  { expectedYear: year, expectedQuarter: quarter, detectedYear: detection.year, detectedQuarter: detection.quarter },
+  detection.modelo,
+  snapshot,
+  fields,
+  {
+    expectedYear: year,
+    expectedQuarter: quarter,
+    detectedYear: detection.year,
+    detectedQuarter: detection.quarter,
+  },
   modelo130Ytd,
 );
 ```
@@ -455,8 +479,10 @@ useEffect(() => {
 const modelo130Ytd =
   declaration != null
     ? cumulativeModelo130(
-        invoices, ytdExpenses,
-        declaration.year, declaration.quarter as 1 | 2 | 3 | 4,
+        invoices,
+        ytdExpenses,
+        declaration.year,
+        declaration.quarter as 1 | 2 | 3 | 4,
         declaration.gdjRate,
       )
     : undefined;

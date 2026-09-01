@@ -81,10 +81,12 @@ export function FacturaRectificar({
   const numberPreview = client
     ? `${client.seriesPrefix}-R${String(client.nextRectificationNumber).padStart(3, "0")}`
     : "";
-  const helpText =
-    rectType === "full" ? t("invoices.help.full") : t("invoices.help.partial");
+  const helpText = rectType === "full" ? t("invoices.help.full") : t("invoices.help.partial");
 
-  const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
+  const subtotal = lines.reduce(
+    (s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0),
+    0,
+  );
   const iva = (subtotal * original.ivaRate) / 100;
   const irpf = (subtotal * original.irpfRate) / 100;
   const irpfForeignClient = !irpfApplicable(original.clientCountry);
@@ -182,9 +184,7 @@ export function FacturaRectificar({
               {t("invoices.totals.irpfWithRate", { rate: original.irpfRate })}
               {irpfForeignClient && t("invoices.totals.foreignClientSuffix")}
             </span>
-            <span className="font-medium font-mono text-[13px] text-ink">
-              -{formatEUR(irpf)}
-            </span>
+            <span className="font-medium font-mono text-[13px] text-ink">-{formatEUR(irpf)}</span>
           </div>
           <div className="flex justify-between pt-3.5 border-t border-border font-bold text-[15px]">
             <span>{t("invoices.totals.total")}</span>

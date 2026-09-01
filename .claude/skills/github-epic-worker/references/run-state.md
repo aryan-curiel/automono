@@ -7,6 +7,7 @@ prior conversation. Never committed.
 ## File location
 
 `.claude/epic-runs/<slug>.md`, repo-relative:
+
 - `epic-<N>.md` when working an epic (`<N>` = epic issue number)
 - a query slug otherwise, e.g. `p1-tax.md`, `backend-backlog.md`
 
@@ -35,17 +36,17 @@ applied to a batch schedule.
 > once every issue below is checked done. On resume, the skill reads this
 > file instead of re-deriving the batch plan.
 
-**Source:** epic #<N> — <url>   |   or: query `--label P1 --label tax`
+**Source:** epic #<N> — <url> | or: query `--label P1 --label tax`
 **Status:** in-progress
 **Last updated:** <ISO 8601 timestamp>
 **Plan approval:** confirmed | skipped ("just go")
 
 ## Batch Schedule
 
-| Batch | Issues | Reason for grouping |
-|---|---|---|
-| 1 | #3, #29 | no dependencies/conflicts |
-| 2 | #2 | depends on #31; conflicts with #3 on src/lib/quarterlyDeclaration.ts |
+| Batch | Issues  | Reason for grouping                                                  |
+| ----- | ------- | -------------------------------------------------------------------- |
+| 1     | #3, #29 | no dependencies/conflicts                                            |
+| 2     | #2      | depends on #31; conflicts with #3 on src/lib/quarterlyDeclaration.ts |
 
 ## Issue Status
 

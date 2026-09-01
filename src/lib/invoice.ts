@@ -31,7 +31,11 @@ export interface InvoiceAmounts {
 
 /** IVA/IRPF/total derivation shared by every place that turns a subtotal + rates into the rest
  * of an invoice's amounts (draft totals in `listInvoices`, and `amountsFromLines` below). */
-export function amountsFromSubtotal(subtotal: number, ivaRate: number, irpfRate: number): InvoiceAmounts {
+export function amountsFromSubtotal(
+  subtotal: number,
+  ivaRate: number,
+  irpfRate: number,
+): InvoiceAmounts {
   const roundedSubtotal = roundCents(subtotal);
   const ivaAmount = roundCents((roundedSubtotal * ivaRate) / 100);
   const irpfAmount = roundCents((roundedSubtotal * irpfRate) / 100);

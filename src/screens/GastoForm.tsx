@@ -69,8 +69,7 @@ function toFormState(expense: ExpenseRecord): FormState {
     amount: String(expense.amount),
     ivaAmount: expense.ivaAmount !== null ? String(expense.ivaAmount) : "",
     deductiblePct: String(expense.deductiblePct),
-    ivaDeductiblePct:
-      expense.ivaDeductiblePct !== null ? String(expense.ivaDeductiblePct) : "",
+    ivaDeductiblePct: expense.ivaDeductiblePct !== null ? String(expense.ivaDeductiblePct) : "",
     irpfRate: expense.irpfRate !== null ? String(expense.irpfRate) : "",
     irpfAmount: expense.irpfAmount !== null ? String(expense.irpfAmount) : "",
     receiptFilePath: expense.receiptFilePath,
@@ -497,7 +496,11 @@ export function GastoForm({ mode, expenseId, initialFilePath, onSaved, onCancel 
 
         <FormRow label={t("expenses.fields.file")}>
           <div className="flex items-center gap-2.5">
-            <Button variant="secondary" onClick={() => void handleAttachFile()} disabled={attaching}>
+            <Button
+              variant="secondary"
+              onClick={() => void handleAttachFile()}
+              disabled={attaching}
+            >
               {attaching ? t("expenses.actions.attaching") : t("expenses.actions.attachFile")}
             </Button>
             {form.receiptFilePath && (

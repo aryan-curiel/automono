@@ -467,14 +467,21 @@ export function ResumenTrimestral({
         actions={
           declaration ? (
             <>
-              <Button variant="secondary" onClick={() => void handleDownloadZip()} disabled={zipping}>
+              <Button
+                variant="secondary"
+                onClick={() => void handleDownloadZip()}
+                disabled={zipping}
+              >
                 <DownloadSimple size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
                 {zipping
                   ? t("declarations.detail.downloading")
                   : t("declarations.detail.downloadZip")}
               </Button>
               {declaration.status === "in_progress" && (
-                <Button onClick={() => void handleMarkCompleted()} disabled={!allModelosAttached || completing}>
+                <Button
+                  onClick={() => void handleMarkCompleted()}
+                  disabled={!allModelosAttached || completing}
+                >
                   {completing
                     ? t("declarations.detail.completing")
                     : t("declarations.detail.markCompleted")}
@@ -498,7 +505,11 @@ export function ResumenTrimestral({
             </>
           ) : (
             <>
-              <Button variant="secondary" onClick={() => void handleExportCsv()} disabled={exporting}>
+              <Button
+                variant="secondary"
+                onClick={() => void handleExportCsv()}
+                disabled={exporting}
+              >
                 <DownloadSimple size={14} weight="bold" className="inline -mt-0.5 mr-1.5" />
                 {exporting ? t("resumenTrimestral.exportingCsv") : t("resumenTrimestral.exportCsv")}
               </Button>
@@ -795,6 +806,7 @@ export function ResumenTrimestral({
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         invoices={invoices}
+        expenses={expenses}
         year={year}
         quarter={quarter}
         onCreated={refreshDeclarations}

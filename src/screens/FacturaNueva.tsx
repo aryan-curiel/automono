@@ -116,7 +116,10 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaPro
     setLanguage(client.invoiceLanguage);
   }
 
-  const subtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
+  const subtotal = lines.reduce(
+    (s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0),
+    0,
+  );
   const iva = (subtotal * effIvaRate) / 100;
   const irpf = irpfRate !== null ? (subtotal * irpfRate) / 100 : 0;
   const total = subtotal + iva - irpf;
@@ -317,9 +320,7 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved }: FacturaNuevaPro
               {t("invoices.totals.irpf")}
               {irpfForeignClient && t("invoices.totals.foreignClientSuffix")}
             </span>
-            <span className="font-medium font-mono text-[13px] text-ink">
-              {formatEUR(irpf)}
-            </span>
+            <span className="font-medium font-mono text-[13px] text-ink">{formatEUR(irpf)}</span>
           </div>
           <div className="flex justify-between pt-3.5 border-t border-border font-bold text-[15px]">
             <span>{t("invoices.totals.total")}</span>

@@ -50,7 +50,7 @@ and the PR is the record of the change. The user merges.
   anything. Say so and stop if either fails. Skip the content check only
   when the user explicitly says to.
 - **ALWAYS** work on a branch linked to the issue via `gh issue develop
-  <n> --checkout`, never directly on `main`. If `main` is behind
+<n> --checkout`, never directly on `main`. If `main` is behind
   `origin/main`, fast-forward pull before branching.
 - **ALWAYS** disclose partial prior work found on an existing issue branch
   and propose a status comment before continuing — confirm the wording
@@ -72,14 +72,14 @@ and the PR is the record of the change. The user merges.
   - `bun run build` (this is the typecheck — `build` is `tsc && vite build`)
   - `cd src-tauri && cargo test` — **only if Rust was touched** (`cargo check`
     / `cargo clippy` for a faster inner loop; `cargo test` is what CI runs)
-  When they pass, move the PR to ready-for-review in the same flow — don't
-  wait for a separate sign-off. Pause only if a gate fails, or the change is
-  behavioral/UI and needs the app actually run (`bun run tauri dev`) which
-  you can't do headless — say so and ask the user to exercise it.
+    When they pass, move the PR to ready-for-review in the same flow — don't
+    wait for a separate sign-off. Pause only if a gate fails, or the change is
+    behavioral/UI and needs the app actually run (`bun run tauri dev`) which
+    you can't do headless — say so and ask the user to exercise it.
 - **RESPECT** the repo's hard constraints from `CLAUDE.md` — surface an
   explicit risk note in the plan when the change touches any of:
   - **Migrations** — a new `src-tauri/migrations/NNNN_*.sql` must be
-    registered in `all_migrations()` in `src-tauri/src/lib.rs` *and* keep
+    registered in `all_migrations()` in `src-tauri/src/lib.rs` _and_ keep
     the `all_sql_files_are_registered_as_migrations` test green; SQLite can't
     add a NOT NULL FK column or drop a column in one step — use the
     create-copy-drop-rename pattern (see `0013`/`0016`); never drop a table
@@ -101,12 +101,12 @@ and the PR is the record of the change. The user merges.
 
 ## Reference Directory
 
-| Scenario | Trigger Keywords | Reference File |
-|---|---|---|
-| Is the issue still needed, branch setup, partial-work disclosure | still open, already fixed, branch, `gh issue develop`, partial work, resume | [references/preflight.md](references/preflight.md) |
-| Drafting and confirming the plan | plan, validation, writing-plans, ponytail, confirm, risk note | [references/planning.md](references/planning.md) |
-| Draft PR, milestone commits, CI gates, ready-for-review, final report | draft pr, checklist, milestone, bun run, cargo test, ready for review, report | [references/execution.md](references/execution.md) |
-| Proposing/creating follow-up issues | follow-up, spin off, new issue, github-issue-creator | [references/follow-up-issues.md](references/follow-up-issues.md) |
+| Scenario                                                              | Trigger Keywords                                                              | Reference File                                                   |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Is the issue still needed, branch setup, partial-work disclosure      | still open, already fixed, branch, `gh issue develop`, partial work, resume   | [references/preflight.md](references/preflight.md)               |
+| Drafting and confirming the plan                                      | plan, validation, writing-plans, ponytail, confirm, risk note                 | [references/planning.md](references/planning.md)                 |
+| Draft PR, milestone commits, CI gates, ready-for-review, final report | draft pr, checklist, milestone, bun run, cargo test, ready for review, report | [references/execution.md](references/execution.md)               |
+| Proposing/creating follow-up issues                                   | follow-up, spin off, new issue, github-issue-creator                          | [references/follow-up-issues.md](references/follow-up-issues.md) |
 
 ## Related Skills
 

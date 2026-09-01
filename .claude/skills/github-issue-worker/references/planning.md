@@ -14,7 +14,7 @@ The plan must include:
 
 - **Scope** — what the issue asks for, restated in your words, plus what's
   explicitly out of scope. Per `ponytail`: the smallest change that fixes
-  the *root cause*, not a redesign. If the bug's root cause is in a shared
+  the _root cause_, not a redesign. If the bug's root cause is in a shared
   function, fix it there once, not in every caller.
 - **Steps** — concrete, ordered, referencing real files. Repo layout is in
   `CLAUDE.md`:

@@ -34,8 +34,8 @@ recurring invoice" button.
 A full-width `Card`:
 
 - Current quarter label (`quarterKeyLabel` from `lib/dateRange.ts`) + a status
-  `Badge`: *Sin empezar* (no matching row in `listDeclarations()`) / *En
-  progreso* / *Completada*.
+  `Badge`: _Sin empezar_ (no matching row in `listDeclarations()`) / _En
+  progreso_ / _Completada_.
 - If a declaration row exists for the current quarter: three small indicators
   for modelo 303/130/111 — attached (`modeloXPath` set) vs. missing — reusing
   the same check-vs-pending visual language `ResumenTrimestral` uses for its

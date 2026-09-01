@@ -145,7 +145,9 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
         // Re-derive the IRPF default from the (newly extracted) alta date, unless the user already
         // changed it away from the reduced rate by hand.
         defaultIrpfRate:
-          p.defaultIrpfRate === IRPF_REDUCED_RATE ? defaultIrpfRate(retaStartDate) : p.defaultIrpfRate,
+          p.defaultIrpfRate === IRPF_REDUCED_RATE
+            ? defaultIrpfRate(retaStartDate)
+            : p.defaultIrpfRate,
       };
     });
   }
@@ -236,7 +238,12 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </div>
                   <BusinessDocumentsPanel onExtracted={applyExtracted} showContext={false} />
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => void skip()}
+                      disabled={finishing}
+                    >
                       Saltar por ahora
                     </Button>
                     <Button type="button" onClick={() => goTo(2)}>
@@ -311,7 +318,12 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => void skip()}
+                      disabled={finishing}
+                    >
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
@@ -360,7 +372,12 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => void skip()}
+                      disabled={finishing}
+                    >
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">
@@ -432,7 +449,12 @@ export function Onboarding({ initialPreferences, onComplete }: OnboardingProps) 
                   </FormRow>
 
                   <div className="flex items-center justify-between mt-5">
-                    <Button type="button" variant="secondary" onClick={() => void skip()} disabled={finishing}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => void skip()}
+                      disabled={finishing}
+                    >
                       Saltar por ahora
                     </Button>
                     <div className="flex gap-2.5">

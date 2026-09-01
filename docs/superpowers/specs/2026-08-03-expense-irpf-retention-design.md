@@ -57,7 +57,7 @@ Add `irpf_rate: Option<f64>` and `irpf_amount: Option<f64>` to `ReceiptFields`.
 - Amount: reuse the existing `last_number_on_line_containing(&text, keyword)`
   helper, trying `"retenc"` then falling back to `"irpf"` — identical pattern
   to today's `iva_amount` scan (`last_number_on_line_containing(&text,
-  "iva")`).
+"iva")`).
 - Rate: new small helper that scans the same matched line for a `NN` or
   `NN,N` token immediately followed by `%`. Local to this file, no new crate.
 - Add `"retenc"` / `"irpf"` to `NON_VENDOR_KEYWORDS` so a retention line is
@@ -92,7 +92,7 @@ deductible-IVA info row.
 ### `src/screens/ResumenTrimestral.tsx`
 
 - New computed value: `expensesIrpfWithheld = expenses.reduce((s, e) => s +
-  (e.irpfAmount ?? 0), 0)`.
+(e.irpfAmount ?? 0), 0)`.
 - Existing "IRPF retenido" KPI tile relabeled "IRPF retenido (facturas)" for
   clarity; new sibling tile "IRPF retenido (gastos)" showing
   `expensesIrpfWithheld`.
@@ -113,13 +113,13 @@ file's existing fully-i18n'd, camelCase-matches-TS-field-name convention
 ## Testing
 
 - Extend `src/lib/analytics.test.ts`'s expense fixture with `irpfRate: null,
-  irpfAmount: null` (same fix required last time a field was added, for
+irpfAmount: null` (same fix required last time a field was added, for
   `paymentProofFilePath`).
 - Extend `receipt_extract.rs`'s existing inline test module with a
   retention-line parsing case.
 - `cargo test` (`all_sql_files_are_registered_as_migrations` guards the new
   migration is wired into `all_migrations()`), `bun run test`, `bun run
-  build` (tsc) as the standard verification pass — no new test files needed,
+build` (tsc) as the standard verification pass — no new test files needed,
   this rides existing coverage per the ladder (no new test scaffolding for a
   straightforward field addition following an established pattern).
 

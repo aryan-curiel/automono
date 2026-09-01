@@ -68,7 +68,7 @@ git commit -m "fix: <what changed, why>"
 **Do not push after every commit** — each push re-runs CI (`lint`, `test`,
 `build`, `cargo test` on macOS runners). Commit locally, keep going.
 
-Update the PR *description* at each milestone (a metadata edit, no push, no
+Update the PR _description_ at each milestone (a metadata edit, no push, no
 CI):
 
 ```bash
@@ -108,6 +108,7 @@ gh pr ready <pr-number>
 This is the second and last push of the flow.
 
 **Only pause instead of flipping ready when:**
+
 - a gate actually failed — fix and re-run, don't mark ready on red;
 - the change is behavioral/UI and the repo's bar is to actually run it
   (`bun run tauri dev`), and you can't do that headless — say so explicitly

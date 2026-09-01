@@ -155,7 +155,9 @@ export function Facturas({
                       <DotsThreeVertical size={16} weight="bold" />
                     </MenuTrigger>
                     <MenuContent>
-                      <MenuItem onSelect={() => onOpenInvoice(inv.id)}>{t("common.viewDetail")}</MenuItem>
+                      <MenuItem onSelect={() => onOpenInvoice(inv.id)}>
+                        {t("common.viewDetail")}
+                      </MenuItem>
                       <MenuItem onSelect={() => onDuplicateInvoice(inv.id)}>
                         {t("invoices.detail.duplicateInvoice")}
                       </MenuItem>

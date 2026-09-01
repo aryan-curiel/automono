@@ -7,7 +7,11 @@ import type { DraftLine } from "../features/invoices/lines";
 
 interface InvoiceLinesEditorProps {
   lines: DraftLine[];
-  onUpdateLine: (idx: number, field: "description" | "quantity" | "unitPrice", value: string) => void;
+  onUpdateLine: (
+    idx: number,
+    field: "description" | "quantity" | "unitPrice",
+    value: string,
+  ) => void;
   onRemoveLine: (idx: number) => void;
   onAddLine: () => void;
   disabled: boolean;

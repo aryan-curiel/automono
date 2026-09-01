@@ -42,14 +42,18 @@ interface BusinessDocumentsPanelProps {
   showContext?: boolean;
 }
 
-export function BusinessDocumentsPanel({ onExtracted, showContext = true }: BusinessDocumentsPanelProps) {
+export function BusinessDocumentsPanel({
+  onExtracted,
+  showContext = true,
+}: BusinessDocumentsPanelProps) {
   const { t } = useTranslation();
   const [documents, setDocuments] = useState<BusinessDocumentRecord[]>([]);
   const [draggingOver, setDraggingOver] = useState(false);
   const [processing, setProcessing] = useState<{ index: number; total: number } | null>(null);
-  const [toast, setToast] = useState<{ tone: "success" | "info" | "warning" | "danger"; message: string } | null>(
-    null,
-  );
+  const [toast, setToast] = useState<{
+    tone: "success" | "info" | "warning" | "danger";
+    message: string;
+  } | null>(null);
 
   const [contextText, setContextText] = useState("");
   const [contextSaving, setContextSaving] = useState(false);
@@ -231,9 +235,7 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
                     ${draggingOver ? "border-accent bg-surface-alt" : "border-border hover:bg-surface-alt"}`}
       >
         <FileArrowUp size={22} weight="regular" className="text-ink-soft" />
-        <div className="text-[13px] text-ink-soft text-center">
-          {t("documentsPanel.dropzone")}
-        </div>
+        <div className="text-[13px] text-ink-soft text-center">{t("documentsPanel.dropzone")}</div>
         {processing && (
           <div className="text-[12px] text-ink-soft">
             {t("documentsPanel.processing", { index: processing.index, total: processing.total })}
@@ -308,9 +310,13 @@ export function BusinessDocumentsPanel({ onExtracted, showContext = true }: Busi
               onClick={() => void handleRegenerateContext()}
               disabled={regenerating || documents.length === 0}
             >
-              {regenerating ? t("documentsPanel.contextRegenerating") : t("documentsPanel.contextRegenerate")}
+              {regenerating
+                ? t("documentsPanel.contextRegenerating")
+                : t("documentsPanel.contextRegenerate")}
             </Button>
-            {contextSaved && <span className="text-[13px] text-ink-soft">{t("documentsPanel.contextSaved")}</span>}
+            {contextSaved && (
+              <span className="text-[13px] text-ink-soft">{t("documentsPanel.contextSaved")}</span>
+            )}
           </div>
         </div>
       )}

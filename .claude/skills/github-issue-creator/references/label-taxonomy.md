@@ -10,23 +10,23 @@ This repo uses GitHub's native Issue Type field. Set it with
 personal account: the Issue Types are fixed at exactly three — `Bug`,
 `Task`, `Feature` — no custom types.
 
-| Issue Type | Use for |
-|---|---|
-| `Bug` | A defect — wrong, unexpected, or filing-incorrect behavior. Most of REPORT.md §2–§7. |
-| `Task` | A scoped unit of work that isn't a user-facing feature — a refactor, a perf fix, a test, a chore. |
-| `Feature` | A new capability. Also doubles as the Epic type: an epic is a `Feature` issue titled `Epic — <Theme>`. |
+| Issue Type | Use for                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| `Bug`      | A defect — wrong, unexpected, or filing-incorrect behavior. Most of REPORT.md §2–§7.                   |
+| `Task`     | A scoped unit of work that isn't a user-facing feature — a refactor, a perf fix, a test, a chore.      |
+| `Feature`  | A new capability. Also doubles as the Epic type: an epic is a `Feature` issue titled `Epic — <Theme>`. |
 
 ## Severity — required, exactly one, as a label
 
 `P0` / `P1` / `P2` / `P3` (created for this repo). This is the primary triage
 axis — every issue gets one.
 
-| Label | Meaning | Examples |
-|---|---|---|
-| `P0` | Filing-correctness or data-loss. A wrong number goes to AEAT, or user data can be destroyed. | #2 (cash/accrual basis), #3 (unrounded money) |
-| `P1` | Wrong but recoverable, or a security hole, or the highest-leverage feature. | #4 (Modelo 130), #9/#10 (backup), #29 (CSV injection), #30 (deadline reminders) |
-| `P2` | Polish, performance, UX friction. The bulk of the backlog. | #17–#26 |
-| `P3` | Nice-to-have, cosmetic, non-urgent cleanup. | #21, #22, #27, #28 |
+| Label | Meaning                                                                                      | Examples                                                                        |
+| ----- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `P0`  | Filing-correctness or data-loss. A wrong number goes to AEAT, or user data can be destroyed. | #2 (cash/accrual basis), #3 (unrounded money)                                   |
+| `P1`  | Wrong but recoverable, or a security hole, or the highest-leverage feature.                  | #4 (Modelo 130), #9/#10 (backup), #29 (CSV injection), #30 (deadline reminders) |
+| `P2`  | Polish, performance, UX friction. The bulk of the backlog.                                   | #17–#26                                                                         |
+| `P3`  | Nice-to-have, cosmetic, non-urgent cleanup.                                                  | #21, #22, #27, #28                                                              |
 
 **Decision flow:** if the user states or implies urgency, use it. Otherwise
 ask "how bad is this — does a wrong number reach the tax office (P0), is it
@@ -36,14 +36,14 @@ rationale.
 
 ## Area — one or more, as labels
 
-| Label | Scope |
-|---|---|
-| `tax` | Spanish tax logic: `src/lib/quarterlyDeclaration.ts`, `modeloReport.ts`, `taxCalendar.ts`, `lateInterest.ts`, `src/features/*/taxDefaults.ts`, AEAT modelo extraction. |
-| `backend` | Rust / Tauri: `src-tauri/src/**`, migrations, PDF generation, backup/restore, file attach, `invoke` command boundary. |
-| `frontend` | React: `src/screens/`, `src/components/`, `src/db/`, i18n, charts, forms. |
-| `ai` | LLM code: `src-tauri/src/llm.rs`, `receipt_extract.rs`, `modelo_review.rs`, `user_context.rs`, prompts, model choice, cost. |
-| `security` | Data-safety / trust boundaries: path validation, CSV injection, key storage, restore safety. |
-| `perf` | Performance: unmemoized recompute, redundant queries, bundle weight, blocking I/O. |
+| Label      | Scope                                                                                                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tax`      | Spanish tax logic: `src/lib/quarterlyDeclaration.ts`, `modeloReport.ts`, `taxCalendar.ts`, `lateInterest.ts`, `src/features/*/taxDefaults.ts`, AEAT modelo extraction. |
+| `backend`  | Rust / Tauri: `src-tauri/src/**`, migrations, PDF generation, backup/restore, file attach, `invoke` command boundary.                                                  |
+| `frontend` | React: `src/screens/`, `src/components/`, `src/db/`, i18n, charts, forms.                                                                                              |
+| `ai`       | LLM code: `src-tauri/src/llm.rs`, `receipt_extract.rs`, `modelo_review.rs`, `user_context.rs`, prompts, model choice, cost.                                            |
+| `security` | Data-safety / trust boundaries: path validation, CSV injection, key storage, restore safety.                                                                           |
+| `perf`     | Performance: unmemoized recompute, redundant queries, bundle weight, blocking I/O.                                                                                     |
 
 A single issue can carry several (`#3` is `backend` + `tax`; `#9` is
 `backend` + `perf`). Pick every area the change actually touches.
