@@ -362,6 +362,10 @@ pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result
     // cleanly with the app still fully usable.
     validate_backup_db(&backup_dir.join(DB_FILE_NAME)).await?;
 
+    // The DB lives under `app_config_dir()` (that's where `tauri-plugin-sql` opens
+    // `sqlite:automono.db`), while every attachment tree lives under `app_data_dir()`. On macOS —
+    // the only supported target — those two resolve to the same folder; on other platforms they
+    // diverge, so the split is deliberate, not a bug.
     let db_dest = app
         .path()
         .app_config_dir()
@@ -375,7 +379,12 @@ pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result
         pool.close().await;
     }
 
-    restore_from_dir(&backup_dir, &data_dir, &db_dest).await
+    restore_from_dir(&backup_dir, &data_dir, &db_dest).await?;
+
+    // The pool we just closed stays closed for this process — nothing in Rust reopens it, and a
+    // webview reload would only paper over it via plugin-sql internals. Force a full relaunch so
+    // the app comes back up cleanly against the restored DB.
+    app.restart();
 }
 
 #[tauri::command]

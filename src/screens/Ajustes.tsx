@@ -380,7 +380,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     setBackupError(null);
     try {
       await restoreFromBackup(entry.path);
-      window.location.reload();
+      // On success the Rust side calls app.restart() and this promise never resolves — the app
+      // relaunches into the restored data. Only the catch below runs (bad folder rejected before
+      // any file is touched).
     } catch (e) {
       setBackupError(t("settings.backupRestoreFailed", { error: String(e) }));
       setRestoring(false);
