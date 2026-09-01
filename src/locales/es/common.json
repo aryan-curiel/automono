@@ -491,6 +491,7 @@
     },
     "fields": {
       "date": "Fecha",
+      "paidDate": "Fecha de pago",
       "category": "Categoría",
       "description": "Descripción",
       "amount": "Importe",

@@ -491,6 +491,7 @@
     },
     "fields": {
       "date": "Date",
+      "paidDate": "Payment date",
       "category": "Category",
       "description": "Description",
       "amount": "Amount",

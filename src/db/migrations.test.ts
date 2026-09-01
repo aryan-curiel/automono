@@ -77,4 +77,18 @@ describe("migrations", () => {
       { treatment_code: "reverse_charge_eu", language: "es" },
     ]);
   });
+
+  it("adds a nullable expenses.paid_date and a preferences.criterio_caja defaulting to 0", () => {
+    const db = freshDb();
+    const paidDate = (
+      db.prepare("PRAGMA table_info(expenses)").all() as { name: string; notnull: number }[]
+    ).find((c) => c.name === "paid_date");
+    expect(paidDate).toBeDefined();
+    expect(paidDate!.notnull).toBe(0);
+
+    const row = db.prepare("SELECT criterio_caja FROM preferences WHERE id = 1").get() as {
+      criterio_caja: number;
+    };
+    expect(row.criterio_caja).toBe(0);
+  });
 });

@@ -50,6 +50,7 @@ function expense(overrides: Partial<ExpenseRecord>): ExpenseRecord {
     receiptFilePath: null,
     declaredPeriod: null,
     declared: false,
+    paidDate: null,
     ...overrides,
   };
 }
