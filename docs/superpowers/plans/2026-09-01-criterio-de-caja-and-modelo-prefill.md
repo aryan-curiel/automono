@@ -48,10 +48,10 @@ ALTER TABLE preferences ADD COLUMN criterio_caja INTEGER NOT NULL DEFAULT 0;
 
 - [ ] **Step 2: Register it in `lib.rs`**
 
-After the migration 35 `Migration { ... }` struct, add:
+After the migration 34 `Migration { ... }` struct (the `0035_llm_settings_provider_models.sql` entry, `version: 34`), add. NOTE: registered `version` lags the filename by one because there is no `0021` file (issue #15) — the guard test expects `migrations[i].version == i + 1` over sorted files, so file `0036` is the 35th file → `version: 35`:
 ```rust
 Migration {
-    version: 36,
+    version: 35,
     description: "preferences_criterio_caja",
     sql: include_str!("../migrations/0036_preferences_criterio_caja.sql"),
     kind: MigrationKind::Up,
@@ -274,7 +274,7 @@ ALTER TABLE expenses ADD COLUMN paid_date TEXT;
 
 ```rust
 Migration {
-    version: 37,
+    version: 36,
     description: "expense_paid_date",
     sql: include_str!("../migrations/0037_expense_paid_date.sql"),
     kind: MigrationKind::Up,

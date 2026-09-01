@@ -76,6 +76,8 @@
       "address": "Fiscal address",
       "retaStartDate": "Self-employment start date",
       "presentsModelo111": "I file Modelo 111",
+      "criterioCaja": "Cash basis",
+      "criterioCajaHint": "Counts only paid invoices and expenses by payment date. Accrual basis is used by default.",
       "logo": "Logo",
       "bankName": "Bank name",
       "iban": "IBAN",
