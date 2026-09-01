@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDeclarationSnapshot,
+  cashInvoicesInPeriod,
+  expensesForBasis,
   expensesInPeriod,
+  invoicesForBasis,
   invoicesInPeriod,
   paidInvoicesInPeriod,
 } from "./quarterlyDeclaration";
@@ -49,6 +52,7 @@ function expense(overrides: Partial<ExpenseRecord>): ExpenseRecord {
     receiptFilePath: null,
     declaredPeriod: null,
     declared: false,
+    paidDate: null,
     ...overrides,
   };
 }
@@ -228,6 +232,69 @@ describe("declaration basis is accrual (matches the projection)", () => {
     // projection path (ResumenTrimestral) and declaration path (wizard / currentSnapshot)
     const projection = buildDeclarationSnapshot(invoicesInPeriod(invoices, period), []);
     const declaration = buildDeclarationSnapshot(invoicesInPeriod(invoices, period), []);
+    expect(declaration.totals).toEqual(projection.totals);
+  });
+});
+
+describe("cash-basis filters (criterio de caja)", () => {
+  const period = quarterRange(2026, 1); // 2026-01-01 .. 2026-03-31
+
+  it("cashInvoicesInPeriod keeps only paid invoices dated in the period", () => {
+    const invoices = [
+      invoice({ id: 1, issueDate: "2026-02-01", status: "paid" }),
+      invoice({ id: 2, issueDate: "2026-02-01", status: "issued" }),
+      invoice({ id: 3, issueDate: "2025-12-30", status: "paid" }),
+    ];
+    expect(cashInvoicesInPeriod(invoices, period).map((i) => i.id)).toEqual([1]);
+  });
+
+  it("invoicesForBasis dispatches accrual vs cash", () => {
+    const invoices = [
+      invoice({ id: 1, issueDate: "2026-02-01", status: "paid" }),
+      invoice({ id: 2, issueDate: "2026-02-01", status: "issued" }),
+    ];
+    expect(invoicesForBasis(invoices, period, "accrual").map((i) => i.id)).toEqual([1, 2]);
+    expect(invoicesForBasis(invoices, period, "cash").map((i) => i.id)).toEqual([1]);
+  });
+
+  it("expensesForBasis (cash) attributes by paidDate when set, else by date", () => {
+    // dated in Q1 but paid in Q2 -> out of Q1 under cash basis
+    expect(
+      expensesForBasis([expense({ id: 1, date: "2026-01-15", paidDate: "2026-04-10" })], period, "cash"),
+    ).toHaveLength(0);
+    // dated in Q1, no paidDate -> falls back to date -> in
+    expect(
+      expensesForBasis([expense({ id: 2, date: "2026-01-15", paidDate: null })], period, "cash"),
+    ).toHaveLength(1);
+    // paid in Q1 but dated Q4 last year -> in under cash basis
+    expect(
+      expensesForBasis([expense({ id: 3, date: "2025-11-01", paidDate: "2026-02-01" })], period, "cash"),
+    ).toHaveLength(1);
+    // accrual ignores paidDate entirely
+    expect(
+      expensesForBasis([expense({ id: 4, date: "2026-01-15", paidDate: "2026-04-10" })], period, "accrual"),
+    ).toHaveLength(1);
+  });
+
+  it("expensesForBasis (cash) still honours a declaredPeriod override", () => {
+    const overridden = expense({ id: 5, date: "2026-06-01", paidDate: "2026-06-15", declaredPeriod: "2026-Q1" });
+    expect(expensesForBasis([overridden], period, "cash")).toHaveLength(1);
+  });
+
+  it("buildDeclarationSnapshot stamps the basis it was given (default accrual)", () => {
+    expect(buildDeclarationSnapshot([], [], "cash").basis).toBe("cash");
+    expect(buildDeclarationSnapshot([], []).basis).toBe("accrual");
+  });
+
+  it("projection and wizard/declaration agree under cash basis too", () => {
+    const invoices = [
+      invoice({ id: 1, status: "issued", issueDate: "2026-02-01", subtotal: 100 }),
+      invoice({ id: 2, status: "paid", issueDate: "2026-03-01", subtotal: 200 }),
+    ];
+    const projection = buildDeclarationSnapshot(invoicesForBasis(invoices, period, "cash"), [], "cash");
+    const declaration = buildDeclarationSnapshot(invoicesForBasis(invoices, period, "cash"), [], "cash");
+    expect(declaration.basis).toBe("cash");
+    expect(declaration.invoices.map((i) => i.id)).toEqual([2]);
     expect(declaration.totals).toEqual(projection.totals);
   });
 });
