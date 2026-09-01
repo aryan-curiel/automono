@@ -3,7 +3,7 @@ use std::io::Write;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::contracts::copy_into;
+use crate::contracts::{copy_into, ensure_under_data_dir};
 
 fn attach_declaration_file(
     app: &AppHandle,
@@ -25,8 +25,9 @@ fn attach_declaration_file(
 
 #[tauri::command]
 pub async fn open_declaration_file_cmd(app: AppHandle, file_path: String) -> Result<(), String> {
+    let file_path = ensure_under_data_dir(&app, &file_path)?;
     app.opener()
-        .open_path(file_path, None::<&str>)
+        .open_path(file_path.to_string_lossy().to_string(), None::<&str>)
         .map_err(|e| e.to_string())
 }
 

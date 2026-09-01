@@ -49,6 +49,27 @@ pub(crate) fn copy_into(source: &Path, dest_dir: &Path, base_name: &str) -> io::
     Ok(dest_path)
 }
 
+/// Resolves `path` and rejects it unless it lands inside `base`. Canonicalizes both sides, so
+/// `..` segments and symlinks can't be used to escape. Returns the canonical path on success.
+pub(crate) fn path_within(base: &Path, path: &str) -> Result<PathBuf, String> {
+    let base = base.canonicalize().map_err(|e| e.to_string())?;
+    let resolved = Path::new(path).canonicalize().map_err(|e| e.to_string())?;
+    if resolved.starts_with(&base) {
+        Ok(resolved)
+    } else {
+        Err(format!("path is outside the app data directory: {path}"))
+    }
+}
+
+/// Guard for the renderer-controlled path passed to `open_*_file_cmd` / `delete_expense_files_cmd`:
+/// every file the app opens or deletes on the user's behalf lives under `app_data_dir()`. The args
+/// come from trusted DB values today; this keeps a compromised/buggy renderer from pointing these
+/// commands at arbitrary files.
+pub(crate) fn ensure_under_data_dir(app: &AppHandle, path: &str) -> Result<PathBuf, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    path_within(&data_dir, path)
+}
+
 fn attach_contract_file(
     app: &AppHandle,
     client_id: i64,
@@ -82,8 +103,9 @@ pub async fn attach_contract_file_cmd(
 
 #[tauri::command]
 pub async fn open_contract_file_cmd(app: AppHandle, file_path: String) -> Result<(), String> {
+    let file_path = ensure_under_data_dir(&app, &file_path)?;
     app.opener()
-        .open_path(file_path, None::<&str>)
+        .open_path(file_path.to_string_lossy().to_string(), None::<&str>)
         .map_err(|e| e.to_string())
 }
 
@@ -127,6 +149,30 @@ mod tests {
 
         let copied = copy_into(&source_path, &dest_dir, "2026-08-02_acme-corp").expect("copy succeeds");
         assert_eq!(copied.file_name().unwrap().to_str().unwrap(), "2026-08-02_acme-corp.pdf");
+
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn path_within_accepts_inside_and_rejects_escapes() {
+        let tmp = std::env::temp_dir().join(format!("automono_path_within_{}", std::process::id()));
+        let base = tmp.join("data");
+        let outside = tmp.join("outside");
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+
+        let inside_file = base.join("receipt.pdf");
+        std::fs::write(&inside_file, b"x").unwrap();
+        let outside_file = outside.join("secret.pdf");
+        std::fs::write(&outside_file, b"x").unwrap();
+
+        assert!(path_within(&base, inside_file.to_str().unwrap()).is_ok());
+        assert!(path_within(&base, outside_file.to_str().unwrap()).is_err());
+        // `..` segment climbing out of base
+        let escape = base.join("../outside/secret.pdf");
+        assert!(path_within(&base, escape.to_str().unwrap()).is_err());
+        // non-existent path can't be canonicalized -> rejected
+        assert!(path_within(&base, base.join("missing.pdf").to_str().unwrap()).is_err());
 
         std::fs::remove_dir_all(&tmp).ok();
     }
