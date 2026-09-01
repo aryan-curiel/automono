@@ -2,96 +2,139 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans / subagent-driven-development. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Make the Modelo 130 "Calculado" column in the Modelo Review comparison a real cumulative year-to-date pago fraccionado, so a correct filing stops flagging as a mismatch.
+**Goal:** Make the Modelo 130 "Calculado" column in the Modelo Review comparison a real cumulative year-to-date pago fraccionado — with a per-declaration "gastos de difícil justificación" rate the user picks when creating the declaration (default 5%) — so a correct filing stops flagging as a mismatch.
 
-**Architecture:** Add one pure function `cumulativeModelo130()` in `src/lib/modeloReport.ts` that recomputes the AEAT box logic across Q1..Qn of the tax year from the existing invoice/expense data (no new DB state — the declaration store is *not* extended; YTD is derived from raw records the same accrual way snapshots already are). `expectedCasillas`/`buildModeloReport` take an optional precomputed `ytd130` result for the "130" case. `ResumenTrimestral` computes it (it already holds every invoice) and passes it to `ModeloReviewModal`.
+**Architecture:** A per-declaration `gdj_rate` column (new migration) captured in the creation wizard. A pure `cumulativeModelo130()` in `src/lib/modeloReport.ts` recomputes the AEAT box logic across Q1..Qn of the tax year from the existing (accrual) invoice/expense records, applying that rate. `expectedCasillas`/`buildModeloReport` take the precomputed result for the "130" case. `ResumenTrimestral` computes it (it holds every invoice) and passes it to `ModeloReviewModal`.
 
-**Tech Stack:** TypeScript, Vitest, existing `buildDeclarationSnapshot` / `invoicesInPeriod` / `expensesInPeriod` helpers.
+**Tech Stack:** TypeScript, Vitest, Rust (`tauri-plugin-sql` migration), existing `buildDeclarationSnapshot` / `invoicesInPeriod` / `expensesInPeriod` helpers, `SegmentedControl` / `Field` UI primitives.
 
-**Spec:** GitHub issue #4 ( + `REPORT.md` §2.3 / §8.2 ).
+**Spec:** GitHub issue #4 ( + `REPORT.md` §2.3 / §8.2 ), plus the user's follow-up: default GDJ rate **5%**, configurable at declaration-creation time.
 
 ## Global Constraints
 
-- Tax math stays in `src/lib/` — never Rust.
-- No new migration, no DB schema change.
-- One accent color, no responsive breakpoints — but this change is logic + one prop, no new UI surface.
-- `bun` is the package manager.
+- Tax math stays in `src/lib/` — Rust only gets the migration (schema), nothing computational.
+- New migration MUST be registered in `all_migrations()` in `src-tauri/src/lib.rs` and keep `all_sql_files_are_registered_as_migrations` green. File `0033_*.sql` → `Migration { version: 32, ... }` (file number − 1).
+- GDJ rate stored as a **percent** (e.g. `5.0`), matching the `iva_rate` / `irpf_rate` convention, not a 0–1 fraction.
+- `bun` is the package manager. One accent color, motion respects `prefers-reduced-motion` (the wizard already does).
 
 ## Scope
 
-**In scope (issue option a — the root-cause fix):**
-- Compute Modelo 130 pago fraccionado cumulatively: rendimiento neto YTD × 20%, minus a "gastos de difícil justificación" reduction, minus retenciones YTD, minus prior quarters' own (positive) pagos fraccionados, floored at 0.
-- The "Rendimiento neto" row for 130 becomes the YTD figure (AEAT box [03] is YTD, not per-quarter).
-- Keep the match/mismatch badge for 130 — it's meaningful once the value is correct.
+**In scope:**
+- New `quarterly_declarations.gdj_rate REAL NOT NULL DEFAULT 5.0`.
+- Wizard step 3 gains a GDJ-rate control (SegmentedControl: 0 / 2 / 5 / 7 %); the value flows into `createDeclaration`.
+- `cumulativeModelo130(invoices, expenses, year, quarter, gdjRatePct)`: rendimiento neto YTD × 20%, − GDJ reduction (rate × YTD net, capped €2,000/yr), − retenciones YTD, − prior quarters' own positive pagos fraccionados, floored at 0.
+- The 130 "Rendimiento neto" row becomes the YTD figure (AEAT box [03] is YTD).
+- Keep the match/mismatch badge for 130 — meaningful once the value is correct.
 
 **Out of scope:**
-- Modelo 303 prior-period compensation (issue #2.4 — separate issue).
-- Storing "what was actually declared/paid" per quarter. We use AutoMono's own consistent recomputation as the baseline — a `ponytail:` comment marks this ceiling.
-- Cash-basis (criterio de caja) — declarations are accrual (issue #47, already merged).
-- The interim relabel (option b) — superseded by doing option a.
-
-**Assumption needing your confirmation:** the "gastos de difícil justificación" reduction rate. Issue #4 and `REPORT.md` §2.3 both say **2%**, capped **€2,000/yr**. Estimación directa simplificada is more commonly 5% (7% in 2023) — I'll implement it as a single named constant `GDJ_RATE = 0.02` / `GDJ_ANNUAL_CAP = 2000` so it's a one-line change if that's wrong. **Confirm 2% or tell me the rate.**
+- Editing the GDJ rate on an already-created declaration (delete + recreate the in-progress one, or a follow-up issue). Noted in Risks.
+- Modelo 303 prior-period compensation (issue §2.4 — separate).
+- Storing "what was actually declared/paid" per quarter — `cumulativeModelo130` uses AutoMono's own consistent recomputation as the baseline (`ponytail:` comment marks the ceiling).
+- Cash-basis (criterio de caja) — declarations are accrual (issue #47, merged).
+- Showing the GDJ breakdown row in the review modal — the pago fraccionado row is what the issue is about.
 
 ## File Structure
 
-- `src/lib/modeloReport.ts` — MODIFY. Add `Modelo130Ytd` type + `cumulativeModelo130()`. `expectedCasillas` and `buildModeloReport` gain an optional trailing `ytd130?: Modelo130Ytd` param used only for the `"130"` branch.
-- `src/lib/modeloReport.test.ts` — MODIFY. New `cumulativeModelo130` describe block; update the existing "clamped at zero" 130 test to the new signature.
-- `src/components/ModeloReviewModal.tsx` — MODIFY. New optional prop `modelo130Ytd?: Modelo130Ytd`, passed into `buildModeloReport`.
-- `src/screens/ResumenTrimestral.tsx` — MODIFY. Fetch YTD expenses for the focused year; compute `cumulativeModelo130(invoices, ytdExpenses, year, quarter)`; pass as `modelo130Ytd` prop.
-
-No i18n JSON change — the 130 row labels are literal strings in `expectedCasillas` today; the "Rendimiento neto" label gains " (acumulado)" inline, matching the existing Spanish style.
+- `src-tauri/migrations/0033_declaration_gdj_rate.sql` — CREATE. `ALTER TABLE ... ADD COLUMN gdj_rate REAL NOT NULL DEFAULT 5.0;`
+- `src-tauri/src/lib.rs` — MODIFY. Append the `Migration { version: 32, ... }` entry.
+- `src/lib/modeloReport.ts` — MODIFY. `DEFAULT_GDJ_RATE`, `GDJ_ANNUAL_CAP`, `Modelo130Ytd` type, `cumulativeModelo130()`; `expectedCasillas`/`buildModeloReport` gain optional trailing `ytd130?: Modelo130Ytd`.
+- `src/lib/modeloReport.test.ts` — MODIFY. New `cumulativeModelo130` block; update the existing 130 `expectedCasillas` test.
+- `src/db/declarations.ts` — MODIFY. `DeclarationRow`/`DeclarationDetail` carry `gdj_rate`/`gdjRate`; `createDeclaration` gains a `gdjRate` param.
+- `src/components/DeclarationWizard.tsx` — MODIFY. `gdjRate` state (init `DEFAULT_GDJ_RATE`), SegmentedControl on step 3, passed to `createDeclaration`.
+- `src/components/ModeloReviewModal.tsx` — MODIFY. Optional `modelo130Ytd?: Modelo130Ytd` prop → `buildModeloReport`.
+- `src/screens/ResumenTrimestral.tsx` — MODIFY. YTD-expenses fetch; `cumulativeModelo130(invoices, ytdExpenses, declaration.year, declaration.quarter, declaration.gdjRate)`; pass as prop.
+- `src/locales/{es,en}/common.json` — MODIFY. `declarations.wizard.step4.gdjRate` label + a short hint.
 
 ---
 
-### Task 1: `cumulativeModelo130` pure function + tests
+### Task 1: Migration — `quarterly_declarations.gdj_rate`
+
+**Files:**
+- Create: `src-tauri/migrations/0033_declaration_gdj_rate.sql`
+- Modify: `src-tauri/src/lib.rs:210-215` (append after the `version: 31` entry, before the closing `]`)
+
+- [ ] **Step 1: Write the migration file:**
+
+```sql
+-- Per-declaration "gastos de difícil justificación" rate (%), applied to YTD rendimiento neto
+-- when computing the Modelo 130 pago fraccionado (capped €2,000/yr, enforced in TS). Régimen /
+-- tax-year dependent (commonly 5%, was 7% in 2023, 2% in some cases) — the user picks it in the
+-- new-declaration wizard. 5.0 is the current default; existing rows inherit it.
+ALTER TABLE quarterly_declarations ADD COLUMN gdj_rate REAL NOT NULL DEFAULT 5.0;
+```
+
+- [ ] **Step 2: Register in `lib.rs`** — add inside `all_migrations()`'s vec, after the `expense_iva_deductible_pct` entry:
+
+```rust
+        Migration {
+            version: 32,
+            description: "declaration_gdj_rate",
+            sql: include_str!("../migrations/0033_declaration_gdj_rate.sql"),
+            kind: MigrationKind::Up,
+        },
+```
+
+- [ ] **Step 3: Run Rust tests** — the registration guard + the frontend replay:
+
+```
+cd src-tauri && cargo test && cd ..
+bun run test src/db/migrations.test.ts
+```
+
+Expected: PASS (`all_sql_files_are_registered_as_migrations` green; migration replays cleanly).
+
+- [ ] **Step 4: Commit** `feat: add quarterly_declarations.gdj_rate column (#4)`
+
+---
+
+### Task 2: `cumulativeModelo130` pure function + tests
 
 **Files:**
 - Modify: `src/lib/modeloReport.ts`
 - Test: `src/lib/modeloReport.test.ts`
 
 **Interfaces:**
-- Consumes: `buildDeclarationSnapshot`, `invoicesInPeriod`, `expensesInPeriod` from `./quarterlyDeclaration`; `quarterRange`, `iso`-equivalent via `quarterRange(year,1).from` for the year start; `roundCents as round2` from `./invoice`.
+- Consumes: `buildDeclarationSnapshot`, `invoicesInPeriod`, `expensesInPeriod` from `./quarterlyDeclaration`; `quarterRange` from `./dateRange`; `roundCents as round2` from `./invoice`; `InvoiceListItem`, `ExpenseRecord` types.
 - Produces:
   ```ts
+  /** 5% is the estimación directa simplificada default; kept in sync with the SQL column default
+   *  in 0033_declaration_gdj_rate.sql. */
+  export const DEFAULT_GDJ_RATE = 5;
+  export const GDJ_ANNUAL_CAP = 2000;
+
   export interface Modelo130Ytd {
-    /** AEAT box [03]: ingresos YTD − gastos deducibles YTD (accrual). */
-    rendimientoNetoYtd: number;
-    /** The "gastos de difícil justificación" reduction actually applied YTD (capped). */
-    gastosDificilJustificacion: number;
-    /** Sum of prior quarters' own positive pagos fraccionados. */
-    priorPagosFraccionados: number;
-    /** AEAT box result for THIS quarter: max(0, 0.2·([03]−GDJ) − retYTD − priorPagos). */
-    pagoFraccionado: number;
+    rendimientoNetoYtd: number;          // AEAT box [03], YTD, accrual
+    gastosDificilJustificacion: number;  // reduction actually applied YTD (capped)
+    priorPagosFraccionados: number;      // Σ prior quarters' positive pagos
+    pagoFraccionado: number;             // this quarter's box result, floored at 0
   }
+
   export function cumulativeModelo130(
     invoices: InvoiceListItem[],
     expenses: ExpenseRecord[],
     year: number,
     quarter: 1 | 2 | 3 | 4,
+    gdjRatePct: number,
   ): Modelo130Ytd;
   ```
 
-- [ ] **Step 1: Write failing tests** in `src/lib/modeloReport.test.ts`:
+- [ ] **Step 1: Write failing tests** in `src/lib/modeloReport.test.ts` (reuse the existing `invoice()` / `expense()` factories):
 
 ```ts
-import { cumulativeModelo130 } from "./modeloReport";
-// reuse existing invoice()/expense() factories
+import { cumulativeModelo130, DEFAULT_GDJ_RATE } from "./modeloReport";
 
 describe("cumulativeModelo130", () => {
-  it("Q1: 20% of YTD rendimiento neto minus retenciones", () => {
-    // Q1 invoice base 10000, irpf 1500; Q1 expense 2000 -> net 8000
+  it("Q1: 20% of (YTD net − GDJ) minus retenciones", () => {
     const r = cumulativeModelo130(
       [invoice({ issueDate: "2026-02-01", subtotal: 10000, irpfAmount: 1500 })],
       [expense({ date: "2026-02-01", amount: 2000, deductiblePct: 100 })],
-      2026,
-      1,
+      2026, 1, 5,
     );
-    // net 8000; GDJ = min(2000, 0.02*8000=160) = 160; base 7840
-    // 0.2*7840 = 1568; minus ret 1500; minus prior 0 -> 68
+    // net 8000; GDJ = 5% * 8000 = 400; base 7600; 0.2*7600 = 1520; − ret 1500 − prior 0 = 20
     expect(r.rendimientoNetoYtd).toBe(8000);
-    expect(r.gastosDificilJustificacion).toBe(160);
+    expect(r.gastosDificilJustificacion).toBe(400);
     expect(r.priorPagosFraccionados).toBe(0);
-    expect(r.pagoFraccionado).toBe(68);
+    expect(r.pagoFraccionado).toBe(20);
   });
 
   it("Q2: YTD figures and prior quarter's positive pago are subtracted", () => {
@@ -103,57 +146,71 @@ describe("cumulativeModelo130", () => {
       expense({ id: 1, date: "2026-02-01", amount: 2000, deductiblePct: 100 }),
       expense({ id: 2, date: "2026-05-01", amount: 2000, deductiblePct: 100 }),
     ];
-    const r = cumulativeModelo130(invoices, expenses, 2026, 2);
-    // YTD net 16000; GDJ min(2000, 320) = 320; base 15680
-    // 0.2*15680 = 3136; minus retYTD 3000; minus priorPago (Q1 = 68) -> 68
+    const r = cumulativeModelo130(invoices, expenses, 2026, 2, 5);
+    // YTD net 16000; GDJ 800; base 15200; 0.2*15200 = 3040; − retYTD 3000 − priorPago(Q1=20) = 20
     expect(r.rendimientoNetoYtd).toBe(16000);
-    expect(r.priorPagosFraccionados).toBe(68);
-    expect(r.pagoFraccionado).toBe(68);
+    expect(r.priorPagosFraccionados).toBe(20);
+    expect(r.pagoFraccionado).toBe(20);
   });
 
-  it("negative quarter result is floored at 0 and does NOT reduce prior pagos", () => {
-    // Q1 heavy retenciones -> negative -> pago 0, priorPagos stays 0
-    const r = cumulativeModelo130(
-      [invoice({ issueDate: "2026-02-01", subtotal: 1000, irpfAmount: 250 })],
-      [expense({ date: "2026-02-01", amount: 200, deductiblePct: 100 })],
-      2026,
-      1,
-    );
-    // net 800; GDJ 16; base 784; 0.2*784=156.8; minus 250 -> negative -> 0
-    expect(r.pagoFraccionado).toBe(0);
+  it("negative quarter result floors at 0 and does not create a negative prior pago", () => {
+    const invoices = [
+      invoice({ id: 1, issueDate: "2026-02-01", subtotal: 1000, irpfAmount: 250 }),
+      invoice({ id: 2, issueDate: "2026-05-01", subtotal: 20000, irpfAmount: 0 }),
+    ];
+    const r = cumulativeModelo130(invoices, [], 2026, 2, 5);
+    // Q1 net 1000, 0.2*(950) = 190 − 250 -> 0 (priorPagos stays 0)
+    // Q2 YTD net 21000, GDJ 1050, 0.2*19950 = 3990 − 250 − 0 = 3740
+    expect(r.priorPagosFraccionados).toBe(0);
+    expect(r.pagoFraccionado).toBe(3740);
   });
 
   it("GDJ reduction is capped at €2,000/yr", () => {
     const r = cumulativeModelo130(
       [invoice({ issueDate: "2026-02-01", subtotal: 200000, irpfAmount: 0 })],
-      [],
-      2026,
-      1,
+      [], 2026, 1, 5,
     );
-    expect(r.gastosDificilJustificacion).toBe(2000); // 0.02*200000 = 4000, capped
+    expect(r.gastosDificilJustificacion).toBe(2000); // 5% * 200000 = 10000, capped
+  });
+
+  it("DEFAULT_GDJ_RATE is 5", () => {
+    expect(DEFAULT_GDJ_RATE).toBe(5);
   });
 });
 ```
 
-- [ ] **Step 2: Run — expect fail** (`cumulativeModelo130` not exported):
+- [ ] **Step 2: Run — expect fail** (`bun run test src/lib/modeloReport.test.ts`).
 
-```
-bun run test src/lib/modeloReport.test.ts
-```
-
-- [ ] **Step 3: Implement** in `src/lib/modeloReport.ts` (add imports for `InvoiceListItem`, `ExpenseRecord`, `invoicesInPeriod`, `expensesInPeriod`, `buildDeclarationSnapshot`, `quarterRange`):
+- [ ] **Step 3: Implement** in `src/lib/modeloReport.ts` (add the needed imports at the top):
 
 ```ts
-// ponytail: Spanish EDS "gastos de difícil justificación" — issue #4 / REPORT §2.3 specify
-// 2% capped €2,000/yr. Single knob: bump if the rate is wrong for this autónomo's régimen.
-const GDJ_RATE = 0.02;
-const GDJ_ANNUAL_CAP = 2000;
+import type { InvoiceListItem } from "../db/invoices";
+import type { ExpenseRecord } from "../db/expenses";
+import {
+  buildDeclarationSnapshot,
+  invoicesInPeriod,
+  expensesInPeriod,
+} from "./quarterlyDeclaration";
+import { quarterRange } from "./dateRange";
+```
+
+```ts
+export const DEFAULT_GDJ_RATE = 5;
+export const GDJ_ANNUAL_CAP = 2000;
+
+export interface Modelo130Ytd {
+  rendimientoNetoYtd: number;
+  gastosDificilJustificacion: number;
+  priorPagosFraccionados: number;
+  pagoFraccionado: number;
+}
 
 /**
  * Real Modelo 130 box logic, recomputed cumulatively across Q1..`quarter` of `year` from the
- * (accrual) invoice/expense records — AutoMono doesn't persist per-quarter declared figures, so
- * prior quarters' pagos fraccionados are its own consistent recomputation, not the filed values.
- * ponytail: recompute-from-raw instead of storing YTD declaration state; revisit if the app ever
+ * (accrual) invoice/expense records. `gdjRatePct` (the focused declaration's rate) is applied
+ * uniformly YTD — GDJ is a year-to-date figure at the year's régimen rate.
+ * ponytail: recompute-from-raw instead of persisting per-quarter declared figures — prior pagos
+ * are AutoMono's own consistent recomputation, not the filed values. Revisit if the app ever
  * needs to reconcile against what was actually filed.
  */
 export function cumulativeModelo130(
@@ -161,63 +218,62 @@ export function cumulativeModelo130(
   expenses: ExpenseRecord[],
   year: number,
   quarter: 1 | 2 | 3 | 4,
+  gdjRatePct: number,
 ): Modelo130Ytd {
   const yearStart = quarterRange(year, 1).from;
   let priorPagos = 0;
-  let last: Omit<Modelo130Ytd, "priorPagosFraccionados"> & { pagoFraccionado: number } = {
+  let out: Modelo130Ytd = {
     rendimientoNetoYtd: 0,
     gastosDificilJustificacion: 0,
+    priorPagosFraccionados: 0,
     pagoFraccionado: 0,
   };
 
-  for (let q = 1 as 1 | 2 | 3 | 4; q <= quarter; q++) {
-    const ytd = { from: yearStart, to: quarterRange(year, q).to, label: "" };
+  for (let q = 1; q <= quarter; q++) {
+    const ytd = { from: yearStart, to: quarterRange(year, q as 1 | 2 | 3 | 4).to, label: "" };
     const snap = buildDeclarationSnapshot(
       invoicesInPeriod(invoices, ytd),
       expensesInPeriod(expenses, ytd),
     );
     const netYtd = snap.totals.netIrpfIncome;
     const retYtd = snap.totals.irpfWithheld;
-    const gdj = Math.min(GDJ_ANNUAL_CAP, round2(GDJ_RATE * Math.max(0, netYtd)));
+    const gdj = Math.min(GDJ_ANNUAL_CAP, round2((gdjRatePct / 100) * Math.max(0, netYtd)));
     const pago = Math.max(0, round2(0.2 * (netYtd - gdj) - retYtd - priorPagos));
-    last = { rendimientoNetoYtd: netYtd, gastosDificilJustificacion: gdj, pagoFraccionado: pago };
+    out = {
+      rendimientoNetoYtd: netYtd,
+      gastosDificilJustificacion: gdj,
+      priorPagosFraccionados: priorPagos,
+      pagoFraccionado: pago,
+    };
     if (q < quarter) priorPagos = round2(priorPagos + pago);
   }
-
-  return { ...last, priorPagosFraccionados: priorPagos };
+  return out;
 }
 ```
 
-(`for (let q = 1 as ...; q <= quarter; q++)` — if the `as` cast in a for-loop is awkward for eslint, use a plain `number` local and cast at the `quarterRange` call.)
-
 - [ ] **Step 4: Run — expect pass.**
-
-```
-bun run test src/lib/modeloReport.test.ts
-```
 
 - [ ] **Step 5: Commit** `feat: add cumulative Modelo 130 YTD pago fraccionado calc (#4)`
 
 ---
 
-### Task 2: Thread `ytd130` through `expectedCasillas` / `buildModeloReport`
+### Task 3: Thread `ytd130` through `expectedCasillas` / `buildModeloReport`
 
 **Files:**
-- Modify: `src/lib/modeloReport.ts:34-76` (`expectedCasillas`), `:98-130` (`buildModeloReport`)
-- Test: `src/lib/modeloReport.test.ts` (update existing 130 test)
+- Modify: `src/lib/modeloReport.ts` (`expectedCasillas` ~`:34`, `buildModeloReport` ~`:98`)
+- Test: `src/lib/modeloReport.test.ts`
 
 **Interfaces:**
-- Consumes: `Modelo130Ytd` from Task 1.
-- Produces: `expectedCasillas(modelo, snapshot, ytd130?: Modelo130Ytd)` and `buildModeloReport(modelo, snapshot, extracted, period, ytd130?: Modelo130Ytd)`.
+- Produces: `expectedCasillas(modelo, snapshot, ytd130?: Modelo130Ytd)`, `buildModeloReport(modelo, snapshot, extracted, period, ytd130?: Modelo130Ytd)`.
 
-- [ ] **Step 1: Update the existing 130 test** "computes 130 rendimiento neto and pago fraccionado, clamped at zero" — it now must pass a `ytd130` and assert the rows echo it:
+- [ ] **Step 1: Replace** the existing 130 test ("computes 130 rendimiento neto and pago fraccionado, clamped at zero") with:
 
 ```ts
 it("130 rows come from the cumulative ytd result when provided", () => {
   const snapshot = buildDeclarationSnapshot([invoice({ subtotal: 1000 })], []);
   const ytd130 = {
     rendimientoNetoYtd: 12345,
-    gastosDificilJustificacion: 247,
+    gastosDificilJustificacion: 617,
     priorPagosFraccionados: 100,
     pagoFraccionado: 321,
   };
@@ -228,7 +284,7 @@ it("130 rows come from the cumulative ytd result when provided", () => {
   ]);
 });
 
-it("130 falls back to the isolated-quarter estimate when no ytd result is passed", () => {
+it("130 falls back to the isolated-quarter estimate with no ytd result", () => {
   const snapshot = buildDeclarationSnapshot(
     [invoice({ subtotal: 1000, irpfAmount: 250 })],
     [expense({ amount: 200, deductiblePct: 100 })],
@@ -240,7 +296,7 @@ it("130 falls back to the isolated-quarter estimate when no ytd result is passed
 
 - [ ] **Step 2: Run — expect fail.**
 
-- [ ] **Step 3: Implement.** In `expectedCasillas`, add `ytd130?: Modelo130Ytd` param; the `"130"` branch:
+- [ ] **Step 3: Implement.** `expectedCasillas` signature gains `ytd130?: Modelo130Ytd`; the `"130"` branch:
 
 ```ts
 case "130": {
@@ -254,16 +310,20 @@ case "130": {
       { key: "pagoFraccionado", label: "Pago fraccionado", expected: round2(ytd130.pagoFraccionado) },
     ];
   }
-  // ponytail: no YTD context (shouldn't happen from the modal) — isolated-quarter estimate.
+  // ponytail: no YTD context (not expected from the modal) — isolated-quarter estimate.
   const pagoFraccionado = Math.max(0, totals.netIrpfIncome * 0.2 - totals.irpfWithheld);
   return [
     { key: "rendimientoNeto", label: "Rendimiento neto", expected: round2(totals.netIrpfIncome) },
-    { key: "pagoFraccionado", label: "Pago fraccionado (estimación aislada)", expected: round2(pagoFraccionado) },
+    {
+      key: "pagoFraccionado",
+      label: "Pago fraccionado (estimación aislada)",
+      expected: round2(pagoFraccionado),
+    },
   ];
 }
 ```
 
-In `buildModeloReport`, add `ytd130?: Modelo130Ytd` as the last param and pass it: `expectedCasillas(modelo, snapshot, ytd130)`.
+`buildModeloReport` gains `ytd130?: Modelo130Ytd` as its last param and forwards it: `expectedCasillas(modelo, snapshot, ytd130)`.
 
 - [ ] **Step 4: Run — expect pass** (`bun run test src/lib/modeloReport.test.ts`).
 
@@ -271,28 +331,114 @@ In `buildModeloReport`, add `ytd130?: Modelo130Ytd` as the last param and pass i
 
 ---
 
-### Task 3: Wire it through the modal + screen
+### Task 4: Persist `gdjRate` on the declaration
 
 **Files:**
-- Modify: `src/components/ModeloReviewModal.tsx` (props interface ~`:54-63`, `buildModeloReport` call ~`:134`)
-- Modify: `src/screens/ResumenTrimestral.tsx` (expense fetch ~`:330-345`, modal render ~`:627-636`)
+- Modify: `src/db/declarations.ts`
 
 **Interfaces:**
-- Consumes: `cumulativeModelo130`, `Modelo130Ytd` from Task 1.
-- Produces: no new exports.
+- Produces: `DeclarationDetail.gdjRate: number`; `createDeclaration(year, quarter, snapshot, gdjRate: number)`.
 
-- [ ] **Step 1: Modal** — add to `ModeloReviewModalProps`:
+- [ ] **Step 1:** Add `gdj_rate: number;` to `DeclarationRow`, `gdjRate: number;` to `DeclarationDetail`, and map it in `mapRow`:
 
 ```ts
-modelo130Ytd?: Modelo130Ytd;
+gdjRate: row.gdj_rate,
 ```
 
-import `type { Modelo130Ytd }` from `../lib/modeloReport`, destructure `modelo130Ytd` in the component signature, and pass it as the 5th arg to `buildModeloReport(detection.modelo, snapshot, fields, { ... }, modelo130Ytd)`. Add `modelo130Ytd` to the effect's dep list is **not** needed (same rationale as the existing eslint-disable comment — it's stable for one declaration screen); leave the disable comment as-is.
-
-- [ ] **Step 2: Screen** — in `ResumenTrimestral.tsx`, add a YTD-expenses fetch alongside the existing quarter/prior fetches:
+- [ ] **Step 2:** `createDeclaration` gains a 4th param and inserts it:
 
 ```ts
-const ytdPeriod = { from: quarterRange(year, 1).from, to: period.to, label: "" };
+export async function createDeclaration(
+  year: number,
+  quarter: number,
+  snapshot: DeclarationSnapshot,
+  gdjRate: number,
+): Promise<number> {
+  const db = await getDb();
+  const result = await db.execute(
+    "INSERT INTO quarterly_declarations (year, quarter, snapshot_json, gdj_rate) VALUES ($1, $2, $3, $4)",
+    [year, quarter, JSON.stringify(snapshot), gdjRate],
+  );
+  return result.lastInsertId!;
+}
+```
+
+(`markDeclarationCompleted` re-selects the row via `getDeclaration` and only updates `status`/`snapshot_json` — `gdj_rate` is untouched, correct.)
+
+- [ ] **Step 3: Typecheck** — `bun run build` will now flag the `createDeclaration` call in `DeclarationWizard.tsx` (fixed in Task 5) and any test. That's expected; proceed to Task 5 before re-running the full gate.
+
+- [ ] **Step 4: Commit** `feat: carry gdj_rate on declaration records (#4)`
+
+---
+
+### Task 5: Wizard GDJ-rate control
+
+**Files:**
+- Modify: `src/components/DeclarationWizard.tsx`
+- Modify: `src/locales/es/common.json` (`declarations.wizard.step4`), `src/locales/en/common.json` (same path)
+
+- [ ] **Step 1: i18n** — add to `declarations.wizard.step4` in both files:
+
+  es: `"gdjRate": "Gastos de difícil justificación", "gdjRateHint": "5% del rendimiento neto en estimación directa simplificada (7% en 2023)."`
+  en: `"gdjRate": "Hard-to-justify expenses", "gdjRateHint": "5% of net income under estimación directa simplificada (7% in 2023)."`
+
+- [ ] **Step 2: Component** — import `SegmentedControl` from `./ui/SegmentedControl`, `Label` from `./ui/Field`, and `DEFAULT_GDJ_RATE` from `../lib/modeloReport`. Add state:
+
+```ts
+const [gdjRate, setGdjRate] = useState<number>(DEFAULT_GDJ_RATE);
+```
+
+Reset it alongside the other fields in the `open && !wasOpen` block: `setGdjRate(DEFAULT_GDJ_RATE);`
+
+- [ ] **Step 3:** On step 3 (`step === 3`), above the `createError` line, add:
+
+```tsx
+<div className="mt-4 pt-3 border-t border-border">
+  <Label>{t("declarations.wizard.step4.gdjRate")}</Label>
+  <SegmentedControl
+    value={String(gdjRate)}
+    onChange={(v) => setGdjRate(Number(v))}
+    options={[
+      { value: "0", label: "0%" },
+      { value: "2", label: "2%" },
+      { value: "5", label: "5%" },
+      { value: "7", label: "7%" },
+    ]}
+  />
+  <p className="text-xs text-ink-soft mt-1.5">{t("declarations.wizard.step4.gdjRateHint")}</p>
+</div>
+```
+
+- [ ] **Step 4:** Pass it through: `await createDeclaration(year, quarter, snapshot, gdjRate);`
+
+- [ ] **Step 5:** `bun run build` && `bun run lint` — expect PASS now.
+
+- [ ] **Step 6: Commit** `feat: pick gastos-difícil-justificación rate in the declaration wizard (#4)`
+
+---
+
+### Task 6: Wire the cumulative result into the review modal
+
+**Files:**
+- Modify: `src/components/ModeloReviewModal.tsx` (props ~`:54-63`, `buildModeloReport` call ~`:134`)
+- Modify: `src/screens/ResumenTrimestral.tsx` (expense fetch ~`:330-345`, modal render ~`:627-636`)
+
+- [ ] **Step 1: Modal** — `import type { Modelo130Ytd } from "../lib/modeloReport";`, add `modelo130Ytd?: Modelo130Ytd;` to `ModeloReviewModalProps`, destructure it, and pass as the 5th arg:
+
+```ts
+const report = buildModeloReport(
+  detection.modelo, snapshot, fields,
+  { expectedYear: year, expectedQuarter: quarter, detectedYear: detection.year, detectedQuarter: detection.quarter },
+  modelo130Ytd,
+);
+```
+
+Leave the existing `eslint-disable-next-line react-hooks/exhaustive-deps` / `[open, files]` deps as-is (`modelo130Ytd` is stable for one declaration screen, same rationale as `snapshot`).
+
+- [ ] **Step 2: Screen** — in `ResumenTrimestral.tsx`, confirm `quarterRange` is imported from `../lib/dateRange` (add if not), then add near the other expense fetches:
+
+```ts
+const ytdPeriod = { from: quarterRange(year, 1).from, to: period.to };
 const [ytdExpenses, setYtdExpenses] = useState<ExpenseRecord[]>([]);
 useEffect(() => {
   void listExpenses({
@@ -303,47 +449,45 @@ useEffect(() => {
 }, [ytdPeriod.from, ytdPeriod.to]);
 ```
 
-(`quarterRange` is already imported? check imports — add if missing.)
-
-Then compute, guarded on there being a focused declaration:
+- [ ] **Step 3:** Compute (only meaningful with a focused declaration), importing `cumulativeModelo130`:
 
 ```ts
 const modelo130Ytd =
   declaration != null
-    ? cumulativeModelo130(invoices, ytdExpenses, declaration.year, declaration.quarter as 1 | 2 | 3 | 4)
+    ? cumulativeModelo130(
+        invoices, ytdExpenses,
+        declaration.year, declaration.quarter as 1 | 2 | 3 | 4,
+        declaration.gdjRate,
+      )
     : undefined;
 ```
 
-and pass `modelo130Ytd={modelo130Ytd}` to `<ModeloReviewModal ... />`.
+Pass `modelo130Ytd={modelo130Ytd}` on `<ModeloReviewModal … />`.
 
-- [ ] **Step 3: Typecheck + lint.**
+- [ ] **Step 4:** `bun run build` && `bun run lint` — expect PASS.
 
-```
-bun run build
-bun run lint
-```
-
-- [ ] **Step 4: Commit** `feat: pass cumulative 130 YTD into Modelo Review modal (#4)`
+- [ ] **Step 5: Commit** `feat: pass cumulative 130 YTD into the Modelo Review modal (#4)`
 
 ---
 
-### Task 4: Full gate + manual check
+### Task 7: Full gate + manual check
 
 - [ ] **Step 1:** `bun run lint`
-- [ ] **Step 2:** `bun run test` (whole suite — `modeloReport.test.ts` + anything importing `expectedCasillas`)
+- [ ] **Step 2:** `bun run test` (whole suite)
 - [ ] **Step 3:** `bun run build`
-- [ ] **Step 4 (manual, needs `bun run tauri dev` — flag to user if unavailable):** open a quarter with a locked declaration + a prior locked quarter in the same year, drop a real Modelo 130 PDF, confirm the "Calculado" column shows the YTD rendimiento neto and the pago fraccionado nets prior quarters, and a correct form now badges **Coincide** not **No coincide**.
-- [ ] **Step 5: Commit** any lint/format fixups.
+- [ ] **Step 4:** `cd src-tauri && cargo test && cd ..` (migration guard)
+- [ ] **Step 5 (manual — needs `bun run tauri dev`, flag to user if unavailable):** create a Q2 declaration, pick 5% GDJ; ensure a Q1 declaration exists in the same year; drop a real Modelo 130 PDF; verify the "Calculado" column shows YTD rendimiento neto and a pago fraccionado that nets Q1's, and a correct form badges **Coincide**.
+- [ ] **Step 6: Commit** any lint/format fixups.
 
 ## Validation
 
-- `bun run lint` · `bun run test src/lib/modeloReport.test.ts` · `bun run test` · `bun run build`
-- No Rust touched → no `cargo test`.
-- Manual: `bun run tauri dev` per Task 4 Step 4 — **I can't run this headless; you'll need to exercise it.**
+- `bun run lint` · `bun run test` (+ `bun run test src/lib/modeloReport.test.ts`, `bun run test src/db/migrations.test.ts`) · `bun run build` · `cd src-tauri && cargo test`
+- Manual: `bun run tauri dev` per Task 7 Step 5 — **can't run headless; user exercises it before ready-for-review.**
 
 ## Risks / Rollback
 
-- **No migration, no schema, no Rust** — none of the migration/`lib.rs`/app-identifier hazards apply.
-- **Tax-math correctness:** the GDJ rate (2% assumed) and whether prior pagos should be AutoMono's recomputation vs. filed values are the two judgement calls — both are single-constant / documented-ceiling and marked with `ponytail:` comments. Wrong rate = one-line fix.
-- **Behaviour change:** the 130 "Calculado" numbers in the review modal will change for every user with multi-quarter activity. This is the intended fix, but it's why Task 4 Step 4 matters.
-- Rollback = revert the branch; nothing persisted, nothing migrated.
+- **Migration** (`0033`): additive `ADD COLUMN … NOT NULL DEFAULT 5.0` — SQLite allows this in one step (no table rebuild). Must be registered as `version: 32` in `lib.rs`; `all_sql_files_are_registered_as_migrations` + `src/db/migrations.test.ts` both guard it. App identifier unchanged.
+- **Tax-math correctness:** GDJ default 5% per the user; the wizard exposes 0/2/5/7. `cumulativeModelo130` applies the focused declaration's rate uniformly YTD, and prior pagos are AutoMono's recomputation, not filed values — both marked `ponytail:`.
+- **No edit path for the rate post-creation** — user deletes + recreates the in-progress declaration, or a follow-up issue adds an inline editor. Flag as a proposed follow-up.
+- **Behaviour change:** every user's 130 "Calculado" numbers shift once this ships — intended; Task 7 Step 5 is the guard.
+- **Rollback:** revert the branch. The column stays on already-migrated dev DBs but is harmless (defaulted, ignored by old code).
