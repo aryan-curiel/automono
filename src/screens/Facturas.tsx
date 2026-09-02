@@ -176,8 +176,13 @@ export function Facturas({
           empty={
             <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
               <Receipt size={32} className="text-ink-soft/40" />
-              <div className="text-sm text-ink-soft">
-                {invoices.length === 0 ? t("invoices.empty") : t("invoices.noResults")}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="text-sm font-medium text-ink">
+                  {invoices.length === 0 ? t("invoices.empty") : t("invoices.noResults")}
+                </div>
+                {invoices.length === 0 && (
+                  <p className="max-w-xs text-sm text-ink-soft">{t("invoices.emptyHint")}</p>
+                )}
               </div>
               {invoices.length === 0 && (
                 <Button variant="secondary" onClick={onNewInvoice}>

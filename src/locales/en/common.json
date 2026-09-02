@@ -200,6 +200,7 @@
     "searchPlaceholder": "Search",
     "loading": "Loading…",
     "empty": "No clients yet.",
+    "emptyHint": "Save each client's tax details — NIF/CIF, address, VAT treatment — once and reuse them on every invoice and quote.",
     "columns": {
       "client": "Client",
       "nifCif": "NIF/CIF",
@@ -388,6 +389,7 @@
     "searchPlaceholder": "Search",
     "loading": "Loading…",
     "empty": "No invoices yet",
+    "emptyHint": "This is where you issue and number invoices with the right IVA and IRPF. Create the first one to start billing.",
     "noResults": "No results",
     "noClients": "Add a client before creating an invoice.",
     "columns": {
@@ -510,6 +512,7 @@
     "searchPlaceholder": "Search quotes…",
     "loading": "Loading…",
     "empty": "No quotes yet.",
+    "emptyHint": "Draft quotes for prospective work and convert them into an invoice once the client accepts.",
     "noResults": "No quote matches your search.",
     "noClients": "Create a client before making a quote.",
     "convertedNotice": "This quote was converted into an invoice and can no longer be edited.",
@@ -645,6 +648,7 @@
     "declaredBadge": "Declared",
     "loading": "Loading…",
     "empty": "No expenses in this period.",
+    "emptyHint": "Log every deductible business expense and attach its receipt so your quarterly tax summary adds up.",
     "columns": {
       "date": "Date",
       "category": "Category",

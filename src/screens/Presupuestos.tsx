@@ -147,8 +147,13 @@ export function Presupuestos({
         empty={
           <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
             <FileText size={32} className="text-ink-soft/40" />
-            <div className="text-sm text-ink-soft">
-              {quotes.length === 0 ? t("quotes.empty") : t("quotes.noResults")}
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="text-sm font-medium text-ink">
+                {quotes.length === 0 ? t("quotes.empty") : t("quotes.noResults")}
+              </div>
+              {quotes.length === 0 && (
+                <p className="max-w-xs text-sm text-ink-soft">{t("quotes.emptyHint")}</p>
+              )}
             </div>
             {quotes.length === 0 && (
               <Button variant="secondary" onClick={onNewQuote}>

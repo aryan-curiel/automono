@@ -319,7 +319,10 @@ export function Gastos({
               empty={
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
                   <Wallet size={32} className="text-ink-soft/40" />
-                  <div className="text-sm text-ink-soft">{t("expenses.empty")}</div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="text-sm font-medium text-ink">{t("expenses.empty")}</div>
+                    <p className="max-w-xs text-sm text-ink-soft">{t("expenses.emptyHint")}</p>
+                  </div>
                   <Button variant="secondary" onClick={onNewExpense}>
                     + {t("expenses.newExpense")}
                   </Button>

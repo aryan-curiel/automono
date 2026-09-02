@@ -200,6 +200,7 @@
     "searchPlaceholder": "Buscar",
     "loading": "Cargando…",
     "empty": "No hay clientes todavía.",
+    "emptyHint": "Guarda una vez los datos fiscales de cada cliente —NIF/CIF, dirección, tratamiento de IVA— y reutilízalos en cada factura y presupuesto.",
     "columns": {
       "client": "Cliente",
       "nifCif": "NIF/CIF",
@@ -388,6 +389,7 @@
     "searchPlaceholder": "Buscar",
     "loading": "Cargando…",
     "empty": "Aún no hay facturas",
+    "emptyHint": "Aquí emites y numeras tus facturas con el IVA y el IRPF que corresponden. Crea la primera para empezar a facturar.",
     "noResults": "Sin resultados",
     "noClients": "Da de alta un cliente antes de crear una factura.",
     "columns": {
@@ -510,6 +512,7 @@
     "searchPlaceholder": "Buscar presupuestos…",
     "loading": "Cargando…",
     "empty": "Aún no hay presupuestos.",
+    "emptyHint": "Prepara presupuestos para posibles trabajos y conviértelos en factura cuando el cliente los acepte.",
     "noResults": "Ningún presupuesto coincide con la búsqueda.",
     "noClients": "Crea un cliente antes de hacer un presupuesto.",
     "convertedNotice": "Este presupuesto se convirtió en una factura y ya no se puede editar.",
@@ -645,6 +648,7 @@
     "declaredBadge": "Declarada",
     "loading": "Cargando…",
     "empty": "No hay gastos en este período.",
+    "emptyHint": "Registra cada gasto deducible de tu actividad y adjunta su recibo para que tu resumen trimestral cuadre.",
     "columns": {
       "date": "Fecha",
       "category": "Categoría",
