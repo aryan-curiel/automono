@@ -14,6 +14,7 @@
     "dashboard": "Home",
     "clients": "Clients",
     "invoices": "Invoices",
+    "quotes": "Quotes",
     "collections": "Collections",
     "reconciliation": "Reconciliation",
     "expenses": "Expenses",
@@ -35,7 +36,20 @@
     "month": "Month",
     "quarter": "Quarter",
     "year": "Year",
-    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    "months": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ]
   },
   "quarterTimeline": {
     "previousQuarter": "Previous quarter",
@@ -510,6 +524,67 @@
       "annualLabel": "% annual",
       "interestOwedLabel": "Interest owed",
       "lateInterestDisclaimer": "Indicative rate — check the one currently published in the BOE (legal interest + 8 points) before claiming it."
+    }
+  },
+  "quotes": {
+    "title": "Quotes",
+    "subtitleCount": "{{count}} quotes",
+    "newQuote": "New quote",
+    "editQuote": "Edit quote",
+    "searchPlaceholder": "Search quotes…",
+    "loading": "Loading…",
+    "empty": "No quotes yet.",
+    "noResults": "No quote matches your search.",
+    "noClients": "Create a client before making a quote.",
+    "convertedNotice": "This quote was converted into an invoice and can no longer be edited.",
+    "columns": {
+      "number": "No.",
+      "client": "Client",
+      "validUntil": "Valid until",
+      "amount": "Amount"
+    },
+    "fields": {
+      "client": "Client",
+      "number": "Quote number",
+      "numberPending": "Assigned on save",
+      "issueDate": "Date",
+      "validUntil": "Valid until",
+      "status": "Status",
+      "ivaRate": "VAT rate",
+      "irpfRate": "IRPF withholding",
+      "language": "Quote language",
+      "notes": "Notes",
+      "notesPlaceholder": "Terms, delivery times, payment method…"
+    },
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "converted": "Converted"
+    },
+    "totals": {
+      "estimatedTotal": "Estimated total",
+      "notice": "A quote has no fiscal value. Once accepted you can turn it into a draft invoice."
+    },
+    "actions": {
+      "save": "Save",
+      "saving": "Saving…",
+      "downloadPdf": "Download PDF",
+      "generatingPdf": "Generating…",
+      "convert": "Convert to invoice",
+      "converting": "Converting…",
+      "markAs": "Mark as {{status}}",
+      "delete": "Delete quote",
+      "confirmDelete": "Delete this quote? This can't be undone."
+    },
+    "errors": {
+      "loadClientsFailed": "Could not load clients.",
+      "saveFailed": "Could not save the quote.",
+      "pdfFailed": "Could not generate the PDF.",
+      "convertFailed": "Could not convert the quote to an invoice.",
+      "linesRequired": "Add at least one line."
     }
   },
   "contracts": {

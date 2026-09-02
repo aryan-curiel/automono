@@ -26,6 +26,8 @@ import { Conciliacion } from "./screens/Conciliacion";
 import { FacturaDetalle } from "./screens/FacturaDetalle";
 import { FacturaNueva } from "./screens/FacturaNueva";
 import { FacturaRectificar } from "./screens/FacturaRectificar";
+import { Presupuestos } from "./screens/Presupuestos";
+import { PresupuestoForm } from "./screens/PresupuestoForm";
 import { ContratoDetalle } from "./screens/ContratoDetalle";
 import { ContratoForm } from "./screens/ContratoForm";
 import { Gastos } from "./screens/Gastos";
@@ -105,6 +107,7 @@ export default function App() {
   const [markingPaid, setMarkingPaid] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [editInvoiceId, setEditInvoiceId] = useState<number | null>(null);
+  const [editQuoteId, setEditQuoteId] = useState<number | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfileRecord | null>(null);
   const [pdfErrorToast, setPdfErrorToast] = useState<string | null>(null);
 
@@ -301,6 +304,12 @@ export default function App() {
   function openInvoice(id: number) {
     setSelectedInvoiceId(id);
     setScreen("factura-detalle");
+  }
+
+  async function handleQuoteConverted(invoiceId: number) {
+    setInvoices(await listInvoices());
+    setEditInvoiceId(invoiceId);
+    setScreen("factura-nueva");
   }
 
   async function confirmMarkPaid() {
@@ -569,6 +578,29 @@ export default function App() {
                   setScreen("factura-detalle");
                 })();
               }}
+            />
+          )}
+
+          {screen === "presupuestos" && (
+            <Presupuestos
+              onOpenQuote={(id) => {
+                setEditQuoteId(id);
+                setScreen("presupuesto-editar");
+              }}
+              onNewQuote={() => {
+                setEditQuoteId(null);
+                setScreen("presupuesto-nuevo");
+              }}
+              onConverted={(invoiceId) => void handleQuoteConverted(invoiceId)}
+            />
+          )}
+
+          {(screen === "presupuesto-nuevo" || screen === "presupuesto-editar") && (
+            <PresupuestoForm
+              editQuoteId={screen === "presupuesto-editar" ? (editQuoteId ?? undefined) : undefined}
+              onBack={() => setScreen("presupuestos")}
+              onSaved={() => setScreen("presupuestos")}
+              onConverted={(invoiceId) => void handleQuoteConverted(invoiceId)}
             />
           )}
 

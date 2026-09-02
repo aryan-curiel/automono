@@ -853,6 +853,468 @@ pub async fn get_or_generate_invoice_pdf_cmd(
         .map_err(|e| e.to_string())
 }
 
+// ---------------------------------------------------------------------------
+// Presupuestos (quotes) — #43
+//
+// A quote is explicitly NOT a factura: no series/number, no tax immutability, no
+// bank-transfer footer. This is its own compact template, clearly labelled
+// "Presupuesto" / "Quote", showing the validity date. It shares the low-level
+// helpers (format_eur, format_date, fonts, logo, Rule) with the invoice template
+// but none of its layout, so no invoice wording can leak in.
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct PdfQuoteLine {
+    pub description: String,
+    pub quantity: f64,
+    pub unit_price: f64,
+    pub total: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct PdfQuoteData {
+    pub year: i64,
+    pub seq: i64,
+    pub issue_date: Option<String>,
+    pub valid_until: Option<String>,
+    pub language: String,
+    pub notes: String,
+    pub client_name: Option<String>,
+    pub client_nif: Option<String>,
+    pub client_vat_number: Option<String>,
+    pub client_vat_treatment: String,
+    pub client_address: Option<String>,
+    pub subtotal: f64,
+    pub iva_rate: f64,
+    pub iva_amount: f64,
+    pub irpf_rate: Option<f64>,
+    pub irpf_amount: Option<f64>,
+    pub total: f64,
+    pub lines: Vec<PdfQuoteLine>,
+}
+
+impl PdfQuoteData {
+    pub fn number_label(&self) -> String {
+        format!("PRE-{}-{:03}", self.year, self.seq)
+    }
+}
+
+struct QuoteLabels {
+    quote: &'static str,
+    date: &'static str,
+    valid_until: &'static str,
+    for_: &'static str,
+    from: &'static str,
+    tax_id: &'static str,
+    vat_number: &'static str,
+    items: &'static str,
+    description: &'static str,
+    quantity: &'static str,
+    unit_price: &'static str,
+    line_total: &'static str,
+    subtotal: &'static str,
+    iva: &'static str,
+    irpf: &'static str,
+    total: &'static str,
+    notes: &'static str,
+    not_an_invoice: &'static str,
+}
+
+impl QuoteLabels {
+    fn es() -> QuoteLabels {
+        QuoteLabels {
+            quote: "Presupuesto",
+            date: "Fecha",
+            valid_until: "Válido hasta",
+            for_: "Para",
+            from: "De",
+            tax_id: "NIF/CIF",
+            vat_number: "Número de IVA",
+            items: "Conceptos",
+            description: "Descripción",
+            quantity: "Cant.",
+            unit_price: "Precio",
+            line_total: "Importe",
+            subtotal: "Base imponible",
+            iva: "IVA",
+            irpf: "IRPF",
+            total: "Total estimado",
+            notes: "Notas",
+            not_an_invoice: "Documento sin valor fiscal ni contable. Presupuesto orientativo.",
+        }
+    }
+
+    fn en() -> QuoteLabels {
+        QuoteLabels {
+            quote: "Quote",
+            date: "Date",
+            valid_until: "Valid until",
+            for_: "For",
+            from: "From",
+            tax_id: "Tax ID",
+            vat_number: "VAT number",
+            items: "Items",
+            description: "Description",
+            quantity: "Qty",
+            unit_price: "Price",
+            line_total: "Amount",
+            subtotal: "Subtotal",
+            iva: "VAT",
+            irpf: "IRPF withholding",
+            total: "Estimated total",
+            notes: "Notes",
+            not_an_invoice: "Non-binding quote. This document has no fiscal or accounting value.",
+        }
+    }
+
+    fn for_language(language: &str) -> QuoteLabels {
+        match language {
+            "en" => QuoteLabels::en(),
+            _ => QuoteLabels::es(),
+        }
+    }
+}
+
+/// The "For" (client) block lines — pure, so field inclusion can be unit-tested without
+/// rendering a PDF. Mirrors `client_block_lines` for invoices.
+fn quote_client_lines(data: &PdfQuoteData, labels: &QuoteLabels) -> Vec<String> {
+    let mut lines = Vec::new();
+    if let Some(name) = data.client_name.as_deref().filter(|s| !s.is_empty()) {
+        lines.push(name.to_string());
+    }
+    if data.client_vat_treatment == "standard" {
+        if let Some(nif) = data.client_nif.as_deref().filter(|s| !s.is_empty()) {
+            lines.push(format!("{}: {}", labels.tax_id, nif));
+        }
+    }
+    if let Some(vat) = data.client_vat_number.as_deref().filter(|s| !s.is_empty()) {
+        lines.push(format!("{}: {}", labels.vat_number, vat));
+    }
+    if let Some(address) = data.client_address.as_deref().filter(|s| !s.is_empty()) {
+        lines.push(address.to_string());
+    }
+    lines
+}
+
+fn quote_totals_lines(data: &PdfQuoteData, labels: &QuoteLabels) -> Vec<(String, String)> {
+    let mut rows = vec![
+        (labels.subtotal.to_string(), format_eur(data.subtotal)),
+        (
+            format!("{} ({}%)", labels.iva, format_rate(data.iva_rate)),
+            format_eur(data.iva_amount),
+        ),
+    ];
+    if let (Some(rate), Some(amount)) = (data.irpf_rate, data.irpf_amount) {
+        if rate > 0.0 {
+            rows.push((
+                format!("{} ({}%)", labels.irpf, format_rate(rate)),
+                format!("-{}", format_eur(amount)),
+            ));
+        }
+    }
+    rows.push((labels.total.to_string(), format_eur(data.total)));
+    rows
+}
+
+pub fn generate_quote_pdf(
+    business: &BusinessProfile,
+    quote: &PdfQuoteData,
+    out_path: &Path,
+) -> Result<(), PdfError> {
+    let labels = QuoteLabels::for_language(&quote.language);
+    let font_family = build_font_family()?;
+    let mut doc = Document::new(font_family);
+    doc.set_title(format!("{} {}", labels.quote, quote.number_label()));
+    doc.set_minimal_conformance();
+    doc.set_line_spacing(1.25);
+    doc.set_font_size(10);
+
+    let mut decorator = SimplePageDecorator::new();
+    decorator.set_margins(15);
+    doc.set_page_decorator(decorator);
+
+    let ink = Color::Rgb(28, 36, 48);
+    let soft = Color::Rgb(91, 100, 114);
+
+    let mut header = TableLayout::new(vec![3, 2]);
+    let row = header.row();
+    let row = match logo_element(business.logo_path.as_deref()) {
+        Some(logo) => row.element(logo),
+        None => row.element(Paragraph::new("")),
+    };
+    row.element(
+        Paragraph::new(business.name.clone())
+            .aligned(Alignment::Right)
+            .styled(Style::new().bold().with_font_size(16)),
+    )
+    .push()?;
+    doc.push(header);
+    doc.push(Break::new(1.2));
+
+    doc.push(
+        Paragraph::new(format!("{} {}", labels.quote, quote.number_label()))
+            .styled(Style::new().bold().with_font_size(15)),
+    );
+    doc.push(
+        Paragraph::new(labels.not_an_invoice)
+            .styled(Style::new().with_font_size(9).with_color(soft)),
+    );
+    doc.push(Break::new(1.0));
+    doc.push(Paragraph::new(format!(
+        "{}: {}",
+        labels.date,
+        format_date(quote.issue_date.as_deref())
+    )));
+    if quote.valid_until.is_some() {
+        doc.push(
+            Paragraph::new(format!(
+                "{}: {}",
+                labels.valid_until,
+                format_date(quote.valid_until.as_deref())
+            ))
+            .styled(Style::new().bold()),
+        );
+    }
+    doc.push(Break::new(1.5));
+
+    let mut info = TableLayout::new(vec![1, 1]);
+    {
+        let mut left = LinearLayout::vertical();
+        left.push(Paragraph::new(labels.for_).styled(Style::new().bold()));
+        left.push(Break::new(0.3));
+        for line in quote_client_lines(quote, &labels) {
+            left.push(Paragraph::new(line));
+        }
+
+        let mut right = LinearLayout::vertical();
+        right.push(Paragraph::new(labels.from).styled(Style::new().bold()));
+        right.push(Break::new(0.3));
+        right.push(Paragraph::new(business.name.clone()));
+        if !business.nif_cif.is_empty() {
+            right.push(Paragraph::new(format!("{}: {}", labels.tax_id, business.nif_cif)));
+        }
+        if !business.vat_number.is_empty() {
+            right.push(Paragraph::new(format!("{}: {}", labels.vat_number, business.vat_number)));
+        }
+        if !business.address.is_empty() {
+            right.push(Paragraph::new(business.address.clone()));
+        }
+
+        info.row().element(left).element(right).push()?;
+    }
+    doc.push(info);
+    doc.push(Break::new(1.5));
+
+    doc.push(Paragraph::new(labels.items).styled(Style::new().bold().with_font_size(11)));
+    doc.push(Break::new(0.5));
+
+    let column_weights = vec![5, 2, 1, 2];
+    let mut header_row = TableLayout::new(column_weights.clone());
+    header_row
+        .row()
+        .element(Paragraph::new(labels.description).styled(Style::new().bold().with_font_size(9)))
+        .element(Paragraph::new(labels.unit_price).styled(Style::new().bold().with_font_size(9)))
+        .element(Paragraph::new(labels.quantity).styled(Style::new().bold().with_font_size(9)))
+        .element(
+            Paragraph::new(labels.line_total)
+                .aligned(Alignment::Right)
+                .styled(Style::new().bold().with_font_size(9)),
+        )
+        .push()?;
+    doc.push(header_row);
+    doc.push(Break::new(0.3));
+    doc.push(Rule::new(ink));
+    doc.push(Break::new(0.3));
+
+    let mut body = TableLayout::new(column_weights);
+    for line in &quote.lines {
+        body.row()
+            .element(Paragraph::new(line.description.clone()).padded(1))
+            .element(Paragraph::new(format_eur(line.unit_price)).padded(1))
+            .element(Paragraph::new(format_quantity(line.quantity)).padded(1))
+            .element(
+                Paragraph::new(format_eur(line.total))
+                    .aligned(Alignment::Right)
+                    .padded(1),
+            )
+            .push()?;
+    }
+    doc.push(body);
+    doc.push(Rule::new(ink));
+    doc.push(Break::new(1.5));
+
+    let totals_rows = quote_totals_lines(quote, &labels);
+    let mut totals = TableLayout::new(vec![3, 2, 2]);
+    totals.set_cell_decorator(TotalsRule {
+        color: ink,
+        num_rows: totals_rows.len(),
+    });
+    for (label, value) in totals_rows {
+        totals
+            .row()
+            .element(Paragraph::new(""))
+            .element(Paragraph::new(label).aligned(Alignment::Right).padded(1))
+            .element(Paragraph::new(value).aligned(Alignment::Right).padded(1))
+            .push()?;
+    }
+    doc.push(totals);
+
+    if !quote.notes.trim().is_empty() {
+        doc.push(Break::new(1.5));
+        doc.push(Paragraph::new(labels.notes).styled(Style::new().bold().with_font_size(9)));
+        doc.push(Break::new(0.3));
+        for line in quote.notes.lines() {
+            doc.push(Paragraph::new(line.to_string()).styled(Style::new().with_font_size(9)));
+        }
+    }
+
+    if let Some(parent) = out_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    doc.render_to_file(out_path)?;
+    Ok(())
+}
+
+pub async fn get_or_generate_quote_pdf(
+    pool: &SqlitePool,
+    app: &AppHandle,
+    quote_id: i64,
+    force: bool,
+) -> Result<String, PdfError> {
+    let quote_row = sqlx::query(
+        "SELECT quotes.year, quotes.seq, quotes.issue_date, quotes.valid_until, quotes.language,
+                quotes.notes, quotes.iva_rate, quotes.irpf_rate, quotes.pdf_path,
+                clients.name AS client_name, clients.nif_cif AS client_nif,
+                clients.vat_number AS client_vat_number, clients.vat_treatment AS client_vat_treatment,
+                clients.address AS client_address
+         FROM quotes JOIN clients ON clients.id = quotes.client_id
+         WHERE quotes.id = ?",
+    )
+    .bind(quote_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(PdfError::NotFound)?;
+
+    let existing_path: Option<String> = quote_row.get("pdf_path");
+    if !force {
+        if let Some(path) = &existing_path {
+            if Path::new(path).exists() {
+                app.opener()
+                    .open_path(path.clone(), None::<&str>)
+                    .map_err(|e| PdfError::Open(e.to_string()))?;
+                return Ok(path.clone());
+            }
+        }
+    }
+
+    let lines: Vec<PdfQuoteLine> = sqlx::query(
+        "SELECT description, quantity, unit_price, total FROM quote_items
+         WHERE quote_id = ? ORDER BY id",
+    )
+    .bind(quote_id)
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|r| PdfQuoteLine {
+        description: r.get("description"),
+        quantity: r.get("quantity"),
+        unit_price: r.get("unit_price"),
+        total: r.get("total"),
+    })
+    .collect();
+
+    let profile_row = sqlx::query(
+        "SELECT name, nif_cif, vat_number, address, bank_name, iban, bic, logo_path FROM business_profile WHERE id = 1",
+    )
+    .fetch_one(pool)
+    .await?;
+    let business = BusinessProfile {
+        name: profile_row.get("name"),
+        nif_cif: profile_row.get("nif_cif"),
+        vat_number: profile_row.get("vat_number"),
+        address: profile_row.get("address"),
+        bank_name: profile_row.get("bank_name"),
+        iban: profile_row.get("iban"),
+        bic: profile_row.get("bic"),
+        logo_path: profile_row.get("logo_path"),
+    };
+
+    let subtotal: f64 = lines.iter().map(|l| l.total).sum();
+    let subtotal = (subtotal * 100.0).round() / 100.0;
+    let iva_rate: f64 = quote_row.get("iva_rate");
+    let irpf_rate: Option<f64> = quote_row.get("irpf_rate");
+    let iva_amount = (subtotal * iva_rate).round() / 100.0;
+    let irpf_amount = irpf_rate.map(|r| (subtotal * r).round() / 100.0);
+    let total = subtotal + iva_amount - irpf_amount.unwrap_or(0.0);
+
+    let data = PdfQuoteData {
+        year: quote_row.get("year"),
+        seq: quote_row.get("seq"),
+        issue_date: quote_row.get("issue_date"),
+        valid_until: quote_row.get("valid_until"),
+        language: quote_row
+            .get::<Option<String>, _>("language")
+            .unwrap_or_else(|| "es".to_string()),
+        notes: quote_row.get::<Option<String>, _>("notes").unwrap_or_default(),
+        client_name: quote_row.get("client_name"),
+        client_nif: quote_row.get("client_nif"),
+        client_vat_number: quote_row.get("client_vat_number"),
+        client_vat_treatment: quote_row
+            .get::<Option<String>, _>("client_vat_treatment")
+            .unwrap_or_else(|| "standard".to_string()),
+        client_address: quote_row.get("client_address"),
+        subtotal,
+        iva_rate,
+        iva_amount,
+        irpf_rate,
+        irpf_amount,
+        total: (total * 100.0).round() / 100.0,
+        lines,
+    };
+
+    let file_name = format!("{}.pdf", sanitize_filename(&data.number_label()));
+    let out_dir: PathBuf = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| PdfError::Io(std::io::Error::other(e.to_string())))?
+        .join("quotes");
+    let out_path = out_dir.join(file_name);
+
+    generate_quote_pdf(&business, &data, &out_path)?;
+
+    let path_str = out_path.to_string_lossy().to_string();
+    sqlx::query("UPDATE quotes SET pdf_path = ? WHERE id = ?")
+        .bind(&path_str)
+        .bind(quote_id)
+        .execute(pool)
+        .await?;
+
+    app.opener()
+        .open_path(path_str.clone(), None::<&str>)
+        .map_err(|e| PdfError::Open(e.to_string()))?;
+
+    Ok(path_str)
+}
+
+#[tauri::command]
+pub async fn get_or_generate_quote_pdf_cmd(
+    app: tauri::AppHandle,
+    quote_id: i64,
+    force: bool,
+) -> Result<String, String> {
+    let instances = app.state::<DbInstances>();
+    let pool = {
+        let guard = instances.0.read().await;
+        let db = guard.get(DB_NAME).ok_or("database not loaded")?;
+        match db {
+            DbPool::Sqlite(pool) => pool.clone(),
+        }
+    };
+    get_or_generate_quote_pdf(&pool, &app, quote_id, force)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1065,5 +1527,83 @@ mod tests {
         assert!(bytes.starts_with(b"%PDF-"));
 
         std::fs::remove_file(&out_path).ok();
+    }
+
+    fn sample_quote() -> PdfQuoteData {
+        PdfQuoteData {
+            year: 2026,
+            seq: 7,
+            issue_date: Some("2026-09-02".to_string()),
+            valid_until: Some("2026-10-02".to_string()),
+            language: "es".to_string(),
+            notes: "Precios sujetos a revisión.".to_string(),
+            client_name: Some("Acme SL".to_string()),
+            client_nif: Some("B12345678".to_string()),
+            client_vat_number: None,
+            client_vat_treatment: "standard".to_string(),
+            client_address: Some("Calle Falsa 123".to_string()),
+            subtotal: 450.0,
+            iva_rate: 21.0,
+            iva_amount: 94.5,
+            irpf_rate: Some(15.0),
+            irpf_amount: Some(67.5),
+            total: 477.0,
+            lines: vec![PdfQuoteLine {
+                description: "Diseño de identidad".to_string(),
+                quantity: 1.0,
+                unit_price: 450.0,
+                total: 450.0,
+            }],
+        }
+    }
+
+    #[test]
+    fn quote_number_label_is_pre_year_seq() {
+        assert_eq!(sample_quote().number_label(), "PRE-2026-007");
+    }
+
+    #[test]
+    fn quote_totals_omit_irpf_row_when_zero_or_unset() {
+        let labels = QuoteLabels::es();
+        let mut data = sample_quote();
+        assert_eq!(quote_totals_lines(&data, &labels).len(), 4);
+        data.irpf_rate = Some(0.0);
+        assert_eq!(quote_totals_lines(&data, &labels).len(), 3);
+        data.irpf_rate = None;
+        assert_eq!(quote_totals_lines(&data, &labels).len(), 3);
+    }
+
+    #[test]
+    fn quote_pdf_renders_and_never_says_factura_or_invoice() {
+        let business = BusinessProfile {
+            name: "Marta Ibáñez Ruiz".to_string(),
+            nif_cif: "12345678Z".to_string(),
+            vat_number: "ES12345678Z".to_string(),
+            address: "Calle de la Reina 14, Madrid".to_string(),
+            bank_name: "Banco Santander".to_string(),
+            iban: "ES12 3456 7890 1234 5678 9012".to_string(),
+            bic: "BSCHESMMXXX".to_string(),
+            logo_path: None,
+        };
+
+        for language in ["es", "en"] {
+            let mut data = sample_quote();
+            data.language = language.to_string();
+            let out_path = std::env::temp_dir().join(format!("automono_quote_test_{language}.pdf"));
+            generate_quote_pdf(&business, &data, &out_path).expect("generate_quote_pdf succeeds");
+            let bytes = std::fs::read(&out_path).expect("read generated pdf");
+            assert!(bytes.starts_with(b"%PDF-"));
+            std::fs::remove_file(&out_path).ok();
+        }
+
+        // No "factura" wording anywhere in the label set.
+        for labels in [QuoteLabels::es(), QuoteLabels::en()] {
+            let all = format!(
+                "{} {} {} {} {}",
+                labels.quote, labels.total, labels.not_an_invoice, labels.items, labels.valid_until
+            )
+            .to_lowercase();
+            assert!(!all.contains("factura"));
+        }
     }
 }

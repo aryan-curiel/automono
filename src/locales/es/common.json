@@ -14,6 +14,7 @@
     "dashboard": "Inicio",
     "clients": "Clientes",
     "invoices": "Facturas",
+    "quotes": "Presupuestos",
     "collections": "Cobros",
     "reconciliation": "Conciliación",
     "expenses": "Gastos",
@@ -35,7 +36,20 @@
     "month": "Mes",
     "quarter": "Trimestre",
     "year": "Año",
-    "months": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    "months": [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic"
+    ]
   },
   "quarterTimeline": {
     "previousQuarter": "Trimestre anterior",
@@ -510,6 +524,67 @@
       "annualLabel": "% anual",
       "interestOwedLabel": "Interés adeudado",
       "lateInterestDisclaimer": "Tipo orientativo — comprueba el vigente en el BOE (interés legal + 8 puntos) antes de reclamarlo."
+    }
+  },
+  "quotes": {
+    "title": "Presupuestos",
+    "subtitleCount": "{{count}} presupuestos",
+    "newQuote": "Nuevo presupuesto",
+    "editQuote": "Editar presupuesto",
+    "searchPlaceholder": "Buscar presupuestos…",
+    "loading": "Cargando…",
+    "empty": "Aún no hay presupuestos.",
+    "noResults": "Ningún presupuesto coincide con la búsqueda.",
+    "noClients": "Crea un cliente antes de hacer un presupuesto.",
+    "convertedNotice": "Este presupuesto se convirtió en una factura y ya no se puede editar.",
+    "columns": {
+      "number": "Nº",
+      "client": "Cliente",
+      "validUntil": "Válido hasta",
+      "amount": "Importe"
+    },
+    "fields": {
+      "client": "Cliente",
+      "number": "Nº de presupuesto",
+      "numberPending": "Se asigna al guardar",
+      "issueDate": "Fecha",
+      "validUntil": "Válido hasta",
+      "status": "Estado",
+      "ivaRate": "Tipo de IVA",
+      "irpfRate": "Retención IRPF",
+      "language": "Idioma del presupuesto",
+      "notes": "Notas",
+      "notesPlaceholder": "Condiciones, plazos de entrega, forma de pago…"
+    },
+    "status": {
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "accepted": "Aceptado",
+      "rejected": "Rechazado",
+      "expired": "Caducado",
+      "converted": "Convertido"
+    },
+    "totals": {
+      "estimatedTotal": "Total estimado",
+      "notice": "El presupuesto no tiene valor fiscal. Al aceptarlo podrás convertirlo en un borrador de factura."
+    },
+    "actions": {
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "downloadPdf": "Descargar PDF",
+      "generatingPdf": "Generando…",
+      "convert": "Convertir en factura",
+      "converting": "Convirtiendo…",
+      "markAs": "Marcar como {{status}}",
+      "delete": "Eliminar presupuesto",
+      "confirmDelete": "¿Eliminar este presupuesto? Esta acción no se puede deshacer."
+    },
+    "errors": {
+      "loadClientsFailed": "No se pudieron cargar los clientes.",
+      "saveFailed": "No se pudo guardar el presupuesto.",
+      "pdfFailed": "No se pudo generar el PDF.",
+      "convertFailed": "No se pudo convertir el presupuesto en factura.",
+      "linesRequired": "Añade al menos una línea."
     }
   },
   "contracts": {
