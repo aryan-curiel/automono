@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MagnifyingGlass, UsersThree, DotsThreeVertical } from "@phosphor-icons/react";
-import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { ErrorText, TextInput } from "../components/ui/Field";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { Sheet } from "../components/ui/Sheet";
-import { ListRow } from "../components/ui/ListRow";
+import { DataTable, type DataTableColumn } from "../components/ui/DataTable";
 import { PageHeader } from "../components/PageHeader";
 import { deleteClient, listClients } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
@@ -44,6 +43,56 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
   const filtered = clients.filter((c) =>
     `${c.name} ${c.nifCif} ${c.email}`.toLowerCase().includes(query.toLowerCase()),
   );
+
+  const columns: DataTableColumn<ClientRecord>[] = [
+    {
+      key: "client",
+      header: t("clients.columns.client"),
+      width: "1.6fr",
+      render: (c) => (
+        <div className="min-w-0">
+          <div className="font-semibold text-sm truncate">{c.name}</div>
+          <div className="text-xs text-ink-soft truncate">{c.email}</div>
+        </div>
+      ),
+    },
+    {
+      key: "nifCif",
+      header: t("clients.columns.nifCif"),
+      width: "1fr",
+      render: (c) => <div className="text-[13px] font-mono font-medium">{c.nifCif}</div>,
+    },
+    {
+      key: "prefix",
+      header: t("clients.columns.prefix"),
+      width: ".9fr",
+      render: (c) => (
+        <div>
+          <Badge tone="neutral">
+            <span className="font-mono">{c.seriesPrefix}</span>
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      key: "vat",
+      header: t("clients.columns.vat"),
+      width: "1fr",
+      render: (c) => (
+        <div className="font-medium text-[13px]">{t(`clients.vatTreatment.${c.vatTreatment}`)}</div>
+      ),
+    },
+    {
+      key: "language",
+      header: t("clients.columns.language"),
+      width: "1fr",
+      render: (c) => (
+        <div className="font-medium text-[13px]">
+          {t(`clients.invoiceLanguage.${c.invoiceLanguage}`)}
+        </div>
+      ),
+    },
+  ];
 
   async function confirmDelete() {
     const client = deletePending;
@@ -82,96 +131,49 @@ export function Clientes({ onOpenClient, onNewClient }: ClientesProps) {
         }
       />
 
-      {loading ? (
-        <Card className="overflow-hidden">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[1.6fr_1fr_.9fr_1fr_1fr_32px] py-3 px-6 border-t border-border first:border-t-0"
-            >
-              <div className="h-4 w-32 rounded bg-surface-alt animate-pulse" />
-              <div className="h-4 w-20 rounded bg-surface-alt animate-pulse" />
-              <div className="h-4 w-12 rounded bg-surface-alt animate-pulse" />
-              <div className="h-4 w-16 rounded bg-surface-alt animate-pulse" />
-              <div className="h-4 w-10 rounded bg-surface-alt animate-pulse" />
-            </div>
-          ))}
-        </Card>
-      ) : loadError ? (
+      {loadError ? (
         <div className="flex flex-col items-start gap-2.5">
           <div className="text-sm text-danger">{t("clients.errors.loadFailed")}</div>
           <Button variant="secondary" onClick={retry}>
             {t("common.retry")}
           </Button>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
-          <UsersThree size={32} className="text-ink-soft/40" />
-          <div className="text-sm text-ink-soft">{t("clients.empty")}</div>
-          <Button variant="secondary" onClick={onNewClient}>
-            + {t("clients.newClient")}
-          </Button>
-        </div>
       ) : (
-        <Card className="overflow-hidden">
-          <div className="grid grid-cols-[1.6fr_1fr_.9fr_1fr_1fr_32px] py-3 px-6 bg-surface-alt font-medium text-xs uppercase tracking-wide text-ink-soft">
-            <div>{t("clients.columns.client")}</div>
-            <div>{t("clients.columns.nifCif")}</div>
-            <div>{t("clients.columns.prefix")}</div>
-            <div>{t("clients.columns.vat")}</div>
-            <div>{t("clients.columns.language")}</div>
-            <div />
-          </div>
-          {filtered.map((c) => (
-            <ListRow
-              key={c.id}
-              onActivate={() => onOpenClient(c.id)}
-              className="group grid grid-cols-[1.6fr_1fr_.9fr_1fr_1fr_32px] py-3 px-6
-                         border-t border-border items-center"
-            >
-              <div className="min-w-0">
-                <div className="font-semibold text-sm truncate">{c.name}</div>
-                <div className="text-xs text-ink-soft truncate">{c.email}</div>
-              </div>
-              <div className="text-[13px] font-mono font-medium">{c.nifCif}</div>
-              <div>
-                <Badge tone="neutral">
-                  <span className="font-mono">{c.seriesPrefix}</span>
-                </Badge>
-              </div>
-              <div className="font-medium text-[13px]">
-                {t(`clients.vatTreatment.${c.vatTreatment}`)}
-              </div>
-              <div className="font-medium text-[13px]">
-                {t(`clients.invoiceLanguage.${c.invoiceLanguage}`)}
-              </div>
-              <div
-                className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Menu>
-                  <MenuTrigger className="p-1.5 rounded-control hover:bg-surface-alt cursor-pointer">
-                    <DotsThreeVertical size={16} weight="bold" />
-                  </MenuTrigger>
-                  <MenuContent>
-                    <MenuItem onSelect={() => onOpenClient(c.id)}>
-                      {t("common.viewDetail")}
-                    </MenuItem>
-                    <MenuItem
-                      danger
-                      onSelect={() => {
-                        setDeleteError(null);
-                        setDeletePending(c);
-                      }}
-                    >
-                      {t("clients.actions.delete")}
-                    </MenuItem>
-                  </MenuContent>
-                </Menu>
-              </div>
-            </ListRow>
-          ))}
-        </Card>
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          rowKey={(c) => c.id}
+          onRowActivate={(c) => onOpenClient(c.id)}
+          loading={loading}
+          empty={
+            <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+              <UsersThree size={32} className="text-ink-soft/40" />
+              <div className="text-sm text-ink-soft">{t("clients.empty")}</div>
+              <Button variant="secondary" onClick={onNewClient}>
+                + {t("clients.newClient")}
+              </Button>
+            </div>
+          }
+          rowMenu={(c) => (
+            <Menu>
+              <MenuTrigger className="p-1.5 rounded-control hover:bg-surface-alt cursor-pointer">
+                <DotsThreeVertical size={16} weight="bold" />
+              </MenuTrigger>
+              <MenuContent>
+                <MenuItem onSelect={() => onOpenClient(c.id)}>{t("common.viewDetail")}</MenuItem>
+                <MenuItem
+                  danger
+                  onSelect={() => {
+                    setDeleteError(null);
+                    setDeletePending(c);
+                  }}
+                >
+                  {t("clients.actions.delete")}
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          )}
+        />
       )}
 
       <Sheet
