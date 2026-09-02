@@ -17,9 +17,9 @@ import { contractStatusMeta } from "../lib/status";
 
 interface ContratoDetalleProps {
   contractId: number;
-  onBack: () => void;
+  onBack: (clientId?: number) => void;
   onEditContract: (id: number) => void;
-  onDeleted: () => void;
+  onDeleted: (clientId: number) => void;
 }
 
 export function ContratoDetalle({
@@ -62,7 +62,7 @@ export function ContratoDetalle({
     setDeleteError(null);
     try {
       await deleteContract(contract.id);
-      onDeleted();
+      onDeleted(contract.clientId);
     } catch {
       setDeleteError(t("contracts.errors.deleteFailed"));
     }
@@ -102,7 +102,7 @@ export function ContratoDetalle({
 
   return (
     <div className="px-8 pb-15">
-      <BackLink label={clientName} onClick={onBack} />
+      <BackLink label={clientName} onClick={() => onBack(contract.clientId)} />
 
       <PageHeader
         title={contract.title}

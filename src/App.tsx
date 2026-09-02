@@ -66,20 +66,23 @@ import {
   pickReceiptFiles,
 } from "./db/receiptInbox";
 import { receiptsToIngest } from "./lib/receiptInbox";
+import { parseHash, useHashRoute } from "./lib/hashRoute";
 import type { RectificationType, Screen } from "./types";
 
 export default function App() {
   const { t, i18n } = useTranslation();
-  const [screen, setScreen] = useState<Screen>("dashboard");
+  // `location.hash` is the single source of truth for screen + selected record id
+  // (`#/factura-detalle/12`). `navigate` sets the hash; a hashchange listener in the
+  // hook drives re-renders, so macOS back/forward replay screen history for free.
+  const { screen, recordId, navigate } = useHashRoute();
+  const recordNum =
+    recordId != null && recordId !== "" && Number.isFinite(Number(recordId))
+      ? Number(recordId)
+      : null;
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [preferences, setPreferences] = useState<PreferencesRecord | null>(null);
   const [dbReady, setDbReady] = useState(false);
   const [dbErrorToast, setDbErrorToast] = useState<string | null>(null);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
-  const [dashboardQuarterKey, setDashboardQuarterKey] = useState<string | null>(null);
-  const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
-  const [newContractClientId, setNewContractClientId] = useState<number | undefined>(undefined);
-  const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
   // Screen to return to after the expense form closes (save or cancel), so creating a gasto
   // lands back where it was started from instead of forcing the detail view on the user.
   const [expenseReturnTo, setExpenseReturnTo] = useState<Screen>("gastos");
@@ -91,7 +94,6 @@ export default function App() {
     supported: boolean;
     context: "expense" | "declaration";
   } | null>(null);
-  const screenRef = useRef(screen);
   const preferencesRef = useRef(preferences);
 
   const [inboxCount, setInboxCount] = useState(0);
@@ -162,11 +164,10 @@ export default function App() {
     }
     setInboxRefreshToken((n) => n + 1);
     refreshInboxCount();
-    guardNav(() => setScreen("bandeja"));
-  }, [refreshInboxCount, guardNav]);
+    guardNav(() => navigate("bandeja"));
+  }, [refreshInboxCount, guardNav, navigate]);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
   const [invoiceDetail, setInvoiceDetail] = useState<{
     invoice: InvoiceRecord;
     lines: InvoiceLineRecord[];
@@ -174,12 +175,9 @@ export default function App() {
   const [invoiceDetailError, setInvoiceDetailError] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [editInvoiceId, setEditInvoiceId] = useState<number | null>(null);
-  const [editQuoteId, setEditQuoteId] = useState<number | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfileRecord | null>(null);
   const [pdfErrorToast, setPdfErrorToast] = useState<string | null>(null);
 
-  const [rectifyingId, setRectifyingId] = useState<number | null>(null);
   const [rectType, setRectType] = useState<RectificationType>("partial");
   const [rectReason, setRectReason] = useState("");
 
@@ -201,10 +199,6 @@ export default function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  useEffect(() => {
-    screenRef.current = screen;
-  }, [screen]);
 
   // Confirm before closing the window with an unsaved form open.
   useEffect(() => {
@@ -231,14 +225,16 @@ export default function App() {
     let cancelled = false;
     void getCurrentWebview()
       .onDragDropEvent((event) => {
+        // Read the live screen from the hash (no ref to keep in sync).
+        const current = parseHash(window.location.hash).screen;
         // The Documentos tab in Ajustes (and onboarding's document step) has its own drop
         // handling — this global listener must stay out of the way entirely there, or a
         // dropped PDF would also get hijacked into navigating to "gasto-nuevo" below.
-        if (screenRef.current === "ajustes" || !preferencesRef.current?.onboardingCompleted) {
+        if (current === "ajustes" || !preferencesRef.current?.onboardingCompleted) {
           setDragOver(null);
           return;
         }
-        const onDeclaration = screenRef.current === "resumen-trimestral";
+        const onDeclaration = current === "resumen-trimestral";
         if (event.payload.type === "enter") {
           const path = event.payload.paths[0];
           const supported = onDeclaration
@@ -267,8 +263,8 @@ export default function App() {
           setDropToken((n) => n + 1);
           // Keep the origin as a real "somewhere else" — dropping onto an expense screen itself
           // shouldn't make the form return to another copy of the form.
-          if (!screenRef.current.startsWith("gasto")) setExpenseReturnTo(screenRef.current);
-          setScreen("gasto-nuevo");
+          if (!current.startsWith("gasto")) setExpenseReturnTo(current);
+          navigate("gasto-nuevo");
         });
       })
       .then((fn) => {
@@ -279,7 +275,7 @@ export default function App() {
       cancelled = true;
       unlisten?.();
     };
-  }, [guardNav]);
+  }, [guardNav, navigate]);
 
   // ponytail: re-fetches on every open (cheap local queries) instead of a shared store, so
   // results never go stale between a client/contract edit and the next search.
@@ -291,15 +287,9 @@ export default function App() {
 
   function handlePaletteSelect(result: SearchResult) {
     guardNav(() => {
-      if (result.type === "client") {
-        setSelectedClientId(result.id);
-        setScreen("cliente-detalle");
-      } else if (result.type === "invoice") {
-        openInvoice(result.id);
-      } else {
-        setSelectedContractId(result.id);
-        setScreen("contrato-detalle");
-      }
+      if (result.type === "client") navigate("cliente-detalle", result.id);
+      else if (result.type === "invoice") openInvoice(result.id);
+      else navigate("contrato-detalle", result.id);
     });
   }
 
@@ -375,52 +365,43 @@ export default function App() {
   }, [quickAddReceipts]);
 
   useEffect(() => {
-    // No clearing needed here on null: the only call site that nulls selectedInvoiceId
-    // (handleDeleteInvoice) already clears invoiceDetail itself.
-    if (selectedInvoiceId === null) return;
-    getInvoiceWithLines(selectedInvoiceId)
+    if (screen !== "factura-detalle" || recordNum === null) return;
+    getInvoiceWithLines(recordNum)
       .then((detail) => {
         setInvoiceDetail(detail);
         setInvoiceDetailError(false);
       })
       .catch(() => setInvoiceDetailError(true));
-  }, [selectedInvoiceId]);
+  }, [screen, recordNum]);
 
-  // Screen transitions that should start a blank form clear their target/preset state directly
-  // at the point of navigation (below and in the render props), rather than reactively via an
-  // effect keyed on `screen` — every entry into "factura-nueva"/"gasto-nuevo" either sets its
-  // preset explicitly (duplicate/edit an invoice, drop a receipt) or clears it explicitly (plain
-  // "+ Nueva factura"/"+ Nuevo gasto"), so no stale value can leak through either path.
+  // The edit/preset for a "nueva"/"editar" form is derived from the route id
+  // (`#/factura-nueva/12` = edit 12, `#/factura-nueva` = blank), so navigating is
+  // enough — no separate preset state to set or clear. gasto-nuevo still needs its
+  // non-route return-target primed.
   function navigateFromDashboard(next: Screen) {
-    if (next === "factura-nueva") setEditInvoiceId(null);
     if (next === "gasto-nuevo") {
       setPendingDropPath(null);
       setExpenseReturnTo("dashboard");
     }
-    setScreen(next);
+    navigate(next);
   }
 
-  const rectifyingInvoice = invoices.find((i) => i.id === rectifyingId) ?? null;
+  const rectifyingInvoice = invoices.find((i) => i.id === recordNum) ?? null;
 
   function openInvoice(id: number) {
-    setSelectedInvoiceId(id);
-    setScreen("factura-detalle");
+    navigate("factura-detalle", id);
   }
 
   async function handleQuoteConverted(invoiceId: number) {
     setInvoices(await listInvoices());
-    setEditInvoiceId(invoiceId);
-    setScreen("factura-nueva");
+    navigate("factura-nueva", invoiceId);
   }
 
   async function confirmMarkPaid() {
-    if (selectedInvoiceId === null) return;
+    if (recordNum === null) return;
     try {
-      await markInvoicePaid(selectedInvoiceId);
-      const [list, detail] = await Promise.all([
-        listInvoices(),
-        getInvoiceWithLines(selectedInvoiceId),
-      ]);
+      await markInvoicePaid(recordNum);
+      const [list, detail] = await Promise.all([listInvoices(), getInvoiceWithLines(recordNum)]);
       setInvoices(list);
       setInvoiceDetail(detail);
     } catch (err) {
@@ -434,8 +415,7 @@ export default function App() {
     try {
       const duplicate = await duplicateInvoice(id);
       setInvoices(await listInvoices());
-      setEditInvoiceId(duplicate.id);
-      setScreen("factura-nueva");
+      navigate("factura-nueva", duplicate.id);
     } catch (err) {
       setPdfErrorToast(String(err));
     }
@@ -444,10 +424,9 @@ export default function App() {
   async function handleDeleteInvoice(id: number) {
     try {
       await deleteInvoice(id);
-      if (id === selectedInvoiceId) {
-        setSelectedInvoiceId(null);
+      if (id === recordNum) {
         setInvoiceDetail(null);
-        setScreen("facturas");
+        navigate("facturas");
       }
       setInvoices(await listInvoices());
     } catch (err) {
@@ -456,11 +435,11 @@ export default function App() {
   }
 
   async function handleDownloadPdf(force = false) {
-    if (selectedInvoiceId === null) return;
+    if (recordNum === null) return;
     setGeneratingPdf(true);
     try {
-      await openOrGeneratePdf(selectedInvoiceId, force);
-      const detail = await getInvoiceWithLines(selectedInvoiceId);
+      await openOrGeneratePdf(recordNum, force);
+      const detail = await getInvoiceWithLines(recordNum);
       setInvoiceDetail(detail);
     } catch (err) {
       setPdfErrorToast(String(err));
@@ -504,12 +483,7 @@ export default function App() {
         <Sidebar
           screen={screen}
           receiptInboxCount={inboxCount}
-          onNavigate={(next) =>
-            guardNav(() => {
-              setDashboardQuarterKey(null);
-              setScreen(next);
-            })
-          }
+          onNavigate={(next) => guardNav(() => navigate(next))}
         />
 
         <div className="flex-1 overflow-y-auto min-w-0">
@@ -518,10 +492,7 @@ export default function App() {
               invoices={invoices}
               loading={invoicesLoading}
               onNavigate={navigateFromDashboard}
-              onNavigateToQuarter={(key) => {
-                setDashboardQuarterKey(key);
-                setScreen("resumen-trimestral");
-              }}
+              onNavigateToQuarter={(key) => navigate("resumen-trimestral", key)}
               onOpenInvoice={openInvoice}
               onDuplicateInvoice={handleDuplicateInvoice}
             />
@@ -529,55 +500,37 @@ export default function App() {
 
           {screen === "clientes" && (
             <Clientes
-              onOpenClient={(id) => {
-                setSelectedClientId(id);
-                setScreen("cliente-detalle");
-              }}
-              onNewClient={() => setScreen("cliente-nuevo")}
+              onOpenClient={(id) => navigate("cliente-detalle", id)}
+              onNewClient={() => navigate("cliente-nuevo")}
             />
           )}
 
-          {screen === "cliente-detalle" && selectedClientId !== null && (
+          {screen === "cliente-detalle" && recordNum !== null && (
             <ClienteDetalle
-              clientId={selectedClientId}
+              clientId={recordNum}
               invoices={invoices}
-              onBack={() => setScreen("clientes")}
-              onEditClient={(id) => {
-                setSelectedClientId(id);
-                setScreen("cliente-editar");
-              }}
-              onDeleted={() => setScreen("clientes")}
-              onOpenContract={(id) => {
-                setSelectedContractId(id);
-                setScreen("contrato-detalle");
-              }}
-              onNewContract={(clientId) => {
-                setNewContractClientId(clientId);
-                setScreen("contrato-nuevo");
-              }}
+              onBack={() => navigate("clientes")}
+              onEditClient={(id) => navigate("cliente-editar", id)}
+              onDeleted={() => navigate("clientes")}
+              onOpenContract={(id) => navigate("contrato-detalle", id)}
+              onNewContract={(clientId) => navigate("contrato-nuevo", clientId)}
             />
           )}
 
           {screen === "cliente-nuevo" && (
             <ClienteForm
               mode="create"
-              onSaved={(client) => {
-                setSelectedClientId(client.id);
-                setScreen("cliente-detalle");
-              }}
-              onCancel={() => setScreen("clientes")}
+              onSaved={(client) => navigate("cliente-detalle", client.id)}
+              onCancel={() => navigate("clientes")}
             />
           )}
 
-          {screen === "cliente-editar" && selectedClientId !== null && (
+          {screen === "cliente-editar" && recordNum !== null && (
             <ClienteForm
               mode="edit"
-              clientId={selectedClientId}
-              onSaved={(client) => {
-                setSelectedClientId(client.id);
-                setScreen("cliente-detalle");
-              }}
-              onCancel={() => setScreen("cliente-detalle")}
+              clientId={recordNum}
+              onSaved={(client) => navigate("cliente-detalle", client.id)}
+              onCancel={() => navigate("cliente-detalle", recordNum)}
             />
           )}
 
@@ -586,10 +539,7 @@ export default function App() {
               invoices={invoices}
               loading={invoicesLoading}
               onOpenInvoice={openInvoice}
-              onNewInvoice={() => {
-                setEditInvoiceId(null);
-                setScreen("factura-nueva");
-              }}
+              onNewInvoice={() => navigate("factura-nueva")}
               onDeleteInvoice={(id) => void handleDeleteInvoice(id)}
               onDuplicateInvoice={(id) => void handleDuplicateInvoice(id)}
             />
@@ -614,14 +564,14 @@ export default function App() {
 
           {screen === "factura-detalle" && invoiceDetailError && (
             <div className="px-8">
-              <BackLink label={t("invoices.title")} onClick={() => setScreen("facturas")} />
+              <BackLink label={t("invoices.title")} onClick={() => navigate("facturas")} />
               <div className="text-sm text-danger">{t("invoices.errors.loadFailed")}</div>
             </div>
           )}
 
           {screen === "factura-detalle" && !invoiceDetail && !invoiceDetailError && (
             <div className="px-8">
-              <BackLink label={t("invoices.title")} onClick={() => setScreen("facturas")} />
+              <BackLink label={t("invoices.title")} onClick={() => navigate("facturas")} />
               <div className="text-sm text-ink-soft">{t("invoices.loading")}</div>
             </div>
           )}
@@ -634,30 +584,26 @@ export default function App() {
               businessProfile={businessProfile}
               markingPaid={markingPaid}
               generatingPdf={generatingPdf}
-              onBack={() => setScreen("facturas")}
+              onBack={() => navigate("facturas")}
               onOpenMarkPaid={() => setMarkingPaid(true)}
               onCancelMarkPaid={() => setMarkingPaid(false)}
               onConfirmMarkPaid={() => void confirmMarkPaid()}
               onStartRectification={() => {
-                setRectifyingId(invoiceDetail.invoice.id);
                 setRectType("partial");
                 setRectReason("");
-                setScreen("factura-rectificar");
+                navigate("factura-rectificar", invoiceDetail.invoice.id);
               }}
               onDownloadPdf={(force) => void handleDownloadPdf(force)}
               onDelete={() => void handleDeleteInvoice(invoiceDetail.invoice.id)}
               onDuplicate={() => void handleDuplicateInvoice(invoiceDetail.invoice.id)}
-              onEdit={() => {
-                setEditInvoiceId(invoiceDetail.invoice.id);
-                setScreen("factura-nueva");
-              }}
+              onEdit={() => navigate("factura-nueva", invoiceDetail.invoice.id)}
             />
           )}
 
           {screen === "factura-nueva" && (
             <FacturaNueva
-              editInvoiceId={editInvoiceId ?? undefined}
-              onBack={() => guardNav(() => setScreen("facturas"))}
+              editInvoiceId={recordNum ?? undefined}
+              onBack={() => guardNav(() => navigate("facturas"))}
               onSaved={openInvoice}
               onDirtyChange={setFormDirty}
             />
@@ -671,13 +617,11 @@ export default function App() {
               onSetPartial={() => setRectType("partial")}
               reason={rectReason}
               onReasonChange={setRectReason}
-              onCancel={() => setScreen("factura-detalle")}
+              onCancel={() => navigate("factura-detalle", rectifyingInvoice.id)}
               onEmit={(created) => {
                 void (async () => {
-                  const list = await listInvoices();
-                  setInvoices(list);
-                  setSelectedInvoiceId(created.id);
-                  setScreen("factura-detalle");
+                  setInvoices(await listInvoices());
+                  navigate("factura-detalle", created.id);
                 })();
               }}
             />
@@ -685,23 +629,17 @@ export default function App() {
 
           {screen === "presupuestos" && (
             <Presupuestos
-              onOpenQuote={(id) => {
-                setEditQuoteId(id);
-                setScreen("presupuesto-editar");
-              }}
-              onNewQuote={() => {
-                setEditQuoteId(null);
-                setScreen("presupuesto-nuevo");
-              }}
+              onOpenQuote={(id) => navigate("presupuesto-editar", id)}
+              onNewQuote={() => navigate("presupuesto-nuevo")}
               onConverted={(invoiceId) => void handleQuoteConverted(invoiceId)}
             />
           )}
 
           {(screen === "presupuesto-nuevo" || screen === "presupuesto-editar") && (
             <PresupuestoForm
-              editQuoteId={screen === "presupuesto-editar" ? (editQuoteId ?? undefined) : undefined}
-              onBack={() => setScreen("presupuestos")}
-              onSaved={() => setScreen("presupuestos")}
+              editQuoteId={screen === "presupuesto-editar" ? (recordNum ?? undefined) : undefined}
+              onBack={() => navigate("presupuestos")}
+              onSaved={() => navigate("presupuestos")}
               onConverted={(invoiceId) => void handleQuoteConverted(invoiceId)}
             />
           )}
@@ -709,36 +647,29 @@ export default function App() {
           {screen === "contrato-nuevo" && (
             <ContratoForm
               mode="create"
-              presetClientId={newContractClientId}
-              onSaved={(contract) => {
-                setSelectedContractId(contract.id);
-                setScreen("contrato-detalle");
-              }}
-              onCancel={() => setScreen("cliente-detalle")}
+              presetClientId={recordNum ?? undefined}
+              onSaved={(contract) => navigate("contrato-detalle", contract.id)}
+              onCancel={() => navigate("cliente-detalle", recordNum)}
             />
           )}
 
-          {screen === "contrato-editar" && selectedContractId !== null && (
+          {screen === "contrato-editar" && recordNum !== null && (
             <ContratoForm
               mode="edit"
-              contractId={selectedContractId}
-              onSaved={(contract) => {
-                setSelectedContractId(contract.id);
-                setScreen("contrato-detalle");
-              }}
-              onCancel={() => setScreen("contrato-detalle")}
+              contractId={recordNum}
+              onSaved={(contract) => navigate("contrato-detalle", contract.id)}
+              onCancel={() => navigate("contrato-detalle", recordNum)}
             />
           )}
 
-          {screen === "contrato-detalle" && selectedContractId !== null && (
+          {screen === "contrato-detalle" && recordNum !== null && (
             <ContratoDetalle
-              contractId={selectedContractId}
-              onBack={() => setScreen("cliente-detalle")}
-              onEditContract={(id) => {
-                setSelectedContractId(id);
-                setScreen("contrato-editar");
-              }}
-              onDeleted={() => setScreen("cliente-detalle")}
+              contractId={recordNum}
+              onBack={(clientId) =>
+                navigate(clientId != null ? "cliente-detalle" : "clientes", clientId)
+              }
+              onEditContract={(id) => navigate("contrato-editar", id)}
+              onDeleted={(clientId) => navigate("cliente-detalle", clientId)}
             />
           )}
 
@@ -746,20 +677,17 @@ export default function App() {
             <BandejaRecibos
               refreshToken={inboxRefreshToken}
               onChanged={refreshInboxCount}
-              onOpenSettings={() => setScreen("ajustes")}
+              onOpenSettings={() => navigate("ajustes")}
             />
           )}
 
           {screen === "gastos" && (
             <Gastos
-              onOpenExpense={(id) => {
-                setSelectedExpenseId(id);
-                setScreen("gasto-detalle");
-              }}
+              onOpenExpense={(id) => navigate("gasto-detalle", id)}
               onNewExpense={() => {
                 setPendingDropPath(null);
                 setExpenseReturnTo("gastos");
-                setScreen("gasto-nuevo");
+                navigate("gasto-nuevo");
               }}
             />
           )}
@@ -769,34 +697,28 @@ export default function App() {
               key={`gasto-nuevo-${dropToken}`}
               mode="create"
               initialFilePath={pendingDropPath ?? undefined}
-              onSaved={() => setScreen(expenseReturnTo)}
-              onCancel={() => guardNav(() => setScreen(expenseReturnTo))}
+              onSaved={() => navigate(expenseReturnTo)}
+              onCancel={() => guardNav(() => navigate(expenseReturnTo))}
               onDirtyChange={setFormDirty}
             />
           )}
 
-          {screen === "gasto-editar" && selectedExpenseId !== null && (
+          {screen === "gasto-editar" && recordNum !== null && (
             <GastoForm
               mode="edit"
-              expenseId={selectedExpenseId}
-              onSaved={(expense) => {
-                setSelectedExpenseId(expense.id);
-                setScreen("gasto-detalle");
-              }}
-              onCancel={() => guardNav(() => setScreen("gasto-detalle"))}
+              expenseId={recordNum}
+              onSaved={(expense) => navigate("gasto-detalle", expense.id)}
+              onCancel={() => guardNav(() => navigate("gasto-detalle", recordNum))}
               onDirtyChange={setFormDirty}
             />
           )}
 
-          {screen === "gasto-detalle" && selectedExpenseId !== null && (
+          {screen === "gasto-detalle" && recordNum !== null && (
             <GastoDetalle
-              expenseId={selectedExpenseId}
-              onBack={() => setScreen("gastos")}
-              onEditExpense={(id) => {
-                setSelectedExpenseId(id);
-                setScreen("gasto-editar");
-              }}
-              onDeleted={() => setScreen("gastos")}
+              expenseId={recordNum}
+              onBack={() => navigate("gastos")}
+              onEditExpense={(id) => navigate("gasto-editar", id)}
+              onDeleted={() => navigate("gastos")}
             />
           )}
 
@@ -805,12 +727,12 @@ export default function App() {
               invoices={invoices}
               dropPaths={declarationDropPaths}
               dropToken={declarationDropToken}
-              initialQuarterKey={dashboardQuarterKey ?? undefined}
+              initialQuarterKey={recordId ?? undefined}
             />
           )}
           {screen === "resumen-anual" && <ResumenAnual invoices={invoices} />}
           {screen === "asistente" && (
-            <Asistente invoices={invoices} onOpenSettings={() => setScreen("ajustes")} />
+            <Asistente invoices={invoices} onOpenSettings={() => navigate("ajustes")} />
           )}
           {screen === "ajustes" && <Ajustes theme={theme} onToggleTheme={handleToggleTheme} />}
         </div>
