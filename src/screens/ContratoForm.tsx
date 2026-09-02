@@ -4,10 +4,12 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { ErrorText, Select, TextArea, TextInput } from "../components/ui/Field";
 import { FormRow } from "../components/ui/FormRow";
+import { Toast, type ToastTone } from "../components/ui/Toast";
 import { PageHeader } from "../components/PageHeader";
 import {
   attachContractFile,
   createContract,
+  extractContractTerms,
   getContract,
   pickContractFile,
   updateContract,
@@ -15,6 +17,12 @@ import {
 import type { ContractRecord, NewContract } from "../db/contracts";
 import { listClients } from "../db/clients";
 import type { ClientRecord } from "../db/clients";
+import { activeApiKey, activeModel, getLlmSettings } from "../db/llmSettings";
+import {
+  mapContractTerms,
+  type FirstInvoiceLineSuggestion,
+} from "../features/contracts/extraction";
+import { formatEUR } from "../lib/format";
 import type { BillingCadence, ContractStatus } from "../types";
 
 const BILLING_CADENCES: BillingCadence[] = ["none", "monthly", "quarterly", "yearly"];
@@ -87,6 +95,11 @@ export function ContratoForm({
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [attaching, setAttaching] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractToast, setExtractToast] = useState<{ tone: ToastTone; message: string } | null>(
+    null,
+  );
+  const [lineSuggestion, setLineSuggestion] = useState<FirstInvoiceLineSuggestion | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -139,6 +152,54 @@ export function ContratoForm({
       setSaveError(t("contracts.errors.attachFailed"));
     } finally {
       setAttaching(false);
+    }
+  }
+
+  async function handleExtract() {
+    if (!form.filePath) return;
+    setExtractToast(null);
+    setExtracting(true);
+    try {
+      const settings = await getLlmSettings().catch(() => null);
+      const apiKey = settings ? await activeApiKey(settings) : null;
+      if (!settings || !apiKey) {
+        setExtractToast({ tone: "warning", message: t("contracts.extraction.noLlm") });
+        return;
+      }
+      const raw = await extractContractTerms(
+        form.filePath,
+        settings.provider,
+        apiKey,
+        activeModel(settings),
+      );
+      const suggestion = mapContractTerms(raw);
+      const today = new Date().toISOString().slice(0, 10);
+      setForm((f) => ({
+        ...f,
+        billingCadence:
+          suggestion.billingCadence !== "none" ? suggestion.billingCadence : f.billingCadence,
+        // Only fill an empty anchor date — never overwrite one the user already set.
+        nextInvoiceDate:
+          suggestion.billingCadence !== "none" && !f.nextInvoiceDate
+            ? f.startDate || today
+            : f.nextInvoiceDate,
+      }));
+      if (suggestion.billingCadence !== "none") {
+        setErrors((e) => ({ ...e, nextInvoiceDate: undefined }));
+      }
+      setLineSuggestion(suggestion.firstLine);
+      const foundSomething = suggestion.billingCadence !== "none" || suggestion.firstLine !== null;
+      setExtractToast({
+        tone: foundSomething ? "success" : "warning",
+        message: foundSomething
+          ? t("contracts.extraction.done")
+          : t("contracts.extraction.nothing"),
+      });
+    } catch (err) {
+      console.error("contract term extraction failed:", err);
+      setExtractToast({ tone: "danger", message: t("contracts.extraction.failed") });
+    } finally {
+      setExtracting(false);
     }
   }
 
@@ -299,26 +360,77 @@ export function ContratoForm({
         )}
 
         <FormRow label={t("contracts.fields.file")}>
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="secondary"
-              onClick={() => void handleAttachFile()}
-              disabled={attaching}
-            >
-              {attaching ? t("contracts.actions.attaching") : t("contracts.actions.attachFile")}
-            </Button>
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="secondary"
+                onClick={() => void handleAttachFile()}
+                disabled={attaching}
+              >
+                {attaching ? t("contracts.actions.attaching") : t("contracts.actions.attachFile")}
+              </Button>
+              {form.filePath && (
+                <span className="text-[13px] text-ink-soft truncate">
+                  {fileNameOf(form.filePath)}
+                </span>
+              )}
+            </div>
             {form.filePath && (
-              <span className="text-[13px] text-ink-soft truncate">
-                {fileNameOf(form.filePath)}
-              </span>
+              <div>
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleExtract()}
+                  disabled={extracting}
+                >
+                  {extracting
+                    ? t("contracts.actions.extracting")
+                    : t("contracts.actions.extractFromFile")}
+                </Button>
+              </div>
             )}
           </div>
         </FormRow>
+
+        {lineSuggestion && (
+          <div className="mt-2 mb-4 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft leading-relaxed">
+            <div className="font-semibold text-ink mb-1.5">
+              {t("contracts.suggestion.title")}
+            </div>
+            {lineSuggestion.description && (
+              <div>
+                {t("contracts.suggestion.concept")}: {lineSuggestion.description}
+              </div>
+            )}
+            {lineSuggestion.base !== null && (
+              <div>
+                {t("contracts.suggestion.base")}: {formatEUR(lineSuggestion.base)}
+              </div>
+            )}
+            {lineSuggestion.irpfRate !== null && (
+              <div>
+                {t("contracts.suggestion.irpf")}: {lineSuggestion.irpfRate}%
+              </div>
+            )}
+            {lineSuggestion.vatTreatment && (
+              <div>
+                {t("contracts.suggestion.iva")}:{" "}
+                {t(`clients.vatTreatment.${lineSuggestion.vatTreatment}`)}
+              </div>
+            )}
+            <div className="mt-1.5">{t("contracts.suggestion.hint")}</div>
+          </div>
+        )}
 
         <FormRow label={t("contracts.fields.notes")}>
           <TextArea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         </FormRow>
       </Card>
+
+      <Toast
+        message={extractToast?.message ?? null}
+        tone={extractToast?.tone ?? "info"}
+        onDismiss={() => setExtractToast(null)}
+      />
 
       {saveError && <ErrorText>{saveError}</ErrorText>}
       <div className="flex gap-2.5 justify-end mt-5">

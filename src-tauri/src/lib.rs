@@ -6,6 +6,7 @@ mod assistant;
 mod backup;
 mod branding;
 mod business_documents;
+mod contract_extract;
 mod contracts;
 mod declarations;
 mod expenses;
@@ -299,6 +300,7 @@ pub fn run() {
             pdf::get_or_generate_quote_pdf_cmd,
             contracts::attach_contract_file_cmd,
             contracts::open_contract_file_cmd,
+            contract_extract::extract_contract_terms_cmd,
             expenses::attach_expense_file_cmd,
             expenses::open_expense_file_cmd,
             expenses::delete_expense_files_cmd,

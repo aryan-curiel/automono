@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getDb } from "./client";
 import type { BillingCadence, ContractStatus } from "../types";
+import type { ContractTermsLlm } from "../features/contracts/extraction";
+import type { LlmProvider } from "./llmSettings";
 
 export interface ContractRecord {
   id: number;
@@ -148,4 +150,38 @@ export async function attachContractFile(
 
 export async function openContractFile(filePath: string): Promise<void> {
   return invoke("open_contract_file_cmd", { filePath });
+}
+
+interface ContractTermsLlmRow {
+  base: number | null;
+  cadence: string | null;
+  irpf_rate: number | null;
+  vat_treatment: string | null;
+  description: string | null;
+}
+
+/**
+ * Pulls billing terms (amount, cadence, IRPF/IVA treatment, a first-line description) out of
+ * the contract's attached PDF via a structured LLM extraction. Throws if the PDF has no text
+ * layer or the LLM call fails — the caller (`ContratoForm`) surfaces that as a toast.
+ */
+export async function extractContractTerms(
+  filePath: string,
+  provider: LlmProvider,
+  apiKey: string,
+  model: string | null,
+): Promise<ContractTermsLlm> {
+  const row = await invoke<ContractTermsLlmRow>("extract_contract_terms_cmd", {
+    filePath,
+    provider,
+    apiKey,
+    model,
+  });
+  return {
+    base: row.base,
+    cadence: row.cadence,
+    irpfRate: row.irpf_rate,
+    vatTreatment: row.vat_treatment,
+    description: row.description,
+  };
 }

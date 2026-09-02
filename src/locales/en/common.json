@@ -627,7 +627,23 @@
       "attachFile": "Attach file",
       "attaching": "Attaching…",
       "openFile": "Open file",
+      "extractFromFile": "Extract from contract",
+      "extracting": "Extracting…",
       "confirmDelete": "Delete \"{{title}}\"? This action cannot be undone."
+    },
+    "extraction": {
+      "done": "Billing terms extracted from the contract. Review the fields before saving.",
+      "nothing": "No billing terms could be identified in the contract.",
+      "noLlm": "Configure an AI provider and its key in Settings to extract from the contract.",
+      "failed": "Could not extract from the contract. Check that the PDF has a text layer and try again."
+    },
+    "suggestion": {
+      "title": "Suggested first invoice",
+      "concept": "Concept",
+      "base": "Base",
+      "irpf": "IRPF",
+      "iva": "VAT",
+      "hint": "Review these values and create the first invoice manually."
     },
     "errors": {
       "clientRequired": "Please select a client.",

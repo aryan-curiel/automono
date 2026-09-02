@@ -627,7 +627,23 @@
       "attachFile": "Adjuntar archivo",
       "attaching": "Adjuntando…",
       "openFile": "Abrir archivo",
+      "extractFromFile": "Extraer del contrato",
+      "extracting": "Extrayendo…",
       "confirmDelete": "¿Eliminar \"{{title}}\"? Esta acción no se puede deshacer."
+    },
+    "extraction": {
+      "done": "Términos extraídos del contrato. Revisa los campos antes de guardar.",
+      "nothing": "No se identificaron términos de facturación en el contrato.",
+      "noLlm": "Configura un proveedor de IA y su clave en Ajustes para extraer del contrato.",
+      "failed": "No se pudo extraer del contrato. Comprueba que el PDF tenga texto e inténtalo de nuevo."
+    },
+    "suggestion": {
+      "title": "Sugerencia de primera factura",
+      "concept": "Concepto",
+      "base": "Base",
+      "irpf": "IRPF",
+      "iva": "IVA",
+      "hint": "Revisa estos datos y crea la primera factura manualmente."
     },
     "errors": {
       "clientRequired": "Selecciona un cliente.",
