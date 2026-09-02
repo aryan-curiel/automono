@@ -35,6 +35,7 @@ import { GastoDetalle } from "./screens/GastoDetalle";
 import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
 import { ResumenAnual } from "./screens/ResumenAnual";
+import { Asistente } from "./screens/Asistente";
 import { Ajustes } from "./screens/Ajustes";
 import { Onboarding } from "./screens/Onboarding";
 import {
@@ -699,6 +700,9 @@ export default function App() {
             />
           )}
           {screen === "resumen-anual" && <ResumenAnual invoices={invoices} />}
+          {screen === "asistente" && (
+            <Asistente invoices={invoices} onOpenSettings={() => setScreen("ajustes")} />
+          )}
           {screen === "ajustes" && <Ajustes theme={theme} onToggleTheme={handleToggleTheme} />}
         </div>
 

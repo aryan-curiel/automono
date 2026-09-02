@@ -20,8 +20,22 @@
     "expenses": "Expenses",
     "quarterlySummary": "Quarterly summary",
     "annualSummary": "Annual summary",
+    "assistant": "Assistant",
     "settings": "Settings",
     "noData": "No data"
+  },
+  "assistant": {
+    "title": "Assistant",
+    "subtitle": "Ask about your invoices, expenses and taxes",
+    "emptyHint": "Answers are grounded in your data and business context. Not a substitute for your accountant.",
+    "placeholder": "Type your question…",
+    "thinking": "Thinking…",
+    "error": "Couldn't get a response. Check your connection and AI settings.",
+    "noLlm": "Set up an AI provider and API key in Settings to use the assistant.",
+    "openSettings": "Go to Settings",
+    "suggestion1": "How much have I invoiced this year?",
+    "suggestion2": "What's left to close this quarter?",
+    "suggestion3": "How much am I owed right now?"
   },
   "commandPalette": {
     "title": "Search",
@@ -36,20 +50,7 @@
     "month": "Month",
     "quarter": "Quarter",
     "year": "Year",
-    "months": [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec"
-    ]
+    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   },
   "quarterTimeline": {
     "previousQuarter": "Previous quarter",

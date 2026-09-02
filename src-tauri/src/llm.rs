@@ -5,7 +5,7 @@
 
 use rig::OneOrMany;
 use rig::client::AgentClientExt;
-use rig::completion::Message;
+use rig::completion::{Chat, Message};
 use rig::completion::message::{Document, DocumentMediaType, DocumentSourceKind, Image, ImageMediaType, UserContent};
 use rig::providers::{anthropic, openai, openrouter};
 use schemars::JsonSchema;
@@ -86,6 +86,56 @@ where
                 openrouter::Client::builder().api_key(&config.api_key).build().map_err(|e| e.to_string())?;
             let extractor = client.extractor::<T>(model).preamble(preamble).build();
             extractor.extract(message).await.map_err(|e| e.to_string())
+        }
+    }
+}
+
+/// Free-text chat completion against the configured provider. Unlike [`extract`], the response is
+/// the model's raw prose — used by the grounded tax assistant, which wants an answer, not a struct.
+/// `history` holds prior turns (oldest first); `prompt` is the new user message. `preamble` is the
+/// system context (instructions + the user's grounded data). No tools — the context is pre-built.
+pub async fn chat(
+    config: &ProviderConfig,
+    preamble: &str,
+    history: Vec<Message>,
+    prompt: String,
+) -> Result<String, String> {
+    async fn run<C>(
+        client: C,
+        model: &str,
+        preamble: &str,
+        mut history: Vec<Message>,
+        prompt: String,
+    ) -> Result<String, String>
+    where
+        C: rig::client::completion::CompletionClient,
+        C::CompletionModel: 'static,
+    {
+        let agent = client.agent(model).preamble(preamble).build();
+        agent.chat(prompt, &mut history).await.map_err(|e| e.to_string())
+    }
+
+    match config.provider {
+        Provider::Anthropic => {
+            let client =
+                anthropic::Client::builder().api_key(&config.api_key).build().map_err(|e| e.to_string())?;
+            run(client, config.model_or(ANTHROPIC_MODEL), preamble, history, prompt).await
+        }
+        Provider::OpenAi => {
+            let client =
+                openai::Client::builder().api_key(&config.api_key).build().map_err(|e| e.to_string())?;
+            run(client, config.model_or(openai::GPT_5_2), preamble, history, prompt).await
+        }
+        Provider::OpenRouter => {
+            let model = config
+                .model
+                .as_deref()
+                .map(str::trim)
+                .filter(|m| !m.is_empty())
+                .ok_or_else(|| "no OpenRouter model configured in settings".to_string())?;
+            let client =
+                openrouter::Client::builder().api_key(&config.api_key).build().map_err(|e| e.to_string())?;
+            run(client, model, preamble, history, prompt).await
         }
     }
 }

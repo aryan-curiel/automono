@@ -20,8 +20,22 @@
     "expenses": "Gastos",
     "quarterlySummary": "Resumen trimestral",
     "annualSummary": "Resumen anual",
+    "assistant": "Asistente",
     "settings": "Ajustes",
     "noData": "Sin datos"
+  },
+  "assistant": {
+    "title": "Asistente",
+    "subtitle": "Pregunta sobre tus facturas, gastos e impuestos",
+    "emptyHint": "Respuestas basadas en tus datos y tu contexto de negocio. No sustituye a tu gestor.",
+    "placeholder": "Escribe tu pregunta…",
+    "thinking": "Pensando…",
+    "error": "No se pudo obtener respuesta. Revisa tu conexión y la configuración de IA.",
+    "noLlm": "Configura un proveedor de IA y su clave en Ajustes para usar el asistente.",
+    "openSettings": "Ir a Ajustes",
+    "suggestion1": "¿Cuánto llevo facturado este año?",
+    "suggestion2": "¿Qué me falta para cerrar este trimestre?",
+    "suggestion3": "¿Cuánto tengo pendiente de cobro?"
   },
   "commandPalette": {
     "title": "Buscar",
@@ -36,20 +50,7 @@
     "month": "Mes",
     "quarter": "Trimestre",
     "year": "Año",
-    "months": [
-      "Ene",
-      "Feb",
-      "Mar",
-      "Abr",
-      "May",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dic"
-    ]
+    "months": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
   },
   "quarterTimeline": {
     "previousQuarter": "Trimestre anterior",

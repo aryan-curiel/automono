@@ -11,6 +11,7 @@ import {
   Wallet,
   ChartPieSlice,
   ClipboardText,
+  Sparkle,
   GearSix,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
@@ -33,6 +34,7 @@ const NAV_ITEMS: { id: Screen; labelKey: string; icon: PhosphorIcon }[] = [
   { id: "gastos", labelKey: "nav.expenses", icon: Wallet },
   { id: "resumen-trimestral", labelKey: "nav.quarterlySummary", icon: ChartPieSlice },
   { id: "resumen-anual", labelKey: "nav.annualSummary", icon: ClipboardText },
+  { id: "asistente", labelKey: "nav.assistant", icon: Sparkle },
 ];
 
 const GROUPED_SCREENS: Partial<Record<Screen, Screen>> = {

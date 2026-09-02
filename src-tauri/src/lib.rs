@@ -2,6 +2,7 @@
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod assistant;
 mod backup;
 mod branding;
 mod business_documents;
@@ -310,6 +311,7 @@ pub fn run() {
             user_context::read_user_context_cmd,
             user_context::write_user_context_cmd,
             user_context::synthesize_user_context_cmd,
+            assistant::ask_assistant_cmd,
             export::write_text_file_cmd,
             export::read_text_file_cmd,
             export::export_gestor_bundle_cmd,
