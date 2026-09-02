@@ -20,10 +20,20 @@ interface FacturaNuevaProps {
   onBack: () => void;
   onSaved: (id: number) => void;
   onDirtyChange: (dirty: boolean) => void;
+  /** Rendered inside a Sheet by App — drop the page chrome (header + page padding),
+   *  actions move to a footer row. */
+  embedded?: boolean;
 }
 
-export function FacturaNueva({ editInvoiceId, onBack, onSaved, onDirtyChange }: FacturaNuevaProps) {
+export function FacturaNueva({
+  editInvoiceId,
+  onBack,
+  onSaved,
+  onDirtyChange,
+  embedded,
+}: FacturaNuevaProps) {
   const { t } = useTranslation();
+  const pad = embedded ? "" : "px-8 pb-15";
   const { markDirty, resetDirty } = useUnsavedGuard(onDirtyChange);
   const [clients, setClients] = useState<ClientRecord[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -197,7 +207,7 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved, onDirtyChange }: 
 
   if (loadError) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-danger">{t("invoices.errors.loadClientsFailed")}</div>
       </div>
     );
@@ -205,7 +215,7 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved, onDirtyChange }: 
 
   if (!clients) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-ink-soft">{t("invoices.loading")}</div>
       </div>
     );
@@ -213,8 +223,8 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved, onDirtyChange }: 
 
   if (clients.length === 0) {
     return (
-      <div className="px-8 pb-15">
-        <BackLink label={t("invoices.title")} onClick={onBack} />
+      <div className={pad}>
+        {!embedded && <BackLink label={t("invoices.title")} onClick={onBack} />}
         <div className="text-sm text-ink-soft">{t("invoices.noClients")}</div>
       </div>
     );
@@ -222,25 +232,29 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved, onDirtyChange }: 
 
   const busy = saving || issuing;
 
+  const actions = (
+    <>
+      <Button variant="secondary" onClick={() => void handleSaveDraft()} disabled={busy}>
+        {saving ? t("invoices.actions.savingDraft") : t("invoices.actions.saveDraft")}
+      </Button>
+      <Button onClick={() => void handleIssue()} disabled={busy}>
+        {issuing ? t("invoices.actions.issuing") : t("invoices.actions.issue")}
+      </Button>
+    </>
+  );
+
   return (
     // onChange bubbles from every field/line input below — any user edit marks the
     // form dirty so App can confirm before navigating away.
-    <div className="px-8 pb-15" onChange={markDirty}>
-      <PageHeader
-        title={editInvoiceId ? t("invoices.editInvoice") : t("invoices.newInvoice")}
-        backLabel={t("invoices.title")}
-        onBack={onBack}
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => void handleSaveDraft()} disabled={busy}>
-              {saving ? t("invoices.actions.savingDraft") : t("invoices.actions.saveDraft")}
-            </Button>
-            <Button onClick={() => void handleIssue()} disabled={busy}>
-              {issuing ? t("invoices.actions.issuing") : t("invoices.actions.issue")}
-            </Button>
-          </>
-        }
-      />
+    <div className={pad} onChange={markDirty}>
+      {!embedded && (
+        <PageHeader
+          title={editInvoiceId ? t("invoices.editInvoice") : t("invoices.newInvoice")}
+          backLabel={t("invoices.title")}
+          onBack={onBack}
+          actions={actions}
+        />
+      )}
 
       <div className="grid grid-cols-[2fr_1fr] gap-5 items-start">
         <Card className="px-5">
@@ -350,6 +364,8 @@ export function FacturaNueva({ editInvoiceId, onBack, onSaved, onDirtyChange }: 
       </Card>
 
       {saveError && <ErrorText>{saveError}</ErrorText>}
+
+      {embedded && <div className="flex gap-2.5 justify-end mt-5">{actions}</div>}
     </div>
   );
 }

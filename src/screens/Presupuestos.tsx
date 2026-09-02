@@ -33,9 +33,17 @@ interface PresupuestosProps {
   onOpenQuote: (id: number) => void;
   onNewQuote: () => void;
   onConverted: (invoiceId: number) => void;
+  /** Bumped by App after an in-sheet quote form saves, so this list (which stays
+   *  mounted behind the sheet) refetches. */
+  refreshToken?: number;
 }
 
-export function Presupuestos({ onOpenQuote, onNewQuote, onConverted }: PresupuestosProps) {
+export function Presupuestos({
+  onOpenQuote,
+  onNewQuote,
+  onConverted,
+  refreshToken,
+}: PresupuestosProps) {
   const { t } = useTranslation();
   const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +57,7 @@ export function Presupuestos({ onOpenQuote, onNewQuote, onConverted }: Presupues
     void listQuotes()
       .then(setQuotes)
       .finally(() => setLoading(false));
-  }, [reloadToken]);
+  }, [reloadToken, refreshToken]);
 
   const filtered = quotes.filter((q) =>
     `${quoteNumberLabel(q)} ${q.clientName}`.toLowerCase().includes(query.toLowerCase()),

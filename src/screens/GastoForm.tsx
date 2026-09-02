@@ -29,6 +29,8 @@ interface GastoFormProps {
   onSaved: (expense: ExpenseRecord) => void;
   onCancel: () => void;
   onDirtyChange: (dirty: boolean) => void;
+  /** Rendered inside a Sheet by App — drop the page chrome (header + page padding). */
+  embedded?: boolean;
 }
 
 interface FormState {
@@ -126,8 +128,10 @@ export function GastoForm({
   onSaved,
   onCancel,
   onDirtyChange,
+  embedded,
 }: GastoFormProps) {
   const { t } = useTranslation();
+  const pad = embedded ? "" : "px-8 pb-15";
   const { markDirty, resetDirty } = useUnsavedGuard(onDirtyChange);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [loading, setLoading] = useState(mode === "edit");
@@ -356,7 +360,7 @@ export function GastoForm({
 
   if (loading) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-ink-soft">{t("expenses.loading")}</div>
       </div>
     );
@@ -364,7 +368,7 @@ export function GastoForm({
 
   if (loadError) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-danger">{t("expenses.errors.loadFailed")}</div>
       </div>
     );
@@ -374,12 +378,14 @@ export function GastoForm({
     // onChange bubbles from every field below — any user edit marks the form dirty
     // so App can confirm before navigating away. Programmatic changes (receipt
     // autofill) call markDirty() directly since they don't fire a DOM change event.
-    <div className="px-8 pb-15" onChange={markDirty}>
-      <PageHeader
-        title={mode === "create" ? t("expenses.newExpense") : t("expenses.editExpense")}
-        backLabel={t("expenses.title")}
-        onBack={onCancel}
-      />
+    <div className={pad} onChange={markDirty}>
+      {!embedded && (
+        <PageHeader
+          title={mode === "create" ? t("expenses.newExpense") : t("expenses.editExpense")}
+          backLabel={t("expenses.title")}
+          onBack={onCancel}
+        />
+      )}
 
       <Card className="px-5 max-w-[640px]">
         <FormRow label={t("expenses.fields.date")} error={errors.date}>

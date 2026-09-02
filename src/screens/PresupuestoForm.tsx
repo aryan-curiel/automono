@@ -32,6 +32,9 @@ interface PresupuestoFormProps {
   onBack: () => void;
   onSaved: (id: number) => void;
   onConverted: (invoiceId: number) => void;
+  /** Rendered inside a Sheet by App — drop the page chrome (header + page padding),
+   *  actions move to a footer row. */
+  embedded?: boolean;
 }
 
 export function PresupuestoForm({
@@ -39,8 +42,10 @@ export function PresupuestoForm({
   onBack,
   onSaved,
   onConverted,
+  embedded,
 }: PresupuestoFormProps) {
   const { t } = useTranslation();
+  const pad = embedded ? "" : "px-8 pb-15";
   const [clients, setClients] = useState<ClientRecord[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [clientId, setClientId] = useState<number | null>(null);
@@ -221,57 +226,53 @@ export function PresupuestoForm({
 
   if (loadError) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-danger">{t("quotes.errors.loadClientsFailed")}</div>
       </div>
     );
   }
   if (!clients) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-ink-soft">{t("quotes.loading")}</div>
       </div>
     );
   }
   if (clients.length === 0) {
     return (
-      <div className="px-8 pb-15">
-        <BackLink label={t("quotes.title")} onClick={onBack} />
+      <div className={pad}>
+        {!embedded && <BackLink label={t("quotes.title")} onClick={onBack} />}
         <div className="text-sm text-ink-soft">{t("quotes.noClients")}</div>
       </div>
     );
   }
 
+  const actions = (
+    <>
+      <Button variant="secondary" onClick={() => void handleSave()} disabled={locked}>
+        {busyAction === "save" ? t("quotes.actions.saving") : t("quotes.actions.save")}
+      </Button>
+      <Button variant="secondary" onClick={() => void handlePdf()} disabled={locked || converted}>
+        {busyAction === "pdf" ? t("quotes.actions.generatingPdf") : t("quotes.actions.downloadPdf")}
+      </Button>
+      {status === "accepted" && (
+        <Button onClick={() => void handleConvert()} disabled={locked}>
+          {busyAction === "convert" ? t("quotes.actions.converting") : t("quotes.actions.convert")}
+        </Button>
+      )}
+    </>
+  );
+
   return (
-    <div className="px-8 pb-15">
-      <PageHeader
-        title={editQuoteId ? t("quotes.editQuote") : t("quotes.newQuote")}
-        backLabel={t("quotes.title")}
-        onBack={onBack}
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => void handleSave()} disabled={locked}>
-              {busyAction === "save" ? t("quotes.actions.saving") : t("quotes.actions.save")}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => void handlePdf()}
-              disabled={locked || converted}
-            >
-              {busyAction === "pdf"
-                ? t("quotes.actions.generatingPdf")
-                : t("quotes.actions.downloadPdf")}
-            </Button>
-            {status === "accepted" && (
-              <Button onClick={() => void handleConvert()} disabled={locked}>
-                {busyAction === "convert"
-                  ? t("quotes.actions.converting")
-                  : t("quotes.actions.convert")}
-              </Button>
-            )}
-          </>
-        }
-      />
+    <div className={pad}>
+      {!embedded && (
+        <PageHeader
+          title={editQuoteId ? t("quotes.editQuote") : t("quotes.newQuote")}
+          backLabel={t("quotes.title")}
+          onBack={onBack}
+          actions={actions}
+        />
+      )}
 
       {converted && (
         <div className="mb-4 py-3 px-3.5 bg-surface-alt rounded-card text-xs text-ink-soft">
@@ -413,6 +414,8 @@ export function PresupuestoForm({
       </Card>
 
       {saveError && <ErrorText>{saveError}</ErrorText>}
+
+      {embedded && <div className="flex gap-2.5 justify-end mt-5">{actions}</div>}
     </div>
   );
 }

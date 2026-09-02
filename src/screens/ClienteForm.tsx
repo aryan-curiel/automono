@@ -24,6 +24,8 @@ interface ClienteFormProps {
   clientId?: number;
   onSaved: (client: ClientRecord) => void;
   onCancel: () => void;
+  /** Rendered inside a Sheet by App — drop the page chrome (header + page padding). */
+  embedded?: boolean;
 }
 
 interface FormState {
@@ -75,8 +77,9 @@ function toFormState(client: ClientRecord): FormState {
 
 type FieldErrors = Partial<Record<"name" | "nifCif" | "vatNumber" | "invoicePrefix", string>>;
 
-export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormProps) {
+export function ClienteForm({ mode, clientId, onSaved, onCancel, embedded }: ClienteFormProps) {
   const { t, i18n } = useTranslation();
+  const pad = embedded ? "" : "px-8 pb-15";
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(mode === "edit");
   const [loadError, setLoadError] = useState(false);
@@ -197,7 +200,7 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
 
   if (loading) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-ink-soft">{t("clients.loading")}</div>
       </div>
     );
@@ -205,19 +208,21 @@ export function ClienteForm({ mode, clientId, onSaved, onCancel }: ClienteFormPr
 
   if (loadError) {
     return (
-      <div className="px-8 pb-15">
+      <div className={pad}>
         <div className="text-sm text-danger">{t("clients.errors.loadFailed")}</div>
       </div>
     );
   }
 
   return (
-    <div className="px-8 pb-15">
-      <PageHeader
-        title={mode === "create" ? t("clients.newClient") : t("clients.editClient")}
-        backLabel={t("clients.title")}
-        onBack={onCancel}
-      />
+    <div className={pad}>
+      {!embedded && (
+        <PageHeader
+          title={mode === "create" ? t("clients.newClient") : t("clients.editClient")}
+          backLabel={t("clients.title")}
+          onBack={onCancel}
+        />
+      )}
 
       <Card className="px-5 max-w-[640px]">
         <FormRow label={t("clients.fields.name")} error={errors.name}>

@@ -83,9 +83,6 @@ export default function App() {
   const [preferences, setPreferences] = useState<PreferencesRecord | null>(null);
   const [dbReady, setDbReady] = useState(false);
   const [dbErrorToast, setDbErrorToast] = useState<string | null>(null);
-  // Screen to return to after the expense form closes (save or cancel), so creating a gasto
-  // lands back where it was started from instead of forcing the detail view on the user.
-  const [expenseReturnTo, setExpenseReturnTo] = useState<Screen>("gastos");
   const [pendingDropPath, setPendingDropPath] = useState<string | null>(null);
   const [dropToken, setDropToken] = useState(0);
   const [declarationDropPaths, setDeclarationDropPaths] = useState<string[] | null>(null);
@@ -112,6 +109,12 @@ export default function App() {
     if (formDirtyRef.current) setPendingNav(() => action);
     else action();
   }, []);
+
+  // Bumped after an in-sheet form saves, so a list that stayed mounted behind the
+  // sheet (Presupuestos — it returns to its list on save) refetches. Clientes/Gastos
+  // forms navigate to a detail route on save, which remounts the list on the way back.
+  const [listRefreshToken, setListRefreshToken] = useState(0);
+  const bumpListRefresh = useCallback(() => setListRefreshToken((n) => n + 1), []);
 
   // Receipt inbox: count drives the sidebar badge; inboxRefreshToken forces a mounted queue to
   // refetch after a folder sweep; sweepingRef guards against a focus event firing a second sweep
@@ -261,9 +264,6 @@ export default function App() {
         guardNav(() => {
           setPendingDropPath(path);
           setDropToken((n) => n + 1);
-          // Keep the origin as a real "somewhere else" — dropping onto an expense screen itself
-          // shouldn't make the form return to another copy of the form.
-          if (!current.startsWith("gasto")) setExpenseReturnTo(current);
           navigate("gasto-nuevo");
         });
       })
@@ -376,13 +376,11 @@ export default function App() {
 
   // The edit/preset for a "nueva"/"editar" form is derived from the route id
   // (`#/factura-nueva/12` = edit 12, `#/factura-nueva` = blank), so navigating is
-  // enough — no separate preset state to set or clear. gasto-nuevo still needs its
-  // non-route return-target primed.
+  // enough — no separate preset state to set or clear.
   function navigateFromDashboard(next: Screen) {
-    if (next === "gasto-nuevo") {
-      setPendingDropPath(null);
-      setExpenseReturnTo("dashboard");
-    }
+    // Clear any file left over from a previous drag-drop so a plain "new expense"
+    // from the dashboard opens a blank form.
+    if (next === "gasto-nuevo") setPendingDropPath(null);
     navigate(next);
   }
 
@@ -391,6 +389,21 @@ export default function App() {
   function openInvoice(id: number) {
     navigate("factura-detalle", id);
   }
+
+  // Where each create/edit sheet goes when dismissed: back to the record's detail
+  // when editing, otherwise to the list. Passed through `guardNav` by every caller.
+  const closeClienteForm = () =>
+    screen === "cliente-editar" && recordNum !== null
+      ? navigate("cliente-detalle", recordNum)
+      : navigate("clientes");
+  const closeFacturaForm = () => {
+    void listInvoices().then(setInvoices);
+    navigate("facturas");
+  };
+  const closeGastoForm = () =>
+    screen === "gasto-editar" && recordNum !== null
+      ? navigate("gasto-detalle", recordNum)
+      : navigate("gastos");
 
   async function handleQuoteConverted(invoiceId: number) {
     setInvoices(await listInvoices());
@@ -498,7 +511,11 @@ export default function App() {
             />
           )}
 
-          {screen === "clientes" && (
+          {/* List stays mounted while its create/edit sheet is open, so scroll + search
+              survive the open (issue #87). */}
+          {(screen === "clientes" ||
+            screen === "cliente-nuevo" ||
+            screen === "cliente-editar") && (
             <Clientes
               onOpenClient={(id) => navigate("cliente-detalle", id)}
               onNewClient={() => navigate("cliente-nuevo")}
@@ -517,24 +534,7 @@ export default function App() {
             />
           )}
 
-          {screen === "cliente-nuevo" && (
-            <ClienteForm
-              mode="create"
-              onSaved={(client) => navigate("cliente-detalle", client.id)}
-              onCancel={() => navigate("clientes")}
-            />
-          )}
-
-          {screen === "cliente-editar" && recordNum !== null && (
-            <ClienteForm
-              mode="edit"
-              clientId={recordNum}
-              onSaved={(client) => navigate("cliente-detalle", client.id)}
-              onCancel={() => navigate("cliente-detalle", recordNum)}
-            />
-          )}
-
-          {screen === "facturas" && (
+          {(screen === "facturas" || screen === "factura-nueva") && (
             <Facturas
               invoices={invoices}
               loading={invoicesLoading}
@@ -600,15 +600,6 @@ export default function App() {
             />
           )}
 
-          {screen === "factura-nueva" && (
-            <FacturaNueva
-              editInvoiceId={recordNum ?? undefined}
-              onBack={() => guardNav(() => navigate("facturas"))}
-              onSaved={openInvoice}
-              onDirtyChange={setFormDirty}
-            />
-          )}
-
           {screen === "factura-rectificar" && rectifyingInvoice && (
             <FacturaRectificar
               original={rectifyingInvoice}
@@ -627,19 +618,13 @@ export default function App() {
             />
           )}
 
-          {screen === "presupuestos" && (
+          {(screen === "presupuestos" ||
+            screen === "presupuesto-nuevo" ||
+            screen === "presupuesto-editar") && (
             <Presupuestos
+              refreshToken={listRefreshToken}
               onOpenQuote={(id) => navigate("presupuesto-editar", id)}
               onNewQuote={() => navigate("presupuesto-nuevo")}
-              onConverted={(invoiceId) => void handleQuoteConverted(invoiceId)}
-            />
-          )}
-
-          {(screen === "presupuesto-nuevo" || screen === "presupuesto-editar") && (
-            <PresupuestoForm
-              editQuoteId={screen === "presupuesto-editar" ? (recordNum ?? undefined) : undefined}
-              onBack={() => navigate("presupuestos")}
-              onSaved={() => navigate("presupuestos")}
               onConverted={(invoiceId) => void handleQuoteConverted(invoiceId)}
             />
           )}
@@ -681,35 +666,15 @@ export default function App() {
             />
           )}
 
-          {screen === "gastos" && (
+          {(screen === "gastos" ||
+            screen === "gasto-nuevo" ||
+            screen === "gasto-editar") && (
             <Gastos
               onOpenExpense={(id) => navigate("gasto-detalle", id)}
               onNewExpense={() => {
                 setPendingDropPath(null);
-                setExpenseReturnTo("gastos");
                 navigate("gasto-nuevo");
               }}
-            />
-          )}
-
-          {screen === "gasto-nuevo" && (
-            <GastoForm
-              key={`gasto-nuevo-${dropToken}`}
-              mode="create"
-              initialFilePath={pendingDropPath ?? undefined}
-              onSaved={() => navigate(expenseReturnTo)}
-              onCancel={() => guardNav(() => navigate(expenseReturnTo))}
-              onDirtyChange={setFormDirty}
-            />
-          )}
-
-          {screen === "gasto-editar" && recordNum !== null && (
-            <GastoForm
-              mode="edit"
-              expenseId={recordNum}
-              onSaved={(expense) => navigate("gasto-detalle", expense.id)}
-              onCancel={() => guardNav(() => navigate("gasto-detalle", recordNum))}
-              onDirtyChange={setFormDirty}
             />
           )}
 
@@ -736,6 +701,106 @@ export default function App() {
           )}
           {screen === "ajustes" && <Ajustes theme={theme} onToggleTheme={handleToggleTheme} />}
         </div>
+
+        {/* Create/edit sheets (issue #87). The list screen behind stays mounted while
+            these are open, so its scroll + search + period state survives the round trip.
+            `dismissible={false}` keeps a stray backdrop click from discarding edits;
+            Esc / the close button route through `guardNav` for the unsaved-changes prompt.
+            The `screen === ...` guard in each `onOpenChange` ignores the close event that
+            fires as a side effect of the navigation that already closed the sheet. */}
+        <Sheet
+          open={screen === "cliente-nuevo" || screen === "cliente-editar"}
+          onOpenChange={(open) => {
+            if (!open && (screen === "cliente-nuevo" || screen === "cliente-editar"))
+              guardNav(closeClienteForm);
+          }}
+          title={screen === "cliente-editar" ? t("clients.editClient") : t("clients.newClient")}
+          maxWidthClassName="max-w-xl"
+          dismissible={false}
+        >
+          {(screen === "cliente-nuevo" || screen === "cliente-editar") && (
+            <ClienteForm
+              embedded
+              mode={screen === "cliente-editar" ? "edit" : "create"}
+              clientId={screen === "cliente-editar" ? (recordNum ?? undefined) : undefined}
+              onSaved={(client) => navigate("cliente-detalle", client.id)}
+              onCancel={() => guardNav(closeClienteForm)}
+            />
+          )}
+        </Sheet>
+
+        <Sheet
+          open={screen === "factura-nueva"}
+          onOpenChange={(open) => {
+            if (!open && screen === "factura-nueva") guardNav(closeFacturaForm);
+          }}
+          title={recordNum !== null ? t("invoices.editInvoice") : t("invoices.newInvoice")}
+          maxWidthClassName="max-w-4xl"
+          dismissible={false}
+        >
+          {screen === "factura-nueva" && (
+            <FacturaNueva
+              embedded
+              editInvoiceId={recordNum ?? undefined}
+              onBack={() => guardNav(closeFacturaForm)}
+              onSaved={(id) => {
+                void listInvoices().then(setInvoices);
+                openInvoice(id);
+              }}
+              onDirtyChange={setFormDirty}
+            />
+          )}
+        </Sheet>
+
+        <Sheet
+          open={screen === "gasto-nuevo" || screen === "gasto-editar"}
+          onOpenChange={(open) => {
+            if (!open && (screen === "gasto-nuevo" || screen === "gasto-editar"))
+              guardNav(closeGastoForm);
+          }}
+          title={screen === "gasto-editar" ? t("expenses.editExpense") : t("expenses.newExpense")}
+          maxWidthClassName="max-w-xl"
+          dismissible={false}
+        >
+          {(screen === "gasto-nuevo" || screen === "gasto-editar") && (
+            <GastoForm
+              key={
+                screen === "gasto-nuevo" ? `gasto-nuevo-${dropToken}` : `gasto-editar-${recordNum}`
+              }
+              embedded
+              mode={screen === "gasto-editar" ? "edit" : "create"}
+              expenseId={screen === "gasto-editar" ? (recordNum ?? undefined) : undefined}
+              initialFilePath={screen === "gasto-nuevo" ? (pendingDropPath ?? undefined) : undefined}
+              onSaved={(expense) => navigate("gasto-detalle", expense.id)}
+              onCancel={() => guardNav(closeGastoForm)}
+              onDirtyChange={setFormDirty}
+            />
+          )}
+        </Sheet>
+
+        <Sheet
+          open={screen === "presupuesto-nuevo" || screen === "presupuesto-editar"}
+          onOpenChange={(open) => {
+            if (!open && (screen === "presupuesto-nuevo" || screen === "presupuesto-editar"))
+              guardNav(() => navigate("presupuestos"));
+          }}
+          title={screen === "presupuesto-editar" ? t("quotes.editQuote") : t("quotes.newQuote")}
+          maxWidthClassName="max-w-4xl"
+          dismissible={false}
+        >
+          {(screen === "presupuesto-nuevo" || screen === "presupuesto-editar") && (
+            <PresupuestoForm
+              embedded
+              editQuoteId={screen === "presupuesto-editar" ? (recordNum ?? undefined) : undefined}
+              onBack={() => guardNav(() => navigate("presupuestos"))}
+              onSaved={() => {
+                bumpListRefresh();
+                navigate("presupuestos");
+              }}
+              onConverted={(invoiceId) => void handleQuoteConverted(invoiceId)}
+            />
+          )}
+        </Sheet>
 
         <Toast message={dbErrorToast} onDismiss={() => setDbErrorToast(null)} />
         <Toast
