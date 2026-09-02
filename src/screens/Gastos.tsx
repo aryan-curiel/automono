@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Wallet, Receipt, PiggyBank, Percent, DotsThreeVertical } from "@phosphor-icons/react";
+import type { TFunction } from "i18next";
+import {
+  Wallet,
+  Receipt,
+  PiggyBank,
+  Percent,
+  DotsThreeVertical,
+  Warning,
+  X,
+} from "@phosphor-icons/react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -11,12 +20,42 @@ import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector, type Kind } from "../components/PeriodSelector";
 import { ivaDeductiblePctOf, listExpenses, updateExpense } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
-import { defaultQuarterPeriod, quartersInRange, type Period } from "../lib/dateRange";
+import { defaultQuarterPeriod, quarterKeyOf, quartersInRange, type Period } from "../lib/dateRange";
 import { formatDate, formatEUR } from "../lib/format";
+import {
+  anomalySignature,
+  detectExpenseAnomalies,
+  type ExpenseAnomaly,
+} from "../lib/expenseAnomalies";
 
 interface GastosProps {
   onOpenExpense: (id: number) => void;
   onNewExpense: () => void;
+}
+
+const DISMISSED_KEY = "automono.dismissedAnomalies";
+
+function readDismissed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Translated text for an anomaly — the pure detector carries an English `message`; the UI
+ * re-renders it from `kind` + `params`. */
+function anomalyText(t: TFunction, a: ExpenseAnomaly): string {
+  const key =
+    a.kind === "irpf-mismatch"
+      ? `expenses.anomalies.irpfMismatch.${a.params.variant}`
+      : a.kind === "iva-spike"
+        ? "expenses.anomalies.ivaSpike"
+        : a.kind === "category-outlier"
+          ? "expenses.anomalies.categoryOutlier"
+          : "expenses.anomalies.duplicate";
+  return t(key, a.params);
 }
 
 export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
@@ -24,10 +63,24 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
   const [period, setPeriod] = useState<Period>(defaultQuarterPeriod);
   const [kind, setKind] = useState<Kind>("quarter");
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [allExpenses, setAllExpenses] = useState<ExpenseRecord[]>([]);
+  const [dismissed, setDismissed] = useState<Set<string>>(readDismissed);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
   const [reloadToken, setReloadToken] = useState(0);
+
+  function dismissAnomaly(signature: string) {
+    setDismissed((prev) => {
+      const next = new Set(prev).add(signature);
+      try {
+        localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next]));
+      } catch {
+        // ignore — a dismissed anomaly reappearing next launch is acceptable
+      }
+      return next;
+    });
+  }
 
   function retry() {
     setLoading(true);
@@ -50,6 +103,22 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, [period, kind, reloadToken]);
+
+  // Anomaly detection needs the full history for its trailing-quarter and per-category baselines,
+  // not just the viewed period.
+  useEffect(() => {
+    listExpenses({})
+      .then(setAllExpenses)
+      .catch(() => setAllExpenses([]));
+  }, [reloadToken]);
+
+  const anomalies = useMemo(() => {
+    const visibleIds = new Set(expenses.map((e) => e.id));
+    const referenceQuarter = kind === "quarter" ? quarterKeyOf(period.to) : undefined;
+    return detectExpenseAnomalies(allExpenses, { referenceQuarter })
+      .filter((a) => !dismissed.has(anomalySignature(a)))
+      .filter((a) => a.expenseIds.some((id) => visibleIds.has(id)));
+  }, [allExpenses, dismissed, expenses, kind, period.to]);
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
   const deductibleTotal = expenses.reduce((s, e) => s + e.amount * (e.deductiblePct / 100), 0);
@@ -78,6 +147,41 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
           </>
         }
       />
+
+      {anomalies.length > 0 && (
+        <Card className="mb-5 divide-y divide-border">
+          <div className="flex items-center gap-2 px-5 py-3">
+            <Warning size={16} weight="fill" className="text-warn" />
+            <span className="text-[13px] font-medium">{t("expenses.anomalies.title")}</span>
+            <span className="text-xs text-ink-soft">
+              {t("expenses.anomalies.count", { count: anomalies.length })}
+            </span>
+          </div>
+          {anomalies.map((a) => {
+            const signature = anomalySignature(a);
+            return (
+              <div key={signature} className="flex items-start gap-3 px-5 py-3">
+                <Badge tone={a.severity}>{t(`expenses.anomalies.severity.${a.severity}`)}</Badge>
+                <button
+                  type="button"
+                  className="flex-1 text-left text-[13px] leading-snug hover:underline"
+                  onClick={() => onOpenExpense(a.expenseIds[0])}
+                >
+                  {anomalyText(t, a)}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("common.dismiss")}
+                  className="p-1 rounded-control text-ink-soft hover:bg-surface-alt cursor-pointer"
+                  onClick={() => dismissAnomaly(signature)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </Card>
+      )}
 
       <div className="grid grid-cols-3 gap-4 mb-5">
         <KpiTile label={t("expenses.summary.total")} value={formatEUR(total)} icon={Receipt} />

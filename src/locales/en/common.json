@@ -717,6 +717,22 @@
     "detail": {
       "dataTitle": "Expense details",
       "moreActions": "More actions"
+    },
+    "anomalies": {
+      "title": "Worth a second look",
+      "count": "{{count}} flagged",
+      "severity": {
+        "warning": "Check",
+        "info": "Note"
+      },
+      "ivaSpike": "Deducible VAT for {{quarter}} is {{multiple}}× your trailing 4-quarter average ({{current}} vs {{average}}) — possible duplicate receipt",
+      "duplicate": "{{count}} expenses from {{provider}} for {{amount}} within {{windowDays}} days — possible duplicate receipt",
+      "categoryOutlier": "{{amount}} in \"{{category}}\" is {{multiple}}× the typical amount for that category ({{typical}})",
+      "irpfMismatch": {
+        "carries": "This expense in \"{{category}}\" carries {{rate}}% IRPF, but expenses in this category usually have none",
+        "missing": "This expense in \"{{category}}\" has no IRPF retention, but expenses in this category are usually {{expected}}%",
+        "rateOff": "This expense in \"{{category}}\" has {{rate}}% IRPF; expenses in this category are usually {{expected}}%"
+      }
     }
   },
   "declarations": {

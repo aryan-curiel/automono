@@ -717,6 +717,22 @@
     "detail": {
       "dataTitle": "Datos del gasto",
       "moreActions": "Más acciones"
+    },
+    "anomalies": {
+      "title": "Conviene revisar",
+      "count": "{{count}} avisos",
+      "severity": {
+        "warning": "Revisar",
+        "info": "Nota"
+      },
+      "ivaSpike": "El IVA deducible de {{quarter}} es {{multiple}}× tu media de los últimos 4 trimestres ({{current}} frente a {{average}}) — posible recibo duplicado",
+      "duplicate": "{{count}} gastos de {{provider}} por {{amount}} en menos de {{windowDays}} días — posible recibo duplicado",
+      "categoryOutlier": "{{amount}} en «{{category}}» es {{multiple}}× el importe habitual de esa categoría ({{typical}})",
+      "irpfMismatch": {
+        "carries": "Este gasto de «{{category}}» lleva un {{rate}}% de IRPF, pero los gastos de esta categoría no suelen tener retención",
+        "missing": "Este gasto de «{{category}}» no tiene retención de IRPF, pero los gastos de esta categoría suelen ser del {{expected}}%",
+        "rateOff": "Este gasto de «{{category}}» tiene un {{rate}}% de IRPF; los gastos de esta categoría suelen ser del {{expected}}%"
+      }
     }
   },
   "declarations": {
