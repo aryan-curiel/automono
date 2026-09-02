@@ -3,7 +3,9 @@ import {
   agingReport,
   clientBalance,
   expenseByCategory,
+  overdueSummary,
   revenueByClient,
+  revenueComposition,
   yoyDelta,
 } from "./analytics";
 import type { InvoiceListItem } from "../db/invoices";
@@ -157,6 +159,53 @@ describe("clientBalance", () => {
       invoiced: 0,
       paid: 0,
       outstanding: 0,
+    });
+  });
+});
+
+describe("overdueSummary", () => {
+  it("counts and totals only issued invoices past due, excluding the not-yet-due bucket", () => {
+    const result = overdueSummary(
+      [
+        invoice({ id: 1, status: "issued", dueDate: "2026-08-10", total: 10 }), // not due
+        invoice({ id: 2, status: "issued", dueDate: "2026-07-20", total: 20 }), // overdue
+        invoice({ id: 3, status: "issued", dueDate: "2026-04-01", total: 40, amountPaid: 15 }), // 25 left
+        invoice({ id: 4, status: "paid", dueDate: "2026-01-01", total: 999 }), // excluded
+      ],
+      "2026-08-02",
+    );
+    expect(result).toEqual({ count: 2, total: 45 });
+  });
+
+  it("is zero when nothing is overdue", () => {
+    expect(
+      overdueSummary([invoice({ status: "issued", dueDate: "2026-12-31" })], "2026-08-02"),
+    ).toEqual({ count: 0, total: 0 });
+  });
+});
+
+describe("revenueComposition", () => {
+  it("computes top-client and repeat-client shares of billed revenue", () => {
+    const result = revenueComposition([
+      invoice({ id: 1, clientId: 1, clientName: "Acme", total: 600 }),
+      invoice({ id: 2, clientId: 1, clientName: "Acme", total: 200 }), // Acme repeats → 800
+      invoice({ id: 3, clientId: 2, clientName: "Beta", total: 200 }), // single invoice
+      invoice({ id: 4, clientId: 3, clientName: "Draft co", total: 999, status: "draft" }),
+    ]);
+    expect(result).toEqual({
+      topClientName: "Acme",
+      topClientShare: 0.8,
+      repeatClientShare: 0.8,
+      totalRevenue: 1000,
+    });
+  });
+
+  it("is all-zero with no non-draft invoices", () => {
+    expect(revenueComposition([invoice({ status: "draft" })])).toEqual({
+      topClientName: null,
+      topClientShare: 0,
+      repeatClientShare: 0,
+      totalRevenue: 0,
     });
   });
 });

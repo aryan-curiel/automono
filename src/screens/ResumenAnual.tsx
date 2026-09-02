@@ -17,6 +17,7 @@ import { yearRange } from "../lib/dateRange";
 import { formatEUR } from "../lib/format";
 import { buildModelo347, buildModelo347Csv } from "../lib/modelo347";
 import { annualPnl, multiYearSummary } from "../lib/annualSummary";
+import { revenueComposition } from "../lib/analytics";
 import { estimateAnnualIrpf } from "../lib/irpfEstimate";
 
 interface ResumenAnualProps {
@@ -63,6 +64,13 @@ export function ResumenAnual({ invoices }: ResumenAnualProps) {
   );
   const pnl = useMemo(() => annualPnl(invoices, expenses, year), [invoices, expenses, year]);
   const irpf = useMemo(() => estimateAnnualIrpf(pnl.net), [pnl.net]);
+  const composition = useMemo(
+    () =>
+      revenueComposition(
+        invoices.filter((inv) => inv.issueDate !== null && inv.issueDate.startsWith(String(year))),
+      ),
+    [invoices, year],
+  );
   const modelo347 = useMemo(
     () => buildModelo347(invoices, expenses, year),
     [invoices, expenses, year],
@@ -137,7 +145,7 @@ export function ResumenAnual({ invoices }: ResumenAnualProps) {
       </div>
 
       {tab === "multiyear" && <MultiYearView rows={multiYear} />}
-      {tab === "pnl" && <PnlView pnl={pnl} irpf={irpf} />}
+      {tab === "pnl" && <PnlView pnl={pnl} irpf={irpf} composition={composition} />}
       {tab === "modelo347" && (
         <>
           {exportError && <ErrorText>{exportError}</ErrorText>}
@@ -253,9 +261,11 @@ function BreakdownList({
 function PnlView({
   pnl,
   irpf,
+  composition,
 }: {
   pnl: ReturnType<typeof annualPnl>;
   irpf: ReturnType<typeof estimateAnnualIrpf>;
+  composition: ReturnType<typeof revenueComposition>;
 }) {
   const { t } = useTranslation();
 
@@ -303,6 +313,54 @@ function PnlView({
           rows={pnl.byCategory.map((c) => ({ label: c.category, value: c.total }))}
         />
       </div>
+
+      <Card className="p-6">
+        <div className="font-bold text-sm mb-4">
+          {t("declarations.annual.composition.title")}
+        </div>
+        {composition.totalRevenue === 0 ? (
+          <div className="text-xs text-ink-soft">
+            {t("declarations.annual.composition.empty")}
+          </div>
+        ) : (
+          <>
+            <div className="py-2 border-b border-border">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <span className="font-medium text-[13.5px] truncate min-w-0">
+                  {t("declarations.annual.composition.topClient", {
+                    client: composition.topClientName ?? "",
+                  })}
+                </span>
+                <span className="font-semibold text-[13px] font-mono shrink-0">
+                  {Math.round(composition.topClientShare * 100)}%
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent"
+                  style={{ width: `${composition.topClientShare * 100}%` }}
+                />
+              </div>
+            </div>
+            <div className="py-2">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <span className="font-medium text-[13.5px]">
+                  {t("declarations.annual.composition.repeatClients")}
+                </span>
+                <span className="font-semibold text-[13px] font-mono shrink-0">
+                  {Math.round(composition.repeatClientShare * 100)}%
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-surface-alt overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent"
+                  style={{ width: `${composition.repeatClientShare * 100}%` }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </Card>
 
       <Card className="px-5 py-4">
         <div className="font-bold text-sm mb-4">

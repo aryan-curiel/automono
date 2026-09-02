@@ -375,11 +375,11 @@ export default function App() {
   // The edit/preset for a "nueva"/"editar" form is derived from the route id
   // (`#/factura-nueva/12` = edit 12, `#/factura-nueva` = blank), so navigating is
   // enough — no separate preset state to set or clear.
-  function navigateFromDashboard(next: Screen) {
+  function navigateFromDashboard(next: Screen, id?: string) {
     // Clear any file left over from a previous drag-drop so a plain "new expense"
     // from the dashboard opens a blank form.
     if (next === "gasto-nuevo") setPendingDropPath(null);
-    navigate(next);
+    navigate(next, id);
   }
 
   const rectifyingInvoice = invoices.find((i) => i.id === recordNum) ?? null;
@@ -503,8 +503,6 @@ export default function App() {
               invoices={invoices}
               loading={invoicesLoading}
               onNavigate={navigateFromDashboard}
-              onNavigateToQuarter={(key) => navigate("resumen-trimestral", key)}
-              onOpenInvoice={openInvoice}
               onDuplicateInvoice={handleDuplicateInvoice}
             />
           )}

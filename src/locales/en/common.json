@@ -266,75 +266,37 @@
     "title": "Home",
     "addExpense": "Expense",
     "noData": "No data yet",
+    "allClear": "Nothing needs your attention — you're all caught up.",
     "firstRun": {
       "title": "Start recording your activity",
-      "subtitle": "Once you issue your first invoice or log an expense, this is where you'll see your quarter totals, trends and the tax calendar."
+      "subtitle": "Once you issue your first invoice or log an expense, this is where AutoMono surfaces what needs doing — overdue invoices, tax deadlines, receipts to review."
     },
-    "kpis": {
-      "invoicedQuarter": "Invoiced (quarter)",
-      "pendingCollection": "Pending collection",
-      "expensesQuarter": "Expenses (quarter)",
-      "netQuarter": "Net (quarter)"
-    },
-    "declarationStatus": {
-      "notStarted": "Not started",
-      "goToSummary": "Go to Quarterly summary",
-      "nextDeadline": "Next deadline: {{label}} · {{date}}",
-      "missing": "Missing"
+    "inbox": {
+      "overdue": {
+        "title_one": "{{count}} overdue invoice",
+        "title_other": "{{count}} overdue invoices",
+        "detail": "{{amount}} outstanding",
+        "action": "Collections"
+      },
+      "deadline": {
+        "title": "Next filing: {{label}}",
+        "detail": "Due {{date}}",
+        "action": "Quarterly summary"
+      },
+      "recurring": {
+        "title_one": "{{count}} recurring invoice ready",
+        "title_other": "{{count}} recurring invoices ready"
+      },
+      "receipts": {
+        "title_one": "{{count}} receipt to review",
+        "title_other": "{{count}} receipts to review",
+        "action": "Review"
+      }
     },
     "recurring": {
-      "title": "Recurring invoices",
-      "lastMonth": "Invoiced last month",
-      "dueOn": "Due {{date}}",
+      "dueOn": "due {{date}}",
       "generateShort": "Generate",
       "generating": "Generating…"
-    },
-    "recentInvoices": {
-      "title": "Recent invoices"
-    },
-    "aging": {
-      "title": "Aging receivables",
-      "invoiceCount": "{{count}} invoices",
-      "buckets": {
-        "current": "Current",
-        "0-30": "0-30 days",
-        "30-60": "30-60 days",
-        "60+": "60+ days"
-      }
-    },
-    "taxCalendar": {
-      "title": "Tax calendar"
-    },
-    "revenueByClient": {
-      "title": "Revenue by client ({{year}})"
-    },
-    "expensesByCategory": {
-      "title": "Expenses by category ({{period}})"
-    },
-    "trend": {
-      "title": "Invoiced vs. expenses"
-    },
-    "analytics": {
-      "title": "Analytics",
-      "ivaTrend": {
-        "title": "VAT due per quarter",
-        "creditSuffix": "credit",
-        "subtitle": "Projection: includes issued unpaid invoices"
-      },
-      "paidVsOutstanding": {
-        "title": "Paid vs. outstanding",
-        "paid": "Paid",
-        "pending": "Outstanding"
-      },
-      "composition": {
-        "title": "Revenue composition",
-        "topClient": "Top client ({{client}})",
-        "repeatClients": "Repeat clients (2+ invoices this year)"
-      },
-      "topCategoryTrend": {
-        "title": "Top expense category: {{category}}",
-        "titleEmpty": "Top expense category"
-      }
     }
   },
   "collections": {
@@ -796,6 +758,12 @@
         "empty": "No activity in {{year}}.",
         "note": "Amounts exclude VAT, accrual basis — the same base as the quarterly return."
       },
+      "composition": {
+        "title": "Revenue composition",
+        "empty": "No data yet",
+        "topClient": "Top client ({{client}})",
+        "repeatClients": "Repeat clients (2+ invoices this year)"
+      },
       "irpf": {
         "title": "IRPF (Renta) estimate {{year}}",
         "taxableBase": "Base after personal allowance",
@@ -960,7 +928,25 @@
     "pagePrev": "Previous page",
     "pageNext": "Next page",
     "pageIndicator": "{{page}} of {{count}}",
-    "vsPriorYear": "{{sign}}{{value}}% vs. prior year"
+    "vsPriorYear": "{{sign}}{{value}}% vs. prior year",
+    "analytics": {
+      "title": "Last four quarters",
+      "empty": "No data yet",
+      "ivaTrend": {
+        "title": "VAT due per quarter",
+        "creditSuffix": "credit",
+        "subtitle": "Projection: includes issued unpaid invoices"
+      },
+      "paidVsOutstanding": {
+        "title": "Paid vs. outstanding",
+        "paid": "Paid",
+        "pending": "Outstanding"
+      },
+      "topCategoryTrend": {
+        "title": "Top expense category: {{category}}",
+        "titleEmpty": "Top expense category"
+      }
+    }
   },
   "reminders": {
     "title": "Tax filing deadline",

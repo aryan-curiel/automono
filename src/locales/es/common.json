@@ -266,75 +266,37 @@
     "title": "Inicio",
     "addExpense": "Gasto",
     "noData": "Sin datos todavía",
+    "allClear": "No hay nada pendiente — estás al día.",
     "firstRun": {
       "title": "Empieza a registrar tu actividad",
-      "subtitle": "Cuando emitas tu primera factura o registres un gasto, aquí verás tus totales del trimestre, la evolución y el calendario fiscal."
+      "subtitle": "Cuando emitas tu primera factura o registres un gasto, aquí verás lo que requiere tu atención: facturas vencidas, vencimientos fiscales y recibos por revisar."
     },
-    "kpis": {
-      "invoicedQuarter": "Facturado (trimestre)",
-      "pendingCollection": "Pendiente de cobro",
-      "expensesQuarter": "Gastos (trimestre)",
-      "netQuarter": "Neto (trimestre)"
-    },
-    "declarationStatus": {
-      "notStarted": "Sin empezar",
-      "goToSummary": "Ir a Resumen trimestral",
-      "nextDeadline": "Próximo vencimiento: {{label}} · {{date}}",
-      "missing": "Falta"
+    "inbox": {
+      "overdue": {
+        "title_one": "{{count}} factura vencida",
+        "title_other": "{{count}} facturas vencidas",
+        "detail": "{{amount}} pendiente de cobro",
+        "action": "Cobros"
+      },
+      "deadline": {
+        "title": "Próxima presentación: {{label}}",
+        "detail": "Vence el {{date}}",
+        "action": "Resumen trimestral"
+      },
+      "recurring": {
+        "title_one": "{{count}} factura recurrente lista",
+        "title_other": "{{count}} facturas recurrentes listas"
+      },
+      "receipts": {
+        "title_one": "{{count}} recibo por revisar",
+        "title_other": "{{count}} recibos por revisar",
+        "action": "Revisar"
+      }
     },
     "recurring": {
-      "title": "Facturas recurrentes",
-      "lastMonth": "Facturado el mes pasado",
-      "dueOn": "Vence el {{date}}",
+      "dueOn": "vence el {{date}}",
       "generateShort": "Generar",
       "generating": "Generando…"
-    },
-    "recentInvoices": {
-      "title": "Facturas recientes"
-    },
-    "aging": {
-      "title": "Antigüedad de cobros",
-      "invoiceCount": "{{count}} facturas",
-      "buckets": {
-        "current": "Al día",
-        "0-30": "0-30 días",
-        "30-60": "30-60 días",
-        "60+": "60+ días"
-      }
-    },
-    "taxCalendar": {
-      "title": "Calendario fiscal"
-    },
-    "revenueByClient": {
-      "title": "Ingresos por cliente ({{year}})"
-    },
-    "expensesByCategory": {
-      "title": "Gastos por categoría ({{period}})"
-    },
-    "trend": {
-      "title": "Facturado vs. gastos"
-    },
-    "analytics": {
-      "title": "Análisis",
-      "ivaTrend": {
-        "title": "IVA a liquidar por trimestre",
-        "creditSuffix": "a tu favor",
-        "subtitle": "Proyección: incluye facturas emitidas sin cobrar"
-      },
-      "paidVsOutstanding": {
-        "title": "Cobrado vs. pendiente",
-        "paid": "Cobrado",
-        "pending": "Pendiente"
-      },
-      "composition": {
-        "title": "Composición de ingresos",
-        "topClient": "Cliente principal ({{client}})",
-        "repeatClients": "Clientes recurrentes (2+ facturas este año)"
-      },
-      "topCategoryTrend": {
-        "title": "Mayor categoría de gasto: {{category}}",
-        "titleEmpty": "Mayor categoría de gasto"
-      }
     }
   },
   "collections": {
@@ -796,6 +758,12 @@
         "empty": "Sin movimientos en {{year}}.",
         "note": "Importes sin IVA, criterio de devengo — la misma base que la declaración trimestral."
       },
+      "composition": {
+        "title": "Composición de ingresos",
+        "empty": "Sin datos todavía",
+        "topClient": "Cliente principal ({{client}})",
+        "repeatClients": "Clientes recurrentes (2+ facturas este año)"
+      },
       "irpf": {
         "title": "Estimación de IRPF (Renta) {{year}}",
         "taxableBase": "Base tras mínimo personal",
@@ -960,7 +928,25 @@
     "pagePrev": "Página anterior",
     "pageNext": "Página siguiente",
     "pageIndicator": "{{page}} de {{count}}",
-    "vsPriorYear": "{{sign}}{{value}}% vs año anterior"
+    "vsPriorYear": "{{sign}}{{value}}% vs año anterior",
+    "analytics": {
+      "title": "Últimos cuatro trimestres",
+      "empty": "Sin datos todavía",
+      "ivaTrend": {
+        "title": "IVA a liquidar por trimestre",
+        "creditSuffix": "a tu favor",
+        "subtitle": "Proyección: incluye facturas emitidas sin cobrar"
+      },
+      "paidVsOutstanding": {
+        "title": "Cobrado vs. pendiente",
+        "paid": "Cobrado",
+        "pending": "Pendiente"
+      },
+      "topCategoryTrend": {
+        "title": "Mayor categoría de gasto: {{category}}",
+        "titleEmpty": "Mayor categoría de gasto"
+      }
+    }
   },
   "reminders": {
     "title": "Vencimiento fiscal",

@@ -124,6 +124,14 @@ export async function listExpenses(filter: ExpenseFilter = {}): Promise<ExpenseR
   return rows.map(mapRow);
 }
 
+export async function countExpenses(): Promise<number> {
+  const db = await getDb();
+  const [{ count }] = await db.select<{ count: number }[]>(
+    "SELECT COUNT(*) as count FROM expenses",
+  );
+  return count;
+}
+
 export async function getExpense(id: number): Promise<ExpenseRecord | null> {
   const db = await getDb();
   const rows = await db.select<ExpenseRow[]>("SELECT * FROM expenses WHERE id = $1", [id]);

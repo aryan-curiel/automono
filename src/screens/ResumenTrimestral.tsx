@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -63,9 +63,16 @@ import {
 } from "../lib/quarterlyDeclaration";
 import type { InvoiceListItem } from "../db/invoices";
 import { buildModelo349, buildModelo349Csv } from "../lib/modelo349";
+import { quarterlyTrendData, recentQuarterKeys } from "../lib/quarterlyTrends";
+import { QuarterBarChart } from "../components/charts/QuarterBarChart";
+import { StackedQuarterBarChart } from "../components/charts/StackedQuarterBarChart";
 import { BasisNote } from "../components/BasisNote";
 import { CasillaPrefill } from "../components/CasillaPrefill";
 import { Modelo349Panel } from "../components/Modelo349Panel";
+
+/** Rolling window (quarters, including the current one) for the trend charts at the foot of the
+ * screen — moved here from the old Home "Analytics" section. */
+const TREND_QUARTERS = 4;
 
 const PAGE_SIZE = 4;
 /** Row height (py-2 + 13px line + border) × PAGE_SIZE, so the card doesn't resize between quarters. */
@@ -384,6 +391,24 @@ export function ResumenTrimestral({
       quarterKeys: quartersInRange(ytdPeriod.from, ytdPeriod.to),
     }).then(setYtdExpenses);
   }, [ytdPeriod.from, ytdPeriod.to]);
+
+  // Rolling `TREND_QUARTERS`-quarter window ending at the *current* quarter (not the focused one)
+  // for the trend charts at the foot of the screen. Same OR-match filter as elsewhere.
+  const trendKeys = useMemo(() => recentQuarterKeys(currentKey, TREND_QUARTERS), [currentKey]);
+  const [trendExpenses, setTrendExpenses] = useState<ExpenseRecord[]>([]);
+  useEffect(() => {
+    const first = parseQuarterKey(trendKeys[0]);
+    const last = parseQuarterKey(trendKeys[trendKeys.length - 1]);
+    void listExpenses({
+      from: quarterRange(first.year, first.quarter).from,
+      to: quarterRange(last.year, last.quarter).to,
+      quarterKeys: trendKeys,
+    }).then(setTrendExpenses);
+  }, [trendKeys]);
+  const trends = useMemo(
+    () => quarterlyTrendData(invoices, trendExpenses, currentKey, TREND_QUARTERS),
+    [invoices, trendExpenses, currentKey],
+  );
 
   const qInvoices = invoicesForBasis(invoices, period, basis);
   const projectionSnapshot = buildDeclarationSnapshot(
@@ -853,6 +878,71 @@ export function ResumenTrimestral({
       )}
 
       <Modelo349Panel summary={modelo349} />
+
+      <div className="mt-8">
+        <div className="text-xs font-semibold text-ink-soft uppercase tracking-wide mb-4">
+          {t("resumenTrimestral.analytics.title")}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="p-6">
+            <div className="font-bold text-sm mb-4">
+              {t("resumenTrimestral.analytics.ivaTrend.title")}
+            </div>
+            <QuarterBarChart
+              data={trends.ivaTrendData}
+              color="var(--color-accent)"
+              seriesLabel={t("resumenTrimestral.analytics.ivaTrend.title")}
+              formatValue={formatEUR}
+              formatTooltipValue={(value) =>
+                value < 0
+                  ? `${formatEUR(Math.abs(value))} ${t("resumenTrimestral.analytics.ivaTrend.creditSuffix")}`
+                  : formatEUR(value)
+              }
+            />
+            <div className="text-[11px] text-ink-soft mt-3">
+              {t("resumenTrimestral.analytics.ivaTrend.subtitle")}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="font-bold text-sm mb-4">
+              {t("resumenTrimestral.analytics.paidVsOutstanding.title")}
+            </div>
+            <StackedQuarterBarChart
+              data={trends.paidPendingData}
+              aColor="var(--color-success)"
+              bColor="var(--color-info)"
+              aLabel={t("resumenTrimestral.analytics.paidVsOutstanding.paid")}
+              bLabel={t("resumenTrimestral.analytics.paidVsOutstanding.pending")}
+              formatValue={formatEUR}
+            />
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <Card className="p-6">
+            <div className="font-bold text-sm mb-4">
+              {trends.topExpenseCategory
+                ? t("resumenTrimestral.analytics.topCategoryTrend.title", {
+                    category: trends.topExpenseCategory,
+                  })
+                : t("resumenTrimestral.analytics.topCategoryTrend.titleEmpty")}
+            </div>
+            {trends.topExpenseCategory ? (
+              <QuarterBarChart
+                data={trends.categoryTrendData}
+                color="var(--color-warn)"
+                seriesLabel={trends.topExpenseCategory}
+                formatValue={formatEUR}
+              />
+            ) : (
+              <div className="text-xs text-ink-soft">
+                {t("resumenTrimestral.analytics.empty")}
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
 
       <DeclarationWizard
         key={focusedKey}

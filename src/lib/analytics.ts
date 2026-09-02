@@ -91,6 +91,50 @@ export function yoyDelta(current: number, prior: number): number | null {
   return ((current - prior) / prior) * 100;
 }
 
+export interface OverdueSummary {
+  count: number;
+  total: number;
+}
+
+/** Issued invoices past their due date with money still owed — count, and total still outstanding.
+ * The `current` (not-yet-due) bucket of the aging report is excluded. */
+export function overdueSummary(invoices: InvoiceListItem[], todayIso: string): OverdueSummary {
+  const overdue = agingReport(invoices, todayIso).filter((g) => g.bucket !== "current");
+  return {
+    count: overdue.reduce((s, g) => s + g.invoices.length, 0),
+    total: overdue.reduce((s, g) => s + g.total, 0),
+  };
+}
+
+export interface RevenueComposition {
+  topClientName: string | null;
+  topClientShare: number;
+  repeatClientShare: number;
+  totalRevenue: number;
+}
+
+/** Revenue concentration for a set of invoices (typically one calendar year): the leading
+ * client's share of billed revenue, and the share coming from repeat clients — those with 2+
+ * non-draft invoices in the set. Drafts are ignored. */
+export function revenueComposition(invoices: InvoiceListItem[]): RevenueComposition {
+  const invoiceCount = new Map<number, number>();
+  for (const inv of invoices) {
+    if (inv.status === "draft") continue;
+    invoiceCount.set(inv.clientId, (invoiceCount.get(inv.clientId) ?? 0) + 1);
+  }
+  const byClient = revenueByClient(invoices);
+  const totalRevenue = byClient.reduce((s, c) => s + c.total, 0);
+  const repeatRevenue = byClient
+    .filter((c) => (invoiceCount.get(c.clientId) ?? 0) >= 2)
+    .reduce((s, c) => s + c.total, 0);
+  return {
+    topClientName: byClient[0]?.clientName ?? null,
+    topClientShare: totalRevenue > 0 ? (byClient[0]?.total ?? 0) / totalRevenue : 0,
+    repeatClientShare: totalRevenue > 0 ? repeatRevenue / totalRevenue : 0,
+    totalRevenue,
+  };
+}
+
 export interface ClientBalance {
   invoiced: number;
   paid: number;
