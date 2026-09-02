@@ -644,6 +644,42 @@
     }
   },
   "declarations": {
+    "annual": {
+      "title": "Annual summary",
+      "subtitle": "Multi-year overview, profit & loss, and an IRPF estimate",
+      "tabs": {
+        "multiyear": "Multi-year",
+        "pnl": "Profit & loss",
+        "modelo347": "Modelo 347"
+      },
+      "multiyear": {
+        "revenueChart": "Revenue by year",
+        "netChart": "Net by year",
+        "year": "Year",
+        "revenue": "Revenue",
+        "expenses": "Expenses",
+        "net": "Net",
+        "yoy": "YoY",
+        "empty": "No data for these years."
+      },
+      "pnl": {
+        "revenue": "Revenue",
+        "expenses": "Expenses",
+        "net": "Net result",
+        "byClient": "Revenue by client",
+        "byCategory": "Expenses by category",
+        "empty": "No activity in {{year}}.",
+        "note": "Amounts exclude VAT, accrual basis — the same base as the quarterly return."
+      },
+      "irpf": {
+        "title": "IRPF (Renta) estimate {{year}}",
+        "taxableBase": "Base after personal allowance",
+        "tax": "Estimated IRPF",
+        "effectiveRate": "Effective rate",
+        "marginalRate": "Marginal rate",
+        "disclaimer": "Rough estimate from net profit using the combined national IRPF scale. It ignores your specific regional scale, estimación directa simplificada reductions, dependant allowances, and tax already withheld. This is not a filing."
+      }
+    },
     "title": "Quarterly declarations",
     "startButton": "Start declaration",
     "status": {

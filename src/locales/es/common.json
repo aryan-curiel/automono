@@ -644,6 +644,42 @@
     }
   },
   "declarations": {
+    "annual": {
+      "title": "Resumen anual",
+      "subtitle": "Panorama plurianual, pérdidas y ganancias y estimación de IRPF",
+      "tabs": {
+        "multiyear": "Plurianual",
+        "pnl": "Pérdidas y ganancias",
+        "modelo347": "Modelo 347"
+      },
+      "multiyear": {
+        "revenueChart": "Ingresos por año",
+        "netChart": "Neto por año",
+        "year": "Año",
+        "revenue": "Ingresos",
+        "expenses": "Gastos",
+        "net": "Neto",
+        "yoy": "Var. anual",
+        "empty": "Sin datos para estos años."
+      },
+      "pnl": {
+        "revenue": "Ingresos",
+        "expenses": "Gastos",
+        "net": "Resultado neto",
+        "byClient": "Ingresos por cliente",
+        "byCategory": "Gastos por categoría",
+        "empty": "Sin movimientos en {{year}}.",
+        "note": "Importes sin IVA, criterio de devengo — la misma base que la declaración trimestral."
+      },
+      "irpf": {
+        "title": "Estimación de IRPF (Renta) {{year}}",
+        "taxableBase": "Base tras mínimo personal",
+        "tax": "IRPF estimado",
+        "effectiveRate": "Tipo efectivo",
+        "marginalRate": "Tipo marginal",
+        "disclaimer": "Estimación orientativa a partir del rendimiento neto y la escala general estatal + autonómica por defecto. No contempla tu escala autonómica concreta, reducciones de estimación directa simplificada, mínimos por descendientes ni retenciones ya soportadas. No es una liquidación."
+      }
+    },
     "title": "Declaraciones trimestrales",
     "startButton": "Iniciar declaración",
     "status": {
