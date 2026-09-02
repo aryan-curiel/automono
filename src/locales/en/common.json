@@ -22,7 +22,8 @@
     "annualSummary": "Annual summary",
     "assistant": "Assistant",
     "settings": "Settings",
-    "noData": "No data"
+    "noData": "No data",
+    "receiptInbox": "Receipt inbox"
   },
   "assistant": {
     "title": "Assistant",
@@ -50,7 +51,20 @@
     "month": "Month",
     "quarter": "Quarter",
     "year": "Year",
-    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    "months": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ]
   },
   "quarterTimeline": {
     "previousQuarter": "Previous quarter",
@@ -159,7 +173,12 @@
     "backupRestoreTitle": "Restore backup",
     "backupRestoreConfirm": "This will overwrite your current data with the selected backup. Continue?",
     "backupRestoreAction": "Restore",
-    "backupRestoreFailed": "Failed to restore: {{error}}"
+    "backupRestoreFailed": "Failed to restore: {{error}}",
+    "receiptInboxTitle": "Receipt inbox",
+    "receiptInboxHelp": "Watch a folder and queue new receipts (PDF/JPG/PNG) as drafts to review before they hit the books.",
+    "receiptInboxFolder": "Watched folder",
+    "receiptInboxChooseFolder": "Choose folder",
+    "receiptInboxEnabled": "Enable"
   },
   "documentsPanel": {
     "dropzone": "Drag your documents here, or click to choose them",
@@ -955,5 +974,25 @@
     "notifyTitle": "Recurring invoices",
     "notifyBody_one": "{{count}} recurring invoice drafted from a contract's billing schedule",
     "notifyBody_other": "{{count}} recurring invoices drafted from contract billing schedules"
+  },
+  "receiptInbox": {
+    "title": "Receipt inbox",
+    "subtitleCount_one": "{{count}} to review",
+    "subtitleCount_other": "{{count}} to review",
+    "addReceipt": "Add receipt",
+    "adding": "Adding…",
+    "emptyTitle": "No receipts waiting",
+    "emptyConfigured": "Drop receipts (PDF, JPG or PNG) into the watched folder and they'll show up here when you return to the app.",
+    "emptyNotConfigured": "Set a watched folder in Settings, or add receipts by hand with “Add receipt”.",
+    "goToSettings": "Go to Settings",
+    "openPdf": "Open PDF",
+    "amount": "Amount",
+    "provider": "Provider",
+    "description": "Description",
+    "noCategory": "No category",
+    "confirm": "Confirm",
+    "discard": "Discard",
+    "confirmFailed": "Couldn't create the expense.",
+    "discardFailed": "Couldn't discard the receipt."
   }
 }

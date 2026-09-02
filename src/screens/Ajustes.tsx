@@ -40,6 +40,7 @@ import {
 import type { BackupSettingsRecord, BackupEntry } from "../db/backup";
 import { getApiKey, getLlmSettings, setApiKey, updateLlmSettings } from "../db/llmSettings";
 import { getPreferences, updatePreferences } from "../db/preferences";
+import { pickInboxFolder } from "../db/receiptInbox";
 import type { LlmProvider, LlmSettingsRecord } from "../db/llmSettings";
 import { BusinessDocumentsPanel } from "../components/BusinessDocumentsPanel";
 import { mergeRegistrationFields } from "../db/businessDocuments";
@@ -102,6 +103,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [retaStartDate, setRetaStartDate] = useState("");
   const [presentsModelo111, setPresentsModelo111] = useState(false);
   const [criterioCaja, setCriterioCaja] = useState(false);
+  const [inboxPath, setInboxPath] = useState("");
+  const [inboxEnabled, setInboxEnabled] = useState(false);
   const [documentsToast, setDocumentsToast] = useState<string | null>(null);
 
   const [backupSettings, setBackupSettings] = useState<BackupSettingsRecord | null>(null);
@@ -161,6 +164,18 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     } finally {
       setLlmSaving(false);
     }
+  }
+
+  async function handlePickInboxFolder() {
+    const path = await pickInboxFolder();
+    if (!path) return;
+    setInboxPath(path);
+    await updatePreferences({ receiptInboxPath: path });
+  }
+
+  function handleToggleInbox(checked: boolean) {
+    setInboxEnabled(checked);
+    void updatePreferences({ receiptInboxEnabled: checked });
   }
 
   async function handleAddCategory() {
@@ -231,6 +246,8 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
         setRetaStartDate(prefs.retaStartDate);
         setPresentsModelo111(prefs.presentsModelo111);
         setCriterioCaja(prefs.criterioCaja);
+        setInboxPath(prefs.receiptInboxPath);
+        setInboxEnabled(prefs.receiptInboxEnabled);
       }
     });
     return () => {
@@ -518,6 +535,35 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             </Button>
             {llmSaved && <div className="text-[13px] text-accent">{t("settings.llmSaved")}</div>}
           </div>
+
+          <div className="pt-4 pb-3 border-t border-border mt-1">
+            <div className="font-bold text-sm mb-1.5">{t("settings.receiptInboxTitle")}</div>
+            <div className="text-[13px] text-ink-soft">{t("settings.receiptInboxHelp")}</div>
+          </div>
+
+          <FormRow label={t("settings.receiptInboxFolder")}>
+            <div className="flex gap-2.5 items-center">
+              <TextInput value={inboxPath} readOnly className="flex-1" />
+              <Button variant="secondary" onClick={() => void handlePickInboxFolder()}>
+                {t("settings.receiptInboxChooseFolder")}
+              </Button>
+            </div>
+          </FormRow>
+
+          <FormRow label={t("settings.receiptInboxEnabled")}>
+            <div className="flex items-center gap-2.5">
+              <Switch.Root
+                checked={inboxEnabled}
+                onCheckedChange={handleToggleInbox}
+                className="w-9 h-5 rounded-pill relative bg-surface-alt border border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent transition-colors ease-[var(--ease-out)] outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <Switch.Thumb className="block w-4 h-4 rounded-pill bg-white translate-x-0.5 transition-transform ease-[var(--ease-out)] data-[state=checked]:translate-x-[18px]" />
+              </Switch.Root>
+              <span className="text-[13px] text-ink-soft">
+                {inboxEnabled ? t("settings.on") : t("settings.off")}
+              </span>
+            </div>
+          </FormRow>
 
           <div className="pt-4 pb-1 border-t border-border mt-1">
             <div className="font-bold text-sm mb-1.5">{t("settings.dbSectionTitle")}</div>

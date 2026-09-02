@@ -25,6 +25,7 @@ export type Screen =
   | "contrato-nuevo"
   | "contrato-editar"
   | "contrato-detalle"
+  | "bandeja"
   | "gastos"
   | "gasto-nuevo"
   | "gasto-editar"

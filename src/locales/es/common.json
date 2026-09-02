@@ -22,7 +22,8 @@
     "annualSummary": "Resumen anual",
     "assistant": "Asistente",
     "settings": "Ajustes",
-    "noData": "Sin datos"
+    "noData": "Sin datos",
+    "receiptInbox": "Bandeja de recibos"
   },
   "assistant": {
     "title": "Asistente",
@@ -50,7 +51,20 @@
     "month": "Mes",
     "quarter": "Trimestre",
     "year": "Año",
-    "months": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    "months": [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic"
+    ]
   },
   "quarterTimeline": {
     "previousQuarter": "Trimestre anterior",
@@ -159,7 +173,12 @@
     "backupRestoreTitle": "Restaurar copia de seguridad",
     "backupRestoreConfirm": "Esto sobrescribirá tus datos actuales con los de la copia seleccionada. ¿Continuar?",
     "backupRestoreAction": "Restaurar",
-    "backupRestoreFailed": "No se pudo restaurar: {{error}}"
+    "backupRestoreFailed": "No se pudo restaurar: {{error}}",
+    "receiptInboxTitle": "Bandeja de recibos",
+    "receiptInboxHelp": "Vigila una carpeta y encola los recibos nuevos (PDF/JPG/PNG) como borradores para revisar antes de contabilizarlos.",
+    "receiptInboxFolder": "Carpeta vigilada",
+    "receiptInboxChooseFolder": "Elegir carpeta",
+    "receiptInboxEnabled": "Activar"
   },
   "documentsPanel": {
     "dropzone": "Arrastra tus documentos aquí, o haz clic para elegirlos",
@@ -955,5 +974,25 @@
     "notifyTitle": "Facturas recurrentes",
     "notifyBody_one": "{{count}} factura recurrente creada como borrador según el calendario de facturación de un contrato",
     "notifyBody_other": "{{count}} facturas recurrentes creadas como borrador según el calendario de facturación de contratos"
+  },
+  "receiptInbox": {
+    "title": "Bandeja de recibos",
+    "subtitleCount_one": "{{count}} pendiente de revisar",
+    "subtitleCount_other": "{{count}} pendientes de revisar",
+    "addReceipt": "Añadir recibo",
+    "adding": "Añadiendo…",
+    "emptyTitle": "No hay recibos pendientes",
+    "emptyConfigured": "Deja recibos (PDF, JPG o PNG) en la carpeta vigilada y aparecerán aquí al volver a la app.",
+    "emptyNotConfigured": "Configura una carpeta vigilada en Ajustes, o añade recibos manualmente con «Añadir recibo».",
+    "goToSettings": "Ir a Ajustes",
+    "openPdf": "Abrir PDF",
+    "amount": "Importe",
+    "provider": "Proveedor",
+    "description": "Descripción",
+    "noCategory": "Sin categoría",
+    "confirm": "Confirmar",
+    "discard": "Descartar",
+    "confirmFailed": "No se pudo crear el gasto.",
+    "discardFailed": "No se pudo descartar el recibo."
   }
 }

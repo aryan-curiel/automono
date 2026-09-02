@@ -9,6 +9,7 @@ import {
   HandCoins,
   Bank,
   Wallet,
+  Tray,
   ChartPieSlice,
   ClipboardText,
   Sparkle,
@@ -32,6 +33,7 @@ const NAV_ITEMS: { id: Screen; labelKey: string; icon: PhosphorIcon }[] = [
   { id: "cobros", labelKey: "nav.collections", icon: HandCoins },
   { id: "conciliacion", labelKey: "nav.reconciliation", icon: Bank },
   { id: "gastos", labelKey: "nav.expenses", icon: Wallet },
+  { id: "bandeja", labelKey: "nav.receiptInbox", icon: Tray },
   { id: "resumen-trimestral", labelKey: "nav.quarterlySummary", icon: ChartPieSlice },
   { id: "resumen-anual", labelKey: "nav.annualSummary", icon: ClipboardText },
   { id: "asistente", labelKey: "nav.assistant", icon: Sparkle },
@@ -53,10 +55,11 @@ const GROUPED_SCREENS: Partial<Record<Screen, Screen>> = {
 
 interface SidebarProps {
   screen: Screen;
+  receiptInboxCount: number;
   onNavigate: (screen: Screen) => void;
 }
 
-export function Sidebar({ screen, onNavigate }: SidebarProps) {
+export function Sidebar({ screen, receiptInboxCount, onNavigate }: SidebarProps) {
   const { t } = useTranslation();
   const activeGroup = GROUPED_SCREENS[screen] ?? screen;
   const [profile, setProfile] = useState<BusinessProfileRecord | null>(null);
@@ -105,7 +108,7 @@ export function Sidebar({ screen, onNavigate }: SidebarProps) {
                 />
               )}
               <div
-                className={`relative z-10 flex items-center gap-2.5 ${
+                className={`relative z-10 flex items-center gap-2.5 w-full ${
                   active
                     ? "font-semibold text-white"
                     : "font-medium text-sidebar-text hover:text-white"
@@ -113,6 +116,11 @@ export function Sidebar({ screen, onNavigate }: SidebarProps) {
               >
                 <Icon size={18} weight="regular" />
                 {t(item.labelKey)}
+                {item.id === "bandeja" && receiptInboxCount > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[11px] font-semibold flex items-center justify-center">
+                    {receiptInboxCount}
+                  </span>
+                )}
               </div>
             </button>
           );

@@ -31,6 +31,7 @@ import { PresupuestoForm } from "./screens/PresupuestoForm";
 import { ContratoDetalle } from "./screens/ContratoDetalle";
 import { ContratoForm } from "./screens/ContratoForm";
 import { Gastos } from "./screens/Gastos";
+import { BandejaRecibos } from "./screens/BandejaRecibos";
 import { GastoDetalle } from "./screens/GastoDetalle";
 import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
@@ -57,6 +58,14 @@ import { checkAutoBackup } from "./db/backup";
 import { runFilingReminders } from "./lib/filingReminders";
 import { runRecurringInvoices } from "./lib/recurring";
 import { isSupportedExpenseFile } from "./db/expenses";
+import {
+  countReceiptInbox,
+  ingestReceipt,
+  listInboxFolderFiles,
+  listReceiptInbox,
+  pickReceiptFiles,
+} from "./db/receiptInbox";
+import { receiptsToIngest } from "./lib/receiptInbox";
 import type { RectificationType, Screen } from "./types";
 
 export default function App() {
@@ -85,6 +94,10 @@ export default function App() {
   const screenRef = useRef(screen);
   const preferencesRef = useRef(preferences);
 
+  const [inboxCount, setInboxCount] = useState(0);
+  const [inboxRefreshToken, setInboxRefreshToken] = useState(0);
+  const sweepingRef = useRef(false);
+
   // Unsaved-changes guard. The mounted form (GastoForm / FacturaNueva) reports its
   // dirty state here; navigation reachable while a form is on screen routes through
   // `guardNav`, which defers the action behind a confirm dialog when the form is dirty.
@@ -97,6 +110,60 @@ export default function App() {
     if (formDirtyRef.current) setPendingNav(() => action);
     else action();
   }, []);
+
+  // Receipt inbox: count drives the sidebar badge; inboxRefreshToken forces a mounted queue to
+  // refetch after a folder sweep; sweepingRef guards against a focus event firing a second sweep
+  // while the first is still ingesting.
+  const refreshInboxCount = useCallback(() => {
+    void countReceiptInbox()
+      .then(setInboxCount)
+      .catch(() => {});
+  }, []);
+
+  // ponytail: poll-on-focus + launch, no notify/fs-watch. A receipt dropped in the folder shows
+  // up the next time the window gets focus — good enough for a single-user desktop app; upgrade
+  // to a Rust `notify` watcher only if that latency ever actually bites.
+  const sweepInbox = useCallback(async () => {
+    if (sweepingRef.current) return;
+    // Fetched fresh (not from preferencesRef) so toggling the inbox on in Ajustes takes effect on
+    // the next window focus without an app restart.
+    const prefs = await getPreferences().catch(() => null);
+    if (!prefs?.receiptInboxEnabled || !prefs.receiptInboxPath) return;
+    sweepingRef.current = true;
+    try {
+      const [scanned, queue] = await Promise.all([
+        listInboxFolderFiles(prefs.receiptInboxPath),
+        listReceiptInbox(),
+      ]);
+      const todo = receiptsToIngest(
+        scanned,
+        queue.map((q) => q.sourceName),
+      );
+      if (todo.length === 0) return;
+      for (const path of todo) {
+        await ingestReceipt(path, true).catch((err) =>
+          console.error("receipt inbox sweep failed for", path, err),
+        );
+      }
+      setInboxRefreshToken((n) => n + 1);
+      refreshInboxCount();
+    } finally {
+      sweepingRef.current = false;
+    }
+  }, [refreshInboxCount]);
+
+  const quickAddReceipts = useCallback(async () => {
+    const paths = await pickReceiptFiles();
+    if (paths.length === 0) return;
+    for (const path of paths) {
+      await ingestReceipt(path, false).catch((err) =>
+        console.error("receipt quick-add failed", err),
+      );
+    }
+    setInboxRefreshToken((n) => n + 1);
+    refreshInboxCount();
+    guardNav(() => setScreen("bandeja"));
+  }, [refreshInboxCount, guardNav]);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
@@ -274,6 +341,39 @@ export default function App() {
     });
   }, [dbReady]);
 
+  // Receipt-inbox badge + a folder sweep on launch.
+  useEffect(() => {
+    if (!dbReady) return;
+    refreshInboxCount();
+    void sweepInbox();
+  }, [dbReady, refreshInboxCount, sweepInbox]);
+
+  // Poll the inbox folder whenever the window regains focus.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void getCurrentWindow()
+      .onFocusChanged(({ payload: focused }) => {
+        if (focused) void sweepInbox();
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+    return () => unlisten?.();
+  }, [sweepInbox]);
+
+  // Cmd/Ctrl+Shift+U — quick-add receipts straight into the review queue (the app-global
+  // stand-in for a menu-bar / dock quick-add; see PR notes).
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "u") {
+        e.preventDefault();
+        void quickAddReceipts();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [quickAddReceipts]);
+
   useEffect(() => {
     // No clearing needed here on null: the only call site that nulls selectedInvoiceId
     // (handleDeleteInvoice) already clears invoiceDetail itself.
@@ -403,6 +503,7 @@ export default function App() {
       <div className="flex h-screen bg-bg text-ink transition-colors overflow-hidden">
         <Sidebar
           screen={screen}
+          receiptInboxCount={inboxCount}
           onNavigate={(next) =>
             guardNav(() => {
               setDashboardQuarterKey(null);
@@ -638,6 +739,14 @@ export default function App() {
                 setScreen("contrato-editar");
               }}
               onDeleted={() => setScreen("cliente-detalle")}
+            />
+          )}
+
+          {screen === "bandeja" && (
+            <BandejaRecibos
+              refreshToken={inboxRefreshToken}
+              onChanged={refreshInboxCount}
+              onOpenSettings={() => setScreen("ajustes")}
             />
           )}
 

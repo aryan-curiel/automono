@@ -17,6 +17,7 @@ mod llm;
 mod modelo_review;
 mod pdf;
 mod receipt_extract;
+mod receipt_inbox;
 mod user_context;
 
 #[tauri::command]
@@ -276,6 +277,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0041_quotes.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 42,
+            description: "receipt_inbox",
+            sql: include_str!("../migrations/0042_receipt_inbox.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -306,6 +313,8 @@ pub fn run() {
             expenses::delete_expense_files_cmd,
             receipt_extract::extract_receipt_fields_cmd,
             receipt_extract::extract_receipt_fields_llm_cmd,
+            receipt_inbox::list_receipt_inbox_files_cmd,
+            receipt_inbox::ingest_receipt_cmd,
             branding::attach_business_logo_cmd,
             business_documents::attach_business_document_cmd,
             business_documents::extract_business_document_fields_cmd,

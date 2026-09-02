@@ -13,6 +13,10 @@ export interface PreferencesRecord {
   /** When true, the declaration + live projection use cash basis (criterio de caja): only paid
    * invoices, expenses by payment date. Off = accrual (devengo), the Spanish default. */
   criterioCaja: boolean;
+  /** Folder the receipt inbox watches for new receipt files. Empty = not configured. */
+  receiptInboxPath: string;
+  /** When true (and a path is set), the app sweeps `receiptInboxPath` on launch and window focus. */
+  receiptInboxEnabled: boolean;
 }
 
 interface PreferencesRow {
@@ -24,6 +28,8 @@ interface PreferencesRow {
   reta_start_date: string;
   presents_modelo_111: number;
   criterio_caja: number;
+  receipt_inbox_path: string;
+  receipt_inbox_enabled: number;
 }
 
 function mapRow(row: PreferencesRow): PreferencesRecord {
@@ -36,13 +42,15 @@ function mapRow(row: PreferencesRow): PreferencesRecord {
     retaStartDate: row.reta_start_date,
     presentsModelo111: row.presents_modelo_111 === 1,
     criterioCaja: row.criterio_caja === 1,
+    receiptInboxPath: row.receipt_inbox_path,
+    receiptInboxEnabled: row.receipt_inbox_enabled === 1,
   };
 }
 
 export async function getPreferences(): Promise<PreferencesRecord> {
   const db = await getDb();
   const rows = await db.select<PreferencesRow[]>(
-    "SELECT theme, language, default_iva_rate, default_irpf_rate, onboarding_completed, reta_start_date, presents_modelo_111, criterio_caja FROM preferences WHERE id = 1",
+    "SELECT theme, language, default_iva_rate, default_irpf_rate, onboarding_completed, reta_start_date, presents_modelo_111, criterio_caja, receipt_inbox_path, receipt_inbox_enabled FROM preferences WHERE id = 1",
   );
   return mapRow(rows[0]);
 }
@@ -53,7 +61,7 @@ export async function updatePreferences(patch: Partial<PreferencesRecord>): Prom
   const db = await getDb();
   await db.execute(
     `UPDATE preferences
-     SET theme = $1, language = $2, default_iva_rate = $3, default_irpf_rate = $4, onboarding_completed = $5, reta_start_date = $6, presents_modelo_111 = $7, criterio_caja = $8
+     SET theme = $1, language = $2, default_iva_rate = $3, default_irpf_rate = $4, onboarding_completed = $5, reta_start_date = $6, presents_modelo_111 = $7, criterio_caja = $8, receipt_inbox_path = $9, receipt_inbox_enabled = $10
      WHERE id = 1`,
     [
       next.theme,
@@ -64,6 +72,8 @@ export async function updatePreferences(patch: Partial<PreferencesRecord>): Prom
       next.retaStartDate,
       next.presentsModelo111 ? 1 : 0,
       next.criterioCaja ? 1 : 0,
+      next.receiptInboxPath,
+      next.receiptInboxEnabled ? 1 : 0,
     ],
   );
 }
