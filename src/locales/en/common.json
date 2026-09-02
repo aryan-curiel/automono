@@ -15,7 +15,6 @@
     "clients": "Clients",
     "invoices": "Invoices",
     "quotes": "Quotes",
-    "collections": "Collections",
     "reconciliation": "Reconciliation",
     "expenses": "Expenses",
     "quarterlySummary": "Quarterly summary",
@@ -23,7 +22,11 @@
     "assistant": "Assistant",
     "settings": "Settings",
     "noData": "No data",
-    "receiptInbox": "Receipt inbox"
+    "sections": {
+      "income": "Income",
+      "expenses": "Expenses",
+      "taxes": "Taxes"
+    }
   },
   "assistant": {
     "title": "Assistant",
@@ -51,20 +54,7 @@
     "month": "Month",
     "quarter": "Quarter",
     "year": "Year",
-    "months": [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec"
-    ]
+    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   },
   "quarterTimeline": {
     "previousQuarter": "Previous quarter",
@@ -426,6 +416,10 @@
   "invoices": {
     "title": "Invoices",
     "subtitleCount": "{{count}} invoices",
+    "tabs": {
+      "all": "Invoices",
+      "collections": "Collections"
+    },
     "newInvoice": "New invoice",
     "editInvoice": "Edit invoice",
     "rectificationOf": "Rectification of {{number}}",
@@ -680,6 +674,10 @@
   "expenses": {
     "title": "Expenses",
     "subtitleCount": "{{count}} expenses",
+    "tabs": {
+      "expenses": "Expenses",
+      "inbox": "Receipt inbox"
+    },
     "newExpense": "New expense",
     "editExpense": "Edit expense",
     "declaredBadge": "Declared",

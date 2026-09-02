@@ -16,8 +16,10 @@ import { Button } from "../components/ui/Button";
 import { KpiTile } from "../components/ui/KpiTile";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "../components/ui/Menu";
 import { DataTable, type DataTableColumn } from "../components/ui/DataTable";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector, type Kind } from "../components/PeriodSelector";
+import { BandejaRecibos } from "./BandejaRecibos";
 import { ivaDeductiblePctOf, listExpenses, updateExpense } from "../db/expenses";
 import type { ExpenseRecord } from "../db/expenses";
 import { defaultQuarterPeriod, quarterKeyOf, quartersInRange, type Period } from "../lib/dateRange";
@@ -28,9 +30,17 @@ import {
   type ExpenseAnomaly,
 } from "../lib/expenseAnomalies";
 
+export type GastosView = "list" | "inbox";
+
 interface GastosProps {
+  view: GastosView;
+  onSetView: (view: GastosView) => void;
   onOpenExpense: (id: number) => void;
   onNewExpense: () => void;
+  /** Receipt-inbox tab plumbing (folded in from the old `bandeja` screen). */
+  inboxRefreshToken: number;
+  onInboxChanged: () => void;
+  onOpenSettings: () => void;
 }
 
 const DISMISSED_KEY = "automono.dismissedAnomalies";
@@ -58,7 +68,15 @@ function anomalyText(t: TFunction, a: ExpenseAnomaly): string {
   return t(key, a.params);
 }
 
-export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
+export function Gastos({
+  view,
+  onSetView,
+  onOpenExpense,
+  onNewExpense,
+  inboxRefreshToken,
+  onInboxChanged,
+  onOpenSettings,
+}: GastosProps) {
   const { t } = useTranslation();
   const [period, setPeriod] = useState<Period>(defaultQuarterPeriod);
   const [kind, setKind] = useState<Kind>("quarter");
@@ -172,7 +190,9 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
       width: "1fr",
       align: "right",
       render: (e) => (
-        <div className="font-semibold text-[13.5px] font-mono text-right">{formatEUR(e.amount)}</div>
+        <div className="font-semibold text-[13.5px] font-mono text-right">
+          {formatEUR(e.amount)}
+        </div>
       ),
     },
     {
@@ -192,111 +212,139 @@ export function Gastos({ onOpenExpense, onNewExpense }: GastosProps) {
     <div className="px-8 pb-15">
       <PageHeader
         title={t("expenses.title")}
-        subtitle={period.label}
+        subtitle={view === "inbox" ? undefined : period.label}
         actions={
-          <>
-            <PeriodSelector
-              defaultKind="quarter"
-              onChange={(p, k) => {
-                setLoading(true);
-                setLoadError(false);
-                setPeriod(p);
-                setKind(k);
-              }}
-            />
-            <Button onClick={onNewExpense}>+ {t("expenses.newExpense")}</Button>
-          </>
+          view === "inbox" ? undefined : (
+            <>
+              <PeriodSelector
+                defaultKind="quarter"
+                onChange={(p, k) => {
+                  setLoading(true);
+                  setLoadError(false);
+                  setPeriod(p);
+                  setKind(k);
+                }}
+              />
+              <Button onClick={onNewExpense}>+ {t("expenses.newExpense")}</Button>
+            </>
+          )
         }
       />
 
-      {anomalies.length > 0 && (
-        <Card className="mb-5 divide-y divide-border">
-          <div className="flex items-center gap-2 px-5 py-3">
-            <Warning size={16} weight="fill" className="text-warn" />
-            <span className="text-[13px] font-medium">{t("expenses.anomalies.title")}</span>
-            <span className="text-xs text-ink-soft">
-              {t("expenses.anomalies.count", { count: anomalies.length })}
-            </span>
-          </div>
-          {anomalies.map((a) => {
-            const signature = anomalySignature(a);
-            return (
-              <div key={signature} className="flex items-start gap-3 px-5 py-3">
-                <Badge tone={a.severity}>{t(`expenses.anomalies.severity.${a.severity}`)}</Badge>
-                <button
-                  type="button"
-                  className="flex-1 text-left text-[13px] leading-snug hover:underline"
-                  onClick={() => onOpenExpense(a.expenseIds[0])}
-                >
-                  {anomalyText(t, a)}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t("common.dismiss")}
-                  className="p-1 rounded-control text-ink-soft hover:bg-surface-alt cursor-pointer"
-                  onClick={() => dismissAnomaly(signature)}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            );
-          })}
-        </Card>
-      )}
-
-      <div className="grid grid-cols-3 gap-4 mb-5">
-        <KpiTile label={t("expenses.summary.total")} value={formatEUR(total)} icon={Receipt} />
-        <KpiTile
-          label={t("expenses.summary.deductibleTotal")}
-          value={formatEUR(deductibleTotal)}
-          icon={PiggyBank}
-        />
-        <KpiTile
-          label={t("expenses.summary.deductibleIva")}
-          value={formatEUR(ivaTotal)}
-          icon={Percent}
+      <div className="mb-5">
+        <SegmentedControl<GastosView>
+          value={view}
+          onChange={onSetView}
+          options={[
+            { value: "list", label: t("expenses.tabs.expenses") },
+            { value: "inbox", label: t("expenses.tabs.inbox") },
+          ]}
         />
       </div>
 
-      {loadError ? (
-        <div className="flex flex-col items-start gap-2.5">
-          <div className="text-sm text-danger">{t("expenses.errors.loadFailed")}</div>
-          <Button variant="secondary" onClick={retry}>
-            {t("common.retry")}
-          </Button>
-        </div>
+      {view === "inbox" ? (
+        <BandejaRecibos
+          embedded
+          refreshToken={inboxRefreshToken}
+          onChanged={onInboxChanged}
+          onOpenSettings={onOpenSettings}
+        />
       ) : (
-        <DataTable
-          columns={columns}
-          rows={expenses}
-          rowKey={(e) => e.id}
-          onRowActivate={(e) => onOpenExpense(e.id)}
-          loading={loading}
-          empty={
-            <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
-              <Wallet size={32} className="text-ink-soft/40" />
-              <div className="text-sm text-ink-soft">{t("expenses.empty")}</div>
-              <Button variant="secondary" onClick={onNewExpense}>
-                + {t("expenses.newExpense")}
+        <>
+          {anomalies.length > 0 && (
+            <Card className="mb-5 divide-y divide-border">
+              <div className="flex items-center gap-2 px-5 py-3">
+                <Warning size={16} weight="fill" className="text-warn" />
+                <span className="text-[13px] font-medium">{t("expenses.anomalies.title")}</span>
+                <span className="text-xs text-ink-soft">
+                  {t("expenses.anomalies.count", { count: anomalies.length })}
+                </span>
+              </div>
+              {anomalies.map((a) => {
+                const signature = anomalySignature(a);
+                return (
+                  <div key={signature} className="flex items-start gap-3 px-5 py-3">
+                    <Badge tone={a.severity}>
+                      {t(`expenses.anomalies.severity.${a.severity}`)}
+                    </Badge>
+                    <button
+                      type="button"
+                      className="flex-1 text-left text-[13px] leading-snug hover:underline"
+                      onClick={() => onOpenExpense(a.expenseIds[0])}
+                    >
+                      {anomalyText(t, a)}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("common.dismiss")}
+                      className="p-1 rounded-control text-ink-soft hover:bg-surface-alt cursor-pointer"
+                      onClick={() => dismissAnomaly(signature)}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            <KpiTile label={t("expenses.summary.total")} value={formatEUR(total)} icon={Receipt} />
+            <KpiTile
+              label={t("expenses.summary.deductibleTotal")}
+              value={formatEUR(deductibleTotal)}
+              icon={PiggyBank}
+            />
+            <KpiTile
+              label={t("expenses.summary.deductibleIva")}
+              value={formatEUR(ivaTotal)}
+              icon={Percent}
+            />
+          </div>
+
+          {loadError ? (
+            <div className="flex flex-col items-start gap-2.5">
+              <div className="text-sm text-danger">{t("expenses.errors.loadFailed")}</div>
+              <Button variant="secondary" onClick={retry}>
+                {t("common.retry")}
               </Button>
             </div>
-          }
-          rowMenu={(e) => (
-            <Menu>
-              <MenuTrigger className="p-1.5 rounded-control hover:bg-surface-alt cursor-pointer">
-                <DotsThreeVertical size={16} weight="bold" />
-              </MenuTrigger>
-              <MenuContent>
-                <MenuItem onSelect={() => onOpenExpense(e.id)}>{t("common.viewDetail")}</MenuItem>
-                <MenuItem onSelect={() => void toggleDeclared(e)}>
-                  {e.declared
-                    ? t("expenses.actions.unmarkDeclared")
-                    : t("expenses.actions.markDeclared")}
-                </MenuItem>
-              </MenuContent>
-            </Menu>
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={expenses}
+              rowKey={(e) => e.id}
+              onRowActivate={(e) => onOpenExpense(e.id)}
+              loading={loading}
+              empty={
+                <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+                  <Wallet size={32} className="text-ink-soft/40" />
+                  <div className="text-sm text-ink-soft">{t("expenses.empty")}</div>
+                  <Button variant="secondary" onClick={onNewExpense}>
+                    + {t("expenses.newExpense")}
+                  </Button>
+                </div>
+              }
+              rowMenu={(e) => (
+                <Menu>
+                  <MenuTrigger className="p-1.5 rounded-control hover:bg-surface-alt cursor-pointer">
+                    <DotsThreeVertical size={16} weight="bold" />
+                  </MenuTrigger>
+                  <MenuContent>
+                    <MenuItem onSelect={() => onOpenExpense(e.id)}>
+                      {t("common.viewDetail")}
+                    </MenuItem>
+                    <MenuItem onSelect={() => void toggleDeclared(e)}>
+                      {e.declared
+                        ? t("expenses.actions.unmarkDeclared")
+                        : t("expenses.actions.markDeclared")}
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
+              )}
+            />
           )}
-        />
+        </>
       )}
     </div>
   );

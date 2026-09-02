@@ -34,6 +34,8 @@ interface CobrosProps {
   businessProfile: BusinessProfileRecord;
   onOpenInvoice: (id: number) => void;
   onPaymentRecorded: () => void;
+  /** Rendered as the "Cobros" tab inside Facturas — Facturas owns the PageHeader. */
+  embedded?: boolean;
 }
 
 type DocKind = "reminder" | "letter";
@@ -44,6 +46,7 @@ export function Cobros({
   businessProfile,
   onOpenInvoice,
   onPaymentRecorded,
+  embedded = false,
 }: CobrosProps) {
   const { t, i18n } = useTranslation();
   const locale: CollectionsLocale = i18n.language === "en" ? "en" : "es";
@@ -114,11 +117,18 @@ export function Cobros({
   }
 
   return (
-    <div className="px-8 pb-15">
-      <PageHeader
-        title={t("collections.title")}
-        subtitle={t("collections.subtitle", { amount: formatEUR(totalOutstanding) })}
-      />
+    <div className={embedded ? "" : "px-8 pb-15"}>
+      {!embedded && (
+        <PageHeader
+          title={t("collections.title")}
+          subtitle={t("collections.subtitle", { amount: formatEUR(totalOutstanding) })}
+        />
+      )}
+      {embedded && (
+        <div className="text-[12px] text-ink-soft mb-4">
+          {t("collections.subtitle", { amount: formatEUR(totalOutstanding) })}
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-4 mb-6">
         {aging.map((group) => (
@@ -240,11 +250,7 @@ export function Cobros({
           </div>
           <div>
             <Label>{t("collections.paymentDate")}</Label>
-            <TextInput
-              type="date"
-              value={payDate}
-              onChange={(e) => setPayDate(e.target.value)}
-            />
+            <TextInput type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
           </div>
         </div>
         <div className="flex gap-2.5 justify-end">

@@ -6,10 +6,8 @@ import {
   UsersThree,
   Receipt,
   FileText,
-  HandCoins,
   Bank,
   Wallet,
-  Tray,
   ChartPieSlice,
   ClipboardText,
   Sparkle,
@@ -25,18 +23,37 @@ function initials(name: string): string {
   return parts.map((p) => p[0].toUpperCase()).join("") || "—";
 }
 
-const NAV_ITEMS: { id: Screen; labelKey: string; icon: PhosphorIcon }[] = [
+type NavItem = { id: Screen; labelKey: string; icon: PhosphorIcon };
+
+// Top level stays at <= 5 entries: these two plus the three section headers below.
+const TOP_ITEMS: NavItem[] = [
   { id: "dashboard", labelKey: "nav.dashboard", icon: House },
   { id: "clientes", labelKey: "nav.clients", icon: UsersThree },
-  { id: "facturas", labelKey: "nav.invoices", icon: Receipt },
-  { id: "presupuestos", labelKey: "nav.quotes", icon: FileText },
-  { id: "cobros", labelKey: "nav.collections", icon: HandCoins },
-  { id: "conciliacion", labelKey: "nav.reconciliation", icon: Bank },
-  { id: "gastos", labelKey: "nav.expenses", icon: Wallet },
-  { id: "bandeja", labelKey: "nav.receiptInbox", icon: Tray },
-  { id: "resumen-trimestral", labelKey: "nav.quarterlySummary", icon: ChartPieSlice },
-  { id: "resumen-anual", labelKey: "nav.annualSummary", icon: ClipboardText },
-  { id: "asistente", labelKey: "nav.assistant", icon: Sparkle },
+];
+
+// Cobros is now a tab on Facturas (#/facturas/cobros) and the receipt inbox a tab
+// on Gastos (#/gastos/inbox) — neither is a sidebar entry any more.
+const SECTIONS: { labelKey: string; items: NavItem[] }[] = [
+  {
+    labelKey: "nav.sections.income",
+    items: [
+      { id: "facturas", labelKey: "nav.invoices", icon: Receipt },
+      { id: "presupuestos", labelKey: "nav.quotes", icon: FileText },
+      { id: "conciliacion", labelKey: "nav.reconciliation", icon: Bank },
+    ],
+  },
+  {
+    labelKey: "nav.sections.expenses",
+    items: [{ id: "gastos", labelKey: "nav.expenses", icon: Wallet }],
+  },
+  {
+    labelKey: "nav.sections.taxes",
+    items: [
+      { id: "resumen-trimestral", labelKey: "nav.quarterlySummary", icon: ChartPieSlice },
+      { id: "resumen-anual", labelKey: "nav.annualSummary", icon: ClipboardText },
+      { id: "asistente", labelKey: "nav.assistant", icon: Sparkle },
+    ],
+  },
 ];
 
 const GROUPED_SCREENS: Partial<Record<Screen, Screen>> = {
@@ -77,6 +94,44 @@ export function Sidebar({ screen, receiptInboxCount, onNavigate }: SidebarProps)
     };
   }, [screen]);
 
+  function renderItem(item: NavItem) {
+    const active = activeGroup === item.id;
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => onNavigate(item.id)}
+        aria-current={active ? "page" : undefined}
+        className="relative w-full text-left text-[13px] px-3 py-2 bg-transparent border-none cursor-pointer
+                   rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+      >
+        {active && (
+          <motion.div
+            layoutId="sidebar-selection"
+            className="absolute inset-0 rounded-control bg-sidebar-selection"
+            transition={
+              reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }
+            }
+          />
+        )}
+        <div
+          className={`relative z-10 flex items-center gap-2.5 w-full ${
+            active ? "font-semibold text-white" : "font-medium text-sidebar-text hover:text-white"
+          }`}
+        >
+          <Icon size={18} weight="regular" />
+          {t(item.labelKey)}
+          {item.id === "gastos" && receiptInboxCount > 0 && (
+            <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[11px] font-semibold flex items-center justify-center">
+              {receiptInboxCount}
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  }
+
   return (
     <div className="w-[230px] shrink-0 bg-sidebar-bg flex flex-col p-3 box-border border-r border-white/[0.04] dark:border-white/[0.03]">
       <div data-tauri-drag-region className="h-13 shrink-0" />
@@ -85,47 +140,18 @@ export function Sidebar({ screen, receiptInboxCount, onNavigate }: SidebarProps)
         <div className="font-bold text-sm text-white tracking-tight">AutoMono</div>
       </div>
 
-      <div className="flex flex-col gap-0.5">
-        {NAV_ITEMS.map((item) => {
-          const active = activeGroup === item.id;
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onNavigate(item.id)}
-              aria-current={active ? "page" : undefined}
-              className="relative w-full text-left text-[13px] px-3 py-2 bg-transparent border-none cursor-pointer
-                         rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            >
-              {active && (
-                <motion.div
-                  layoutId="sidebar-selection"
-                  className="absolute inset-0 rounded-control bg-sidebar-selection"
-                  transition={
-                    reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 }
-                  }
-                />
-              )}
-              <div
-                className={`relative z-10 flex items-center gap-2.5 w-full ${
-                  active
-                    ? "font-semibold text-white"
-                    : "font-medium text-sidebar-text hover:text-white"
-                }`}
-              >
-                <Icon size={18} weight="regular" />
-                {t(item.labelKey)}
-                {item.id === "bandeja" && receiptInboxCount > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[11px] font-semibold flex items-center justify-center">
-                    {receiptInboxCount}
-                  </span>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      <div className="flex flex-col gap-0.5">{TOP_ITEMS.map(renderItem)}</div>
+
+      {SECTIONS.map((section) => (
+        <div key={section.labelKey} className="mt-4 flex flex-col gap-0.5">
+          {/* Opaque section header — plain text on the opaque sidebar, never glass
+              (PRODUCT.md / DESIGN.md: "the sidebar stays opaque"). */}
+          <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-sidebar-text/70">
+            {t(section.labelKey)}
+          </div>
+          {section.items.map(renderItem)}
+        </div>
+      ))}
 
       <div className="flex-1" />
 

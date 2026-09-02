@@ -21,7 +21,6 @@ import { Clientes } from "./screens/Clientes";
 import { ClienteDetalle } from "./screens/ClienteDetalle";
 import { ClienteForm } from "./screens/ClienteForm";
 import { Facturas } from "./screens/Facturas";
-import { Cobros } from "./screens/Cobros";
 import { Conciliacion } from "./screens/Conciliacion";
 import { FacturaDetalle } from "./screens/FacturaDetalle";
 import { FacturaNueva } from "./screens/FacturaNueva";
@@ -31,7 +30,6 @@ import { PresupuestoForm } from "./screens/PresupuestoForm";
 import { ContratoDetalle } from "./screens/ContratoDetalle";
 import { ContratoForm } from "./screens/ContratoForm";
 import { Gastos } from "./screens/Gastos";
-import { BandejaRecibos } from "./screens/BandejaRecibos";
 import { GastoDetalle } from "./screens/GastoDetalle";
 import { GastoForm } from "./screens/GastoForm";
 import { ResumenTrimestral } from "./screens/ResumenTrimestral";
@@ -167,7 +165,7 @@ export default function App() {
     }
     setInboxRefreshToken((n) => n + 1);
     refreshInboxCount();
-    guardNav(() => navigate("bandeja"));
+    guardNav(() => navigate("gastos", "inbox"));
   }, [refreshInboxCount, guardNav, navigate]);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
@@ -513,9 +511,7 @@ export default function App() {
 
           {/* List stays mounted while its create/edit sheet is open, so scroll + search
               survive the open (issue #87). */}
-          {(screen === "clientes" ||
-            screen === "cliente-nuevo" ||
-            screen === "cliente-editar") && (
+          {(screen === "clientes" || screen === "cliente-nuevo" || screen === "cliente-editar") && (
             <Clientes
               onOpenClient={(id) => navigate("cliente-detalle", id)}
               onNewClient={() => navigate("cliente-nuevo")}
@@ -538,19 +534,13 @@ export default function App() {
             <Facturas
               invoices={invoices}
               loading={invoicesLoading}
+              view={recordId === "cobros" ? "cobros" : "list"}
+              businessProfile={businessProfile}
+              onSetView={(v) => navigate("facturas", v === "cobros" ? "cobros" : null)}
               onOpenInvoice={openInvoice}
               onNewInvoice={() => navigate("factura-nueva")}
               onDeleteInvoice={(id) => void handleDeleteInvoice(id)}
               onDuplicateInvoice={(id) => void handleDuplicateInvoice(id)}
-            />
-          )}
-
-          {screen === "cobros" && businessProfile && (
-            <Cobros
-              invoices={invoices}
-              loading={invoicesLoading}
-              businessProfile={businessProfile}
-              onOpenInvoice={openInvoice}
               onPaymentRecorded={() => void listInvoices().then(setInvoices)}
             />
           )}
@@ -658,23 +648,18 @@ export default function App() {
             />
           )}
 
-          {screen === "bandeja" && (
-            <BandejaRecibos
-              refreshToken={inboxRefreshToken}
-              onChanged={refreshInboxCount}
-              onOpenSettings={() => navigate("ajustes")}
-            />
-          )}
-
-          {(screen === "gastos" ||
-            screen === "gasto-nuevo" ||
-            screen === "gasto-editar") && (
+          {(screen === "gastos" || screen === "gasto-nuevo" || screen === "gasto-editar") && (
             <Gastos
+              view={recordId === "inbox" ? "inbox" : "list"}
+              onSetView={(v) => navigate("gastos", v === "inbox" ? "inbox" : null)}
               onOpenExpense={(id) => navigate("gasto-detalle", id)}
               onNewExpense={() => {
                 setPendingDropPath(null);
                 navigate("gasto-nuevo");
               }}
+              inboxRefreshToken={inboxRefreshToken}
+              onInboxChanged={refreshInboxCount}
+              onOpenSettings={() => navigate("ajustes")}
             />
           )}
 
@@ -770,7 +755,9 @@ export default function App() {
               embedded
               mode={screen === "gasto-editar" ? "edit" : "create"}
               expenseId={screen === "gasto-editar" ? (recordNum ?? undefined) : undefined}
-              initialFilePath={screen === "gasto-nuevo" ? (pendingDropPath ?? undefined) : undefined}
+              initialFilePath={
+                screen === "gasto-nuevo" ? (pendingDropPath ?? undefined) : undefined
+              }
               onSaved={(expense) => navigate("gasto-detalle", expense.id)}
               onCancel={() => guardNav(closeGastoForm)}
               onDirtyChange={setFormDirty}

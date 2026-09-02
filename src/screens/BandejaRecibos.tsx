@@ -24,6 +24,8 @@ interface BandejaRecibosProps {
   /** Notifies App that the queue changed, so the sidebar badge refreshes. */
   onChanged: () => void;
   onOpenSettings: () => void;
+  /** Rendered as the "Bandeja" tab inside Gastos — Gastos owns the PageHeader. */
+  embedded?: boolean;
 }
 
 const IMAGE_EXT = ["png", "jpg", "jpeg"];
@@ -32,7 +34,12 @@ function isImage(path: string): boolean {
   return IMAGE_EXT.includes(path.split(".").pop()?.toLowerCase() ?? "");
 }
 
-export function BandejaRecibos({ refreshToken, onChanged, onOpenSettings }: BandejaRecibosProps) {
+export function BandejaRecibos({
+  refreshToken,
+  onChanged,
+  onOpenSettings,
+  embedded = false,
+}: BandejaRecibosProps) {
   const { t } = useTranslation();
   const [items, setItems] = useState<ReceiptInboxItem[]>([]);
   const [categories, setCategories] = useState<ExpenseCategoryRecord[]>([]);
@@ -42,9 +49,7 @@ export function BandejaRecibos({ refreshToken, onChanged, onOpenSettings }: Band
 
   useEffect(() => {
     void listExpenseCategories().then(setCategories);
-    void getPreferences().then((p) =>
-      setConfigured(p.receiptInboxEnabled && !!p.receiptInboxPath),
-    );
+    void getPreferences().then((p) => setConfigured(p.receiptInboxEnabled && !!p.receiptInboxPath));
   }, [refreshToken]);
 
   useEffect(() => {
@@ -78,17 +83,30 @@ export function BandejaRecibos({ refreshToken, onChanged, onOpenSettings }: Band
     }
   }
 
+  const addButton = (
+    <Button variant="secondary" onClick={() => void handleAdd()} disabled={adding}>
+      {adding ? t("receiptInbox.adding") : t("receiptInbox.addReceipt")}
+    </Button>
+  );
+
   return (
-    <div className="px-8 pb-15">
-      <PageHeader
-        title={t("receiptInbox.title")}
-        subtitle={items.length > 0 ? t("receiptInbox.subtitleCount", { count: items.length }) : undefined}
-        actions={
-          <Button variant="secondary" onClick={() => void handleAdd()} disabled={adding}>
-            {adding ? t("receiptInbox.adding") : t("receiptInbox.addReceipt")}
-          </Button>
-        }
-      />
+    <div className={embedded ? "" : "px-8 pb-15"}>
+      {embedded ? (
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[12px] text-ink-soft">
+            {items.length > 0 ? t("receiptInbox.subtitleCount", { count: items.length }) : ""}
+          </div>
+          {addButton}
+        </div>
+      ) : (
+        <PageHeader
+          title={t("receiptInbox.title")}
+          subtitle={
+            items.length > 0 ? t("receiptInbox.subtitleCount", { count: items.length }) : undefined
+          }
+          actions={addButton}
+        />
+      )}
 
       {!loading && items.length === 0 && (
         <Card className="px-6 py-10 flex flex-col items-center text-center gap-2 max-w-[560px]">

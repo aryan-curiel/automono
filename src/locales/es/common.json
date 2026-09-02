@@ -15,7 +15,6 @@
     "clients": "Clientes",
     "invoices": "Facturas",
     "quotes": "Presupuestos",
-    "collections": "Cobros",
     "reconciliation": "Conciliación",
     "expenses": "Gastos",
     "quarterlySummary": "Resumen trimestral",
@@ -23,7 +22,11 @@
     "assistant": "Asistente",
     "settings": "Ajustes",
     "noData": "Sin datos",
-    "receiptInbox": "Bandeja de recibos"
+    "sections": {
+      "income": "Ingresos",
+      "expenses": "Gastos",
+      "taxes": "Impuestos"
+    }
   },
   "assistant": {
     "title": "Asistente",
@@ -51,20 +54,7 @@
     "month": "Mes",
     "quarter": "Trimestre",
     "year": "Año",
-    "months": [
-      "Ene",
-      "Feb",
-      "Mar",
-      "Abr",
-      "May",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dic"
-    ]
+    "months": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
   },
   "quarterTimeline": {
     "previousQuarter": "Trimestre anterior",
@@ -426,6 +416,10 @@
   "invoices": {
     "title": "Facturas",
     "subtitleCount": "{{count}} facturas",
+    "tabs": {
+      "all": "Facturas",
+      "collections": "Cobros"
+    },
     "newInvoice": "Nueva factura",
     "editInvoice": "Editar factura",
     "rectificationOf": "Rectificativa de {{number}}",
@@ -680,6 +674,10 @@
   "expenses": {
     "title": "Gastos",
     "subtitleCount": "{{count}} gastos",
+    "tabs": {
+      "expenses": "Gastos",
+      "inbox": "Bandeja de recibos"
+    },
     "newExpense": "Nuevo gasto",
     "editExpense": "Editar gasto",
     "declaredBadge": "Declarada",
