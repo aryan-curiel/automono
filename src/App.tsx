@@ -22,6 +22,7 @@ import { ClienteDetalle } from "./screens/ClienteDetalle";
 import { ClienteForm } from "./screens/ClienteForm";
 import { Facturas } from "./screens/Facturas";
 import { Cobros } from "./screens/Cobros";
+import { Conciliacion } from "./screens/Conciliacion";
 import { FacturaDetalle } from "./screens/FacturaDetalle";
 import { FacturaNueva } from "./screens/FacturaNueva";
 import { FacturaRectificar } from "./screens/FacturaRectificar";
@@ -489,6 +490,13 @@ export default function App() {
               loading={invoicesLoading}
               businessProfile={businessProfile}
               onOpenInvoice={openInvoice}
+              onPaymentRecorded={() => void listInvoices().then(setInvoices)}
+            />
+          )}
+
+          {screen === "conciliacion" && (
+            <Conciliacion
+              invoices={invoices}
               onPaymentRecorded={() => void listInvoices().then(setInvoices)}
             />
           )}

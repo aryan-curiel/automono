@@ -15,6 +15,7 @@ export type Screen =
   | "cliente-editar"
   | "facturas"
   | "cobros"
+  | "conciliacion"
   | "factura-detalle"
   | "factura-nueva"
   | "factura-rectificar"

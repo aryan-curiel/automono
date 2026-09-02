@@ -3,6 +3,16 @@ pub async fn write_text_file_cmd(path: String, contents: String) -> Result<(), S
     std::fs::write(&path, contents).map_err(|e| e.to_string())
 }
 
+/// Reads a user-picked text file (bank-statement CSV for reconciliation, #36). The frontend
+/// only gets a path back from the dialog plugin and there is no `plugin-fs`, so this thin
+/// command does the read. Lossy UTF-8 so a Latin-1 bank export (common in Spain) still parses
+/// rather than erroring.
+#[tauri::command]
+pub async fn read_text_file_cmd(path: String) -> Result<String, String> {
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
 /// Copies `source` into `dest_dir` under its own file name. Skips (rather than errors on) a
 /// path that no longer exists on disk — an invoice/expense whose file was moved or deleted
 /// shouldn't block the rest of the bundle.

@@ -262,6 +262,12 @@ fn all_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0039_invoice_payment.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 40,
+            description: "bank_statement_lines",
+            sql: include_str!("../migrations/0040_bank_statement_lines.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -298,6 +304,7 @@ pub fn run() {
             user_context::write_user_context_cmd,
             user_context::synthesize_user_context_cmd,
             export::write_text_file_cmd,
+            export::read_text_file_cmd,
             export::export_gestor_bundle_cmd,
             declarations::attach_declaration_file_cmd,
             declarations::open_declaration_file_cmd,
