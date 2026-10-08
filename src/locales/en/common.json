@@ -71,6 +71,8 @@
   },
   "settings": {
     "logoAlt": "Business logo",
+    "aboutTitle": "About",
+    "aboutVersion": "Version {{version}}",
     "dbSectionTitle": "Database status",
     "dbChecking": "Checking connection…",
     "dbError": "Connection error",

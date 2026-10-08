@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { useTranslation } from "react-i18next";
 import * as Switch from "@radix-ui/react-switch";
 import { Card } from "../components/ui/Card";
@@ -106,6 +107,7 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [inboxPath, setInboxPath] = useState("");
   const [inboxEnabled, setInboxEnabled] = useState(false);
   const [documentsToast, setDocumentsToast] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState("");
 
   const [backupSettings, setBackupSettings] = useState<BackupSettingsRecord | null>(null);
   const [backupRunning, setBackupRunning] = useState(false);
@@ -135,6 +137,10 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
   useEffect(() => {
     void listExpenseCategories().then(setCategories);
+  }, []);
+
+  useEffect(() => {
+    void getVersion().then(setAppVersion);
   }, []);
 
   useEffect(() => {
@@ -568,6 +574,13 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
           <div className="pt-4 pb-1 border-t border-border mt-1">
             <div className="font-bold text-sm mb-1.5">{t("settings.dbSectionTitle")}</div>
             <div className="text-[13px] text-ink-soft pb-4">{dbStatus}</div>
+          </div>
+
+          <div className="pt-4 pb-4 border-t border-border mt-1">
+            <div className="font-bold text-sm mb-1.5">{t("settings.aboutTitle")}</div>
+            <div className="text-[13px] text-ink-soft">
+              {appVersion ? t("settings.aboutVersion", { version: appVersion }) : ""}
+            </div>
           </div>
         </Card>
       )}
