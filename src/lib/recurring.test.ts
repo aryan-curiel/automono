@@ -78,7 +78,13 @@ describe("recurringInvoiceCandidates", () => {
       "2026-08-02",
     );
     expect(result).toEqual([
-      { clientId: 1, clientName: "Acme", lastInvoiceId: 7, lastInvoiceTotal: 200, dueDate: "2026-08-01" },
+      {
+        clientId: 1,
+        clientName: "Acme",
+        lastInvoiceId: 7,
+        lastInvoiceTotal: 200,
+        dueDate: "2026-08-01",
+      },
     ]);
   });
 
@@ -136,6 +142,30 @@ describe("recurringInvoiceCandidates", () => {
     expect(result[0].dueDate).toBe("2026-08-01");
   });
 
+  it("drops a due cadence candidate once a draft for the period exists", () => {
+    const result = recurringInvoiceCandidates(
+      [
+        invoice({ id: 7, clientId: 1, issueDate: "2026-07-10" }),
+        invoice({ id: 8, clientId: 1, status: "draft", issueDate: "2026-08-02" }),
+      ],
+      [contract({ clientId: 1, nextInvoiceDate: "2026-08-01" })],
+      "2026-08-02",
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("drops a heuristic candidate once a draft dated this month exists", () => {
+    const result = recurringInvoiceCandidates(
+      [
+        invoice({ id: 1, clientId: 2, issueDate: "2026-07-10" }),
+        invoice({ id: 2, clientId: 2, status: "draft", issueDate: "2026-08-02" }),
+      ],
+      [],
+      "2026-08-02",
+    );
+    expect(result).toEqual([]);
+  });
+
   it("excludes a heuristic client already invoiced this month", () => {
     const result = recurringInvoiceCandidates(
       [
@@ -157,7 +187,31 @@ describe("dueRecurringDrafts", () => {
       "2026-08-05",
     );
     expect(result).toEqual([
-      { contractId: 3, templateInvoiceId: 9, newNextDate: "2026-09-01" },
+      {
+        contractId: 3,
+        currentNextDate: "2026-08-01",
+        templateInvoiceId: 9,
+        newNextDate: "2026-09-01",
+      },
+    ]);
+  });
+
+  it("only advances the anchor when the period already has an invoice (e.g. a draft)", () => {
+    const result = dueRecurringDrafts(
+      [contract({ id: 3, clientId: 1, nextInvoiceDate: "2026-08-01" })],
+      [
+        invoice({ id: 9, clientId: 1, issueDate: "2026-07-10" }),
+        invoice({ id: 10, clientId: 1, status: "draft", issueDate: "2026-08-03" }),
+      ],
+      "2026-08-05",
+    );
+    expect(result).toEqual([
+      {
+        contractId: 3,
+        currentNextDate: "2026-08-01",
+        templateInvoiceId: null,
+        newNextDate: "2026-09-01",
+      },
     ]);
   });
 

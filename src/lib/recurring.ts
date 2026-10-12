@@ -4,7 +4,7 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { duplicateInvoice, listInvoices, type InvoiceListItem } from "../db/invoices";
-import { listContracts, updateContract, type ContractRecord } from "../db/contracts";
+import { claimNextInvoiceDate, listContracts, type ContractRecord } from "../db/contracts";
 import type { BillingCadence } from "../types";
 import i18n from "../i18n";
 
@@ -58,6 +58,16 @@ function latestIssuedByClient(invoices: InvoiceListItem[]): Map<number, InvoiceL
 }
 
 /**
+ * True if the client already has an invoice — drafts included — dated on/after `sinceIso`, i.e. the
+ * period was already drafted (by the startup run or by hand) and must not be drafted again.
+ */
+function hasInvoiceSince(invoices: InvoiceListItem[], clientId: number, sinceIso: string): boolean {
+  return invoices.some(
+    (inv) => inv.clientId === clientId && inv.issueDate !== null && inv.issueDate >= sinceIso,
+  );
+}
+
+/**
  * Clients invoiced last calendar month but not yet this one — the pre-cadence heuristic, kept as a
  * fallback for clients with no active billing-cadence contract. Drafts (no `issueDate`) don't count
  * for either month.
@@ -70,8 +80,9 @@ function heuristicCandidates(invoices: InvoiceListItem[], todayIso: string): Rec
   const prevMonthPrefix = monthPrefix(prevYear, prevMonth);
 
   const issued = invoices.filter((inv) => inv.status !== "draft" && inv.issueDate !== null);
+  // Drafts dated this month count too, so a just-generated draft clears the suggestion.
   const invoicedThisMonth = new Set(
-    issued.filter((inv) => inv.issueDate!.startsWith(thisMonthPrefix)).map((inv) => inv.clientId),
+    invoices.filter((inv) => inv.issueDate?.startsWith(thisMonthPrefix)).map((inv) => inv.clientId),
   );
 
   const lastMonthByClient = new Map<number, InvoiceListItem>();
@@ -110,6 +121,7 @@ export function recurringInvoiceCandidates(
     if (contract.status !== "active" || contract.billingCadence === "none") continue;
     cadenceClients.add(contract.clientId);
     if (!contract.nextInvoiceDate || contract.nextInvoiceDate > todayIso) continue;
+    if (hasInvoiceSince(invoices, contract.clientId, contract.nextInvoiceDate)) continue;
     const template = latest.get(contract.clientId);
     if (!template) continue;
     candidates.push({
@@ -129,7 +141,10 @@ export function recurringInvoiceCandidates(
 
 export interface RecurringDraftTask {
   contractId: number;
-  templateInvoiceId: number;
+  /** Anchor read from the DB — the claim only succeeds if it is still this value. */
+  currentNextDate: string;
+  /** `null` when the period already has an invoice: only advance the anchor, don't draft. */
+  templateInvoiceId: number | null;
   /** Where the contract's anchor moves after drafting — a future date, so the next run is a no-op. */
   newNextDate: string;
 }
@@ -153,7 +168,13 @@ export function dueRecurringDrafts(
     if (!template) continue;
     let next = contract.nextInvoiceDate;
     while (next <= todayIso) next = nextBillingDate(next, contract.billingCadence);
-    tasks.push({ contractId: contract.id, templateInvoiceId: template.id, newNextDate: next });
+    const covered = hasInvoiceSince(invoices, contract.clientId, contract.nextInvoiceDate);
+    tasks.push({
+      contractId: contract.id,
+      currentNextDate: contract.nextInvoiceDate,
+      templateInvoiceId: covered ? null : template.id,
+      newNextDate: next,
+    });
   }
   return tasks;
 }
@@ -168,20 +189,29 @@ export async function runRecurringInvoices(): Promise<number> {
   const todayIso = new Date().toISOString().slice(0, 10);
   const [contracts, invoices] = await Promise.all([listContracts(), listInvoices()]);
   const tasks = dueRecurringDrafts(contracts, invoices, todayIso);
-  if (tasks.length === 0) return 0;
 
+  // Claim the period first (compare-and-swap on the anchor) so overlapping runs — StrictMode's
+  // double effect, a fast relaunch — can't both draft it.
+  let drafted = 0;
   for (const task of tasks) {
+    const claimed = await claimNextInvoiceDate(
+      task.contractId,
+      task.currentNextDate,
+      task.newNextDate,
+    );
+    if (!claimed || task.templateInvoiceId === null) continue;
     await duplicateInvoice(task.templateInvoiceId);
-    await updateContract(task.contractId, { nextInvoiceDate: task.newNextDate });
+    drafted++;
   }
+  if (drafted === 0) return 0;
 
   let granted = await isPermissionGranted();
   if (!granted) granted = (await requestPermission()) === "granted";
   if (granted) {
     sendNotification({
       title: i18n.t("recurring.notifyTitle"),
-      body: i18n.t("recurring.notifyBody", { count: tasks.length }),
+      body: i18n.t("recurring.notifyBody", { count: drafted }),
     });
   }
-  return tasks.length;
+  return drafted;
 }

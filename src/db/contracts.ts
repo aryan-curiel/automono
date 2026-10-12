@@ -128,6 +128,23 @@ export async function updateContract(id: number, patch: Partial<NewContract>): P
   ]);
 }
 
+/**
+ * Atomically moves a contract's billing anchor from `expected` to `next`. Returns false if another
+ * run already moved it — the caller must then skip drafting that period.
+ */
+export async function claimNextInvoiceDate(
+  id: number,
+  expected: string,
+  next: string,
+): Promise<boolean> {
+  const db = await getDb();
+  const res = await db.execute(
+    "UPDATE contracts SET next_invoice_date = $1 WHERE id = $2 AND next_invoice_date = $3",
+    [next, id, expected],
+  );
+  return res.rowsAffected === 1;
+}
+
 export async function deleteContract(id: number): Promise<void> {
   const db = await getDb();
   await db.execute("DELETE FROM contracts WHERE id = $1", [id]);
