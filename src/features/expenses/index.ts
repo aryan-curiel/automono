@@ -1,2 +1,2 @@
-// Expenses module — see PRD.md, Milestone 7. No logic yet.
+// Expenses module — see docs/PRD.md, Milestone 7. No logic yet.
 export {};

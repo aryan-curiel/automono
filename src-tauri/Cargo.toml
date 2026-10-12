@@ -1,8 +1,9 @@
 [package]
 name = "automono"
 version = "1.0.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Invoicing, expenses and quarterly tax summaries for Spanish freelancers (autónomos)"
+authors = ["Aryan Curiel"]
+license = "AGPL-3.0-or-later"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

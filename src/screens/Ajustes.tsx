@@ -581,6 +581,10 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
             <div className="text-[13px] text-ink-soft">
               {appVersion ? t("settings.aboutVersion", { version: appVersion }) : ""}
             </div>
+            <div className="text-[13px] text-ink-soft mt-2 max-w-prose">
+              {t("settings.aboutDisclaimer")}
+            </div>
+            <div className="text-[13px] text-ink-soft mt-2">{t("settings.aboutLicense")}</div>
           </div>
         </Card>
       )}

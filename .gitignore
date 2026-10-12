@@ -25,3 +25,5 @@ package-lock.json
 *.sw?
 
 .worktrees/
+
+.superpowers/

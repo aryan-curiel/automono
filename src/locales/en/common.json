@@ -73,6 +73,8 @@
     "logoAlt": "Business logo",
     "aboutTitle": "About",
     "aboutVersion": "Version {{version}}",
+    "aboutDisclaimer": "AutoMono is not tax or accounting advice. IVA, IRPF and modelo calculations are indicative and may contain errors or fall out of date when regulations change. Always check the figures with your gestor or tax advisor before filing anything with the AEAT. The software is provided “as is”, without warranty of any kind.",
+    "aboutLicense": "Free software under the AGPL-3.0 license.",
     "dbSectionTitle": "Database status",
     "dbChecking": "Checking connection…",
     "dbError": "Connection error",

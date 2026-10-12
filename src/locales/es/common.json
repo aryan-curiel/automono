@@ -73,6 +73,8 @@
     "logoAlt": "Logotipo del negocio",
     "aboutTitle": "Acerca de",
     "aboutVersion": "Versión {{version}}",
+    "aboutDisclaimer": "AutoMono no es asesoramiento fiscal ni contable. Los cálculos de IVA, IRPF y de los modelos son orientativos y pueden contener errores o quedar desactualizados con cambios normativos. Revisa siempre las cifras con tu gestor o asesor antes de presentar nada a la AEAT. El software se ofrece «tal cual», sin garantía de ningún tipo.",
+    "aboutLicense": "Software libre bajo licencia AGPL-3.0.",
     "dbSectionTitle": "Estado de la base de datos",
     "dbChecking": "Comprobando conexión…",
     "dbError": "Error de conexión",

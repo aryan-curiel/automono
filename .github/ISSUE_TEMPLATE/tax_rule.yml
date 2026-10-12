@@ -1,0 +1,23 @@
+name: Tax rule / calculation issue
+description: A Spanish tax rule is missing, outdated or applied incorrectly
+labels: [tax]
+body:
+  - type: textarea
+    id: rule
+    attributes:
+      label: What's wrong?
+      description: Which figure or modelo (303, 130, 111, 347, 349…) and what it should be.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Worked example
+      description: Made-up amounts showing the expected result.
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: AEAT page, BOE article or modelo instructions.
+    validations:
+      required: true
