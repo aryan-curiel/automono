@@ -2,12 +2,17 @@
 //! provider, per-provider model override) stays in SQLite — only the secret lives here.
 //! See issue #16.
 
-/// Keychain service name. Reuses the Tauri app identifier, which is already a
-/// never-change value (`tauri.conf.json` / `CLAUDE.md`).
-const SERVICE: &str = "com.aryancuriel.automono";
+/// Keychain service name — the Tauri app identifier.
+const SERVICE: &str = "com.nagarestudio.automono";
 
 fn entry(provider: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(SERVICE, provider).map_err(|e| e.to_string())
+}
+
+/// Keys saved before the identifier rename live under the old service name; `get` moves them
+/// across the first time they're read.
+fn legacy_entry(provider: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(crate::legacy_data::LEGACY_IDENTIFIER, provider).map_err(|e| e.to_string())
 }
 
 /// The stored key for `provider` (`"anthropic"` / `"openai"` / `"openrouter"`), or `None` if
@@ -15,7 +20,16 @@ fn entry(provider: &str) -> Result<keyring::Entry, String> {
 pub fn get(provider: &str) -> Result<Option<String>, String> {
     match entry(provider)?.get_password() {
         Ok(key) => Ok(Some(key)),
-        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(keyring::Error::NoEntry) => match legacy_entry(provider)?.get_password() {
+            Ok(key) => {
+                // Write the new entry before deleting the old one, so a failure never loses the key.
+                entry(provider)?.set_password(&key).map_err(|e| e.to_string())?;
+                let _ = legacy_entry(provider)?.delete_credential();
+                Ok(Some(key))
+            }
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        },
         Err(e) => Err(e.to_string()),
     }
 }
@@ -30,10 +44,14 @@ pub fn set(provider: &str, key: &str) -> Result<(), String> {
 
 /// Remove any stored key for `provider`. A missing entry is not an error.
 pub fn clear(provider: &str) -> Result<(), String> {
-    match entry(provider)?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(e.to_string()),
+    // Clear the legacy entry too, or the next `get` would bring a cleared key back.
+    for e in [entry(provider)?, legacy_entry(provider)?] {
+        match e.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => {}
+            Err(err) => return Err(err.to_string()),
+        }
     }
+    Ok(())
 }
 
 #[tauri::command]
@@ -74,5 +92,18 @@ mod tests {
         assert_eq!(get(TEST_PROVIDER).unwrap(), None);
 
         clear(TEST_PROVIDER).unwrap(); // idempotent on a missing entry
+    }
+
+    #[test]
+    fn get_moves_a_legacy_key_to_the_new_service() {
+        const P: &str = "automono_keychain_selftest_legacy";
+        clear(P).unwrap();
+        legacy_entry(P).unwrap().set_password("sk-legacy").unwrap();
+
+        assert_eq!(get(P).unwrap(), Some("sk-legacy".to_string()));
+        assert!(matches!(legacy_entry(P).unwrap().get_password(), Err(keyring::Error::NoEntry)));
+        assert_eq!(entry(P).unwrap().get_password().unwrap(), "sk-legacy");
+
+        clear(P).unwrap();
     }
 }

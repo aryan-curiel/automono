@@ -70,7 +70,7 @@ fn backup_is_due(enabled: bool, last_backup_at: Option<&str>, cutoff: &str) -> b
 /// Recursively copies `src` into `dst`, creating directories as needed and preserving relative
 /// structure and original filenames (unlike `contracts::copy_into`, which stamps a single file
 /// with a timestamp — backups need original names to remain restorable).
-fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
+pub(crate) fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
         let entry = entry?;
@@ -111,7 +111,7 @@ fn sha256_file(path: &Path) -> io::Result<String> {
 
 /// Collects every file under `dir` recursively as paths relative to `base`, skipping the
 /// manifest file itself.
-fn collect_files_relative(dir: &Path, base: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
+pub(crate) fn collect_files_relative(dir: &Path, base: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -483,6 +483,13 @@ pub async fn restore_backup_cmd(app: AppHandle, backup_folder: String) -> Result
     }
 
     restore_from_dir(&backup_dir, &data_dir, &db_dest).await?;
+    // Backups taken before the identifier change store paths under the old data folder.
+    crate::legacy_data::rewrite_paths(
+        &db_dest,
+        &crate::legacy_data::legacy_dir_beside(&data_dir),
+        &data_dir,
+    )
+    .await?;
 
     // The pool we just closed stays closed for this process — nothing in Rust reopens it, and a
     // webview reload would only paper over it via plugin-sql internals. Force a full relaunch so

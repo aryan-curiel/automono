@@ -13,6 +13,7 @@ mod expenses;
 mod export;
 mod invoicing;
 mod keychain;
+mod legacy_data;
 mod llm;
 mod modelo_review;
 mod pdf;
@@ -289,6 +290,16 @@ fn all_migrations() -> Vec<Migration> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = all_migrations();
+    let context = tauri::generate_context!();
+
+    // Must run before the SQL plugin can open (and so create) an empty database in the new data
+    // folder. On failure, refuse to start rather than launch empty: the old folder is untouched
+    // and the next launch retries.
+    match legacy_data::migrate_for_identifier(&context.config().identifier) {
+        Ok(true) => eprintln!("Migrated data from {}", legacy_data::LEGACY_IDENTIFIER),
+        Ok(false) => {}
+        Err(e) => panic!("Could not migrate data from {}: {e}", legacy_data::LEGACY_IDENTIFIER),
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -345,7 +356,7 @@ pub fn run() {
                 tauri::async_runtime::block_on(backup::backup_on_close(&app));
             }
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
 
