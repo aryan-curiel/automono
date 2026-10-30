@@ -54,3 +54,19 @@ install: backup build
     rm -rf /Applications/AutoMono.app
     ditto "{{bundle}}" /Applications/AutoMono.app
     @echo "Installed $(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' /Applications/AutoMono.app/Contents/Info.plist)"
+
+# Tag the current version (from tauri.conf.json) and push it, which starts the macOS build in CI
+release:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version=$(sed -nE 's/^  "version": "([^"]+)".*/\1/p' src-tauri/tauri.conf.json)
+    tag="v$version"
+    [[ "$(git branch --show-current)" == main ]] || { echo "Release from main."; exit 1; }
+    [[ -z "$(git status --porcelain)" ]] || { echo "Commit or stash your changes first."; exit 1; }
+    git fetch -q origin main --tags
+    [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { echo "main isn't in sync with origin/main."; exit 1; }
+    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "$tag already exists. Run: just bump <new version>"; exit 1; fi
+    read -rp "Tag and push $tag? [y/N] " ok
+    [[ "$ok" == y ]] || exit 1
+    git tag -a "$tag" -m "AutoMono $version"
+    git push origin "$tag"
