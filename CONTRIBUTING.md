@@ -31,7 +31,12 @@ cd src-tauri && cargo test      # Rust tests (inline #[cfg(test)] modules)
   AI provider calls.
 - `src/locales/{es,en}/common.json` — every user-facing string. Spanish is the default; add both.
 
-[CLAUDE.md](CLAUDE.md) has a more detailed architecture walkthrough.
+[docs/architecture.md](docs/architecture.md) has the full architecture walkthrough and
+[docs/development.md](docs/development.md) covers common tasks (migrations, screens, Tauri
+commands) and debugging.
+
+> `tauri dev` uses the same data folder as an installed AutoMono. Back up first (`just backup`)
+> if you use the app for your real books.
 
 ## Rules that are easy to break
 
@@ -49,11 +54,15 @@ cd src-tauri && cargo test      # Rust tests (inline #[cfg(test)] modules)
 
 ## Tax logic changes
 
-If you change how a tax figure is calculated, cite the source (AEAT page, BOE article, modelo
+[docs/tax-rules.md](docs/tax-rules.md) describes how every figure is calculated today; update it
+along with the code. If you change how a tax figure is calculated, cite the source (AEAT page, BOE article, modelo
 instructions) in the pull request and add a test with a worked example.
 
 ## Pull requests
 
 - One topic per pull request. Link the issue it fixes.
+- Add a line under **Unreleased** in [CHANGELOG.md](CHANGELOG.md) for user-visible changes.
+- Follow the [code of conduct](CODE_OF_CONDUCT.md). Report security issues privately — see
+  [SECURITY.md](SECURITY.md).
 - Include screenshots for UI changes (light and dark).
 - By contributing you agree your work is licensed under [AGPL-3.0-or-later](LICENSE).
