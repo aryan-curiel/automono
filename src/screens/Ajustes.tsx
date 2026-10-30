@@ -21,6 +21,7 @@ import type { BusinessProfileRecord } from "../db/businessProfile";
 import { isValidNifCif, isValidVatNumber } from "../features/clients";
 import { isValidIban } from "../features/settings";
 import { runHealthcheck } from "../db/healthcheck";
+import { checkForUpdate, installUpdate, type Update } from "../lib/updates";
 import {
   CategoryInUseError,
   createExpenseCategory,
@@ -108,6 +109,11 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
   const [inboxEnabled, setInboxEnabled] = useState(false);
   const [documentsToast, setDocumentsToast] = useState<string | null>(null);
   const [appVersion, setAppVersion] = useState("");
+  const [update, setUpdate] = useState<Update | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<"idle" | "checking" | "current" | "installing">(
+    "idle",
+  );
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [backupSettings, setBackupSettings] = useState<BackupSettingsRecord | null>(null);
   const [backupRunning, setBackupRunning] = useState(false);
@@ -141,12 +147,41 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
 
   useEffect(() => {
     void getVersion().then(setAppVersion);
+    // Silent check so the install button is already there when arriving from the update toast.
+    if (!import.meta.env.DEV) void checkForUpdate().then(setUpdate, () => {});
   }, []);
+
+  async function handleCheckForUpdate() {
+    setUpdateStatus("checking");
+    setUpdateError(null);
+    try {
+      const found = await checkForUpdate();
+      setUpdate(found);
+      setUpdateStatus(found ? "idle" : "current");
+    } catch (err) {
+      setUpdateError(t("settings.updateCheckError", { error: String(err) }));
+      setUpdateStatus("idle");
+    }
+  }
+
+  async function handleInstallUpdate() {
+    if (!update) return;
+    setUpdateStatus("installing");
+    setUpdateError(null);
+    try {
+      await installUpdate(update);
+    } catch (err) {
+      setUpdateError(t("settings.updateInstallError", { error: String(err) }));
+      setUpdateStatus("idle");
+    }
+  }
 
   useEffect(() => {
     void getLlmSettings().then(setLlmSettings);
     void Promise.all(
-      LLM_PROVIDER_OPTIONS.map((o) => getApiKey(o.value).then((key) => [o.value, key ?? ""] as const)),
+      LLM_PROVIDER_OPTIONS.map((o) =>
+        getApiKey(o.value).then((key) => [o.value, key ?? ""] as const),
+      ),
     ).then((entries) => setApiKeys(Object.fromEntries(entries) as Record<LlmProvider, string>));
   }, []);
 
@@ -165,7 +200,9 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
     setLlmSaved(false);
     try {
       await updateLlmSettings(llmSettings);
-      await Promise.all(LLM_PROVIDER_OPTIONS.map((o) => setApiKey(o.value, apiKeys[o.value] || null)));
+      await Promise.all(
+        LLM_PROVIDER_OPTIONS.map((o) => setApiKey(o.value, apiKeys[o.value] || null)),
+      );
       setLlmSaved(true);
     } finally {
       setLlmSaving(false);
@@ -585,6 +622,35 @@ export function Ajustes({ theme, onToggleTheme }: AjustesProps) {
               {t("settings.aboutDisclaimer")}
             </div>
             <div className="text-[13px] text-ink-soft mt-2">{t("settings.aboutLicense")}</div>
+            <div className="flex items-center gap-3 mt-3">
+              {update ? (
+                <Button
+                  onClick={() => void handleInstallUpdate()}
+                  disabled={updateStatus === "installing"}
+                >
+                  {updateStatus === "installing"
+                    ? t("settings.updateInstalling")
+                    : t("settings.updateInstall", { version: update.version })}
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleCheckForUpdate()}
+                  disabled={updateStatus === "checking"}
+                >
+                  {updateStatus === "checking"
+                    ? t("settings.updateChecking")
+                    : t("settings.updateCheck")}
+                </Button>
+              )}
+              {updateStatus === "current" && (
+                <span className="text-[13px] text-ink-soft">{t("settings.updateCurrent")}</span>
+              )}
+            </div>
+            {update && (
+              <div className="text-[13px] text-ink-soft mt-2">{t("settings.updateBackupNote")}</div>
+            )}
+            {updateError && <ErrorText>{updateError}</ErrorText>}
           </div>
         </Card>
       )}

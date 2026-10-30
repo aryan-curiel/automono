@@ -45,6 +45,13 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFGOUIxQkU3NUVBQjQxQzQKUldURVFhdGU1eHVicjdmY2cvTU9TZ0Nkd1N0SjU1RzBJM3BiWEhTazQxaFhNQmJjbENUU3FuRlQK",
+      "endpoints": ["https://github.com/aryan-curiel/automono/releases/latest/download/latest.json"]
+    }
   }
 }

@@ -10,6 +10,8 @@ AutoMono is a native-feeling macOS desktop app (Tauri 2 + React 19 + SQLite) tha
 
 A `justfile` wraps the common tasks (`just` lists them): `just test` / `just lint` cover both runtimes, `just bump <version>` sets the version in `package.json`, `tauri.conf.json` and `Cargo.toml`, `just backup` snapshots the app-data folders to `~/AutoMono-backups/`, `just install` backs up, builds and replaces `/Applications/AutoMono.app`, and `just release` tags the current version as `v<version>` and pushes it (the only thing that triggers the macOS build workflow).
 
+**Auto-update.** `tauri-plugin-updater` polls `latest.json` on the latest GitHub Release, which `build-macos.yml` (tauri-action) publishes for every `v*` tag. Update bundles are signed with the key at `~/.tauri/automono-updater.key` (password in the macOS Keychain as `automono-updater-key-password`; both also stored as repo secrets). Its public half is in `tauri.conf.json` — losing the private key means installed copies can never update again. `installUpdate` in `src/lib/updates.ts` runs `backup_before_update_cmd` before installing.
+
 Package manager is **bun** (`bun.lock` present) — use `bun run <script>` / `bun install`, not npm/yarn.
 
 - `bun run dev` — Vite dev server only (frontend). For the full app, use `bun run tauri dev` (Tauri window + hot reload).

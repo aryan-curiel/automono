@@ -9,6 +9,7 @@ import { BackLink } from "./components/PageHeader";
 import { Button } from "./components/ui/Button";
 import { Sheet } from "./components/ui/Sheet";
 import { Toast } from "./components/ui/Toast";
+import { checkForUpdate } from "./lib/updates";
 import { TooltipProvider } from "./components/ui/Tooltip";
 import { getDb } from "./db/client";
 import { listClients } from "./db/clients";
@@ -178,6 +179,7 @@ export default function App() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfileRecord | null>(null);
   const [pdfErrorToast, setPdfErrorToast] = useState<string | null>(null);
+  const [updateToast, setUpdateToast] = useState<string | null>(null);
 
   const [rectType, setRectType] = useState<RectificationType>("partial");
   const [rectReason, setRectReason] = useState("");
@@ -295,6 +297,16 @@ export default function App() {
     getDb()
       .catch(() => setDbErrorToast(t("settings.dbError")))
       .finally(() => setDbReady(true));
+  }, [t]);
+
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    // Offline or GitHub unreachable: stay quiet, Ajustes has a manual check.
+    void checkForUpdate().then(
+      (update) =>
+        update && setUpdateToast(t("settings.updateAvailableToast", { version: update.version })),
+      () => {},
+    );
   }, [t]);
 
   useEffect(() => {
@@ -792,6 +804,12 @@ export default function App() {
           message={pdfErrorToast}
           onDismiss={() => setPdfErrorToast(null)}
           offset={dbErrorToast ? 1 : 0}
+        />
+        <Toast
+          message={updateToast}
+          tone="info"
+          onDismiss={() => setUpdateToast(null)}
+          offset={(dbErrorToast ? 1 : 0) + (pdfErrorToast ? 1 : 0)}
         />
 
         <CommandPalette

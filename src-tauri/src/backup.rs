@@ -319,6 +319,22 @@ pub async fn backup_now_cmd(app: AppHandle) -> Result<String, String> {
     Ok(backup_dir.to_string_lossy().to_string())
 }
 
+/// Snapshot taken right before an update installs. Uses the configured backup folder, or falls
+/// back to `<app data>/pre-update-backups` (kept forever) so an update never runs unbacked.
+#[tauri::command]
+pub async fn backup_before_update_cmd(app: AppHandle) -> Result<String, String> {
+    let pool = pool_from_app(&app).await.ok_or("database not loaded")?;
+    let settings = load_backup_settings(&pool).await.map_err(|e| e.to_string())?;
+    let (dest, retention_days) = if settings.folder_path.trim().is_empty() {
+        let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+        (data_dir.join("pre-update-backups"), 0)
+    } else {
+        (PathBuf::from(&settings.folder_path), settings.retention_days)
+    };
+    let backup_dir = run_backup(&app, &pool, &dest, retention_days).await?;
+    Ok(backup_dir.to_string_lossy().to_string())
+}
+
 /// Opens `db_path` read-only and confirms it is a structurally sound AutoMono database:
 /// `PRAGMA quick_check` passes and the core tables exist. Guards against restoring from a
 /// truncated, half-written, or foreign file that a bare `is_file()` check would accept.

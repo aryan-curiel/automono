@@ -36,7 +36,8 @@ schemars = "1.0"
 base64 = "0.22"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
-
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
@@ -45,3 +46,8 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# Stripping proc-macro dylibs (sqlx-macros) breaks them on newer macOS linkers
+# ("mis-aligned LINKEDIT string pool"). Only build-time code; the app binary is still stripped.
+[profile.release.build-override]
+strip = false

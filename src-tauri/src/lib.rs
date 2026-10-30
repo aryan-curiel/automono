@@ -305,6 +305,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:automono.db", migrations)
@@ -346,6 +348,7 @@ pub fn run() {
             keychain::set_llm_api_key_cmd,
             keychain::clear_llm_api_key_cmd,
             backup::backup_now_cmd,
+            backup::backup_before_update_cmd,
             backup::restore_backup_cmd,
             backup::list_backups_cmd,
             backup::open_backup_folder_cmd
