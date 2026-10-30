@@ -11,8 +11,10 @@ default:
 dev:
     bun run tauri dev
 
-# Release .app bundle, signed with the updater key (~/.tauri, password in the Keychain)
+# Release .app bundle: Developer ID-signed (from the login Keychain) and signed with the updater
+# key (~/.tauri, password in the Keychain). Not notarized; CI does that for published releases.
 build:
+    APPLE_SIGNING_IDENTITY="Developer ID Application: ARYAN CURIELPARDO (89WU3N3C8U)" \
     TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/automono-updater.key)" \
     TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(security find-generic-password -s automono-updater-key-password -w)" \
     bun run tauri build --bundles app

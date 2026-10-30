@@ -26,13 +26,20 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      # Builds a universal .app/.dmg, signs the update bundle and publishes a Release with
-      # latest.json, which installed copies poll to find updates.
+      # Builds a universal .app/.dmg, signs and notarizes it, signs the update bundle and
+      # publishes a Release with latest.json, which installed copies poll to find updates.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Developer ID signing + notarization, so Gatekeeper opens the downloaded app cleanly.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: AutoMono ${{ github.ref_name }}
