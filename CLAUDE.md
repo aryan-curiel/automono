@@ -8,6 +8,8 @@ AutoMono is a native-feeling macOS desktop app (Tauri 2 + React 19 + SQLite) tha
 
 ## Commands
 
+A `justfile` wraps the common tasks (`just` lists them): `just test` / `just lint` cover both runtimes, `just bump <version>` sets the version in `package.json`, `tauri.conf.json` and `Cargo.toml`, `just backup` snapshots the app-data folders to `~/AutoMono-backups/`, and `just install` backs up, builds and replaces `/Applications/AutoMono.app`.
+
 Package manager is **bun** (`bun.lock` present) — use `bun run <script>` / `bun install`, not npm/yarn.
 
 - `bun run dev` — Vite dev server only (frontend). For the full app, use `bun run tauri dev` (Tauri window + hot reload).
